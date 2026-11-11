@@ -53,6 +53,15 @@ CAMADAS = [
         "categoria": "termica",
         "tipo_acesso": "tiles_wmts",
     },
+    {
+        # Camada visual derivada do DTM -- não é mais um arquivo baixado
+        # do Mars Trek, é gerado sob demanda por api/mosaics.py
+        # (build_hillshade_png) a partir do local_tile_path abaixo.
+        "layer_name": "relevo_hillshade",
+        "local_tile_path": os.path.join(TILES_DIR, "dtm_hirise_1m", "dem_512x512.tif"),
+        "categoria": "topografica",
+        "tipo_acesso": "hillshade_derivado",
+    },
 ]
 
 

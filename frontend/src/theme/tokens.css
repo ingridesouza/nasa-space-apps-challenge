@@ -1,0 +1,267 @@
+/* Sistema de design HUD / centro de controle de missão.
+   Inspirado na disciplina de cor e no tratamento "glass" do RedStep
+   (github.com/leo-noble/RedStep) -- não copiado, reconstruído com
+   paleta e tokens próprios pro H2G2.
+
+   Papel de cada cor (regra 60·30·10 -- nunca usar um acento só de
+   enfeite):
+     void/ink   -- ~60%, fundo quase-preto e texto de leitura
+     surface    -- ~30%, vidro dos painéis
+     ember      -- ~10%, única cor de ação/destaque de título
+     hud-cyan   -- reservado SÓ pro que é "ao vivo": crosshair, ponto
+                   selecionado, estado ativo de um toggle
+*/
+
+:root {
+  --void: #05070a;
+  --ink: #e8edf1;
+  --ink-2: rgba(232, 237, 241, 0.7);
+  --ink-3: rgba(232, 237, 241, 0.45);
+
+  /* âmbar -- referência a telemetria/CRT de console antigo; única cor
+     de ação e de título de painel */
+  --ember-900: #4a2e00;
+  --ember-500: #cc7f00;
+  --ember: #ffb000;
+  --ember-dim: rgba(255, 176, 0, 0.32);
+
+  /* ciano -- reservado pro que é "ao vivo": ponto clicado, toggle ativo */
+  --hud-cyan: #00e5ff;
+  --hud-cyan-dim: rgba(0, 229, 255, 0.35);
+
+  --danger: #ff6b5e;
+
+  /* veredito de segurança (slope vs. limite de 20° da Artemis) */
+  --verdict-seguro: #7fe0a8;
+  --verdict-atencao: #ffd37a;
+  --verdict-perigo: var(--danger);
+
+  /* vidro dos painéis */
+  --glass-tint: rgba(10, 14, 20, 0.62);
+  --glass-film: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0) 45%);
+  --glass-blur: blur(18px) saturate(1.2);
+  --glass-rim: rgba(255, 255, 255, 0.1);
+  --glass-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.06), 0 12px 32px rgba(0, 0, 0, 0.4);
+
+  --font-sans: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* escala modular (razão ~1.25, base 16px) */
+  --t-micro: 11px;
+  --t-small: 13px;
+  --t-body: 15px;
+  --t-4: clamp(18px, 1.4vw, 20px);
+  --t-3: clamp(22px, 1.8vw, 26px);
+  --t-2: clamp(28px, 2.4vw, 34px);
+
+  /* grid de espaçamento 8px (4px só pra hairline) */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+
+  --r-1: 4px;
+  --r-2: 8px;
+  --r-3: 14px;
+
+  --ease: cubic-bezier(0.22, 0.7, 0.2, 1);
+  --d-ui: 200ms;
+
+  /* aliases antigos, mantidos pra não quebrar componentes já escritos */
+  --h2g2-bg: var(--void);
+  --h2g2-surface: var(--glass-tint);
+  --h2g2-surface-border: var(--glass-rim);
+  --h2g2-text: var(--ink);
+  --h2g2-text-dim: var(--ink-3);
+  --h2g2-accent: var(--ember);
+  --h2g2-accent-dim: var(--ember-dim);
+  --h2g2-active: var(--hud-cyan);
+  --h2g2-danger: var(--danger);
+  --h2g2-font-mono: var(--font-mono);
+  --h2g2-font-sans: var(--font-sans);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--t-body);
+}
+
+.h2g2-panel {
+  background: var(--glass-film), var(--glass-tint);
+  border: 0.5px solid var(--glass-rim);
+  border-radius: var(--r-3);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+  transition: box-shadow var(--d-ui) var(--ease);
+  animation: h2g2-panel-in var(--d-ui) var(--ease);
+}
+
+@keyframes h2g2-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.h2g2-panel-title {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ember);
+  margin: 0 0 var(--s-2);
+}
+
+.h2g2-mono {
+  font-family: var(--font-mono);
+}
+
+.h2g2-dim {
+  color: var(--ink-3);
+}
+
+.h2g2-empty-state {
+  font-family: var(--font-mono);
+  font-size: var(--t-small);
+  color: var(--ink-3);
+  border: 1px dashed var(--glass-rim);
+  border-radius: var(--r-2);
+  padding: var(--s-2) var(--s-3);
+}
+
+/* Vinheta sutil -- reforça a sensação de "visor", não some o mapa */
+.h2g2-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.5) 100%);
+}
+
+/* Cantos estilo HUD -- quatro colchetes nos cantos da viewport */
+.h2g2-corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  pointer-events: none;
+}
+.h2g2-corner--tl {
+  top: var(--s-4);
+  left: var(--s-4);
+  border-top: 2px solid var(--ember-dim);
+  border-left: 2px solid var(--ember-dim);
+}
+.h2g2-corner--tr {
+  top: var(--s-4);
+  right: var(--s-4);
+  border-top: 2px solid var(--ember-dim);
+  border-right: 2px solid var(--ember-dim);
+}
+.h2g2-corner--bl {
+  bottom: var(--s-4);
+  left: var(--s-4);
+  border-bottom: 2px solid var(--ember-dim);
+  border-left: 2px solid var(--ember-dim);
+}
+.h2g2-corner--br {
+  bottom: var(--s-4);
+  right: var(--s-4);
+  border-bottom: 2px solid var(--ember-dim);
+  border-right: 2px solid var(--ember-dim);
+}
+
+/* Marcador do ponto clicado -- pulso suave, é o único elemento "ao
+ * vivo" na tela, por isso é o único em ciano */
+.h2g2-crosshair {
+  width: 22px;
+  height: 22px;
+  position: relative;
+}
+.h2g2-crosshair::before,
+.h2g2-crosshair::after {
+  content: '';
+  position: absolute;
+  background: var(--hud-cyan);
+}
+.h2g2-crosshair::before {
+  left: 50%;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+.h2g2-crosshair::after {
+  top: 50%;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  transform: translateY(-50%);
+}
+.h2g2-crosshair-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--hud-cyan);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 8px var(--hud-cyan);
+  animation: h2g2-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes h2g2-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 6px var(--hud-cyan);
+  }
+  50% {
+    box-shadow: 0 0 16px var(--hud-cyan);
+  }
+}
+
+/* Controles (checkbox, range, botões) -- ganham o acento âmbar em vez
+ * do azul/cinza padrão do navegador */
+input[type='checkbox'] {
+  accent-color: var(--ember);
+}
+input[type='range'] {
+  accent-color: var(--ember);
+}
+
+button {
+  font-family: var(--font-sans);
+}
+
+.h2g2-close-btn {
+  background: none;
+  border: none;
+  color: var(--ink-3);
+  cursor: pointer;
+  font-size: var(--t-4);
+  line-height: 1;
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-1);
+  transition: color var(--d-ui) var(--ease), background var(--d-ui) var(--ease);
+}
+.h2g2-close-btn:hover {
+  color: var(--danger);
+  background: rgba(255, 107, 94, 0.1);
+}

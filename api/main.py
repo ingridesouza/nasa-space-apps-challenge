@@ -14,13 +14,32 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Response
+from fastapi.middleware.cors import CORSMiddleware
 
+from conditions import get_cached_conditions
 from db import get_connection
+from mosaics import build_hillshade_png, build_mosaic_png
 from raster_sampling import sample_all_rasters
 from vector_queries import nearby_photos, nearest_science_target
 
+# Sol de referência da missão -- dado real cacheado (não é "hoje",
+# é o mesmo sol usado nos testes de REMS/RAD, ver PROXIMOS-PASSOS.md).
+# Quando o recorte final do boxwork sair, troca por um sol relevante
+# daquela área.
+REFERENCE_SOL = 4650
+
 app = FastAPI(title="H2G2 API -- feature 01")
+
+# Frontend roda em porta separada (Vite, :5173) durante o desenvolvimento.
+# Liberado para qualquer origem -- é uma API local de hackathon, sem dado
+# sensível, sem auth.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/api/point")
@@ -42,6 +61,69 @@ def get_point(lat: float, lon: float):
         "science_target": alvo,
         "raster_values": rasters,
     }
+
+
+@app.get("/layers")
+def get_layers():
+    """Metadados das camadas já confirmadas -- o frontend usa isto (e
+    não uma cópia hardcoded) pra saber bbox/categoria de cada uma, uma
+    única fonte de verdade (raster_registry)."""
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            "SELECT layer_name, min_lon, min_lat, max_lon, max_lat, categoria, tipo_acesso FROM raster_registry"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    return [dict(r) for r in rows]
+
+
+@app.get("/mosaics/{layer_name}.png")
+def get_mosaic(layer_name: str):
+    """Imagem única pra exibir uma camada no mapa -- stitch de tiles
+    (`tiles_wmts`) ou hillshade gerado na hora a partir de um DTM
+    (`hillshade_derivado`). Ver mosaics.py pra entender por que isto
+    substitui uma fonte `tiles` XYZ padrão do MapLibre (nossa grade de
+    tiles do Mars Trek não é Web Mercator)."""
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT local_tile_path, tipo_acesso FROM raster_registry WHERE layer_name = ?",
+            (layer_name,),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Camada não encontrada")
+
+    if row["tipo_acesso"] == "hillshade_derivado":
+        png_bytes = build_hillshade_png(row["local_tile_path"])
+    elif row["tipo_acesso"] == "tiles_wmts":
+        png_bytes = build_mosaic_png(row["local_tile_path"])
+    else:
+        raise HTTPException(status_code=404, detail=f"tipo_acesso {row['tipo_acesso']!r} não vira mosaico")
+
+    if png_bytes is None:
+        raise HTTPException(status_code=404, detail="Dado local não encontrado para esta camada")
+
+    return Response(content=png_bytes, media_type="image/png")
+
+
+@app.get("/api/conditions")
+def get_conditions(sol: int = REFERENCE_SOL):
+    """Clima (REMS) + radiação (RAD) resumidos de um sol -- não é por
+    coordenada (ver feature-01-mapa-hiperlocal-boxwork.md, seção 2.3:
+    "não é uma camada de mapa", é valor amarrado ao sol). Lê só do
+    cache local (data/local/conditions/), sem chamada de rede."""
+    dados = get_cached_conditions(sol)
+    if dados is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Sol {sol} não cacheado ainda -- rodar data-pipeline/scripts/cache_conditions.py {sol}",
+        )
+    return dados
 
 
 @app.get("/health")
