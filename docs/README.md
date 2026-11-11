@@ -1,0 +1,12 @@
+# docs
+
+Documentação oficial do projeto H2G2 (time DETON8 — NASA Space Apps
+Salvador 2026).
+
+- [`H2G2_Proposta_Projeto_Planejamento.md`](H2G2_Proposta_Projeto_Planejamento.md)
+  — proposta de produto: features, critérios de avaliação, fontes de
+  dados por feature. Documento de referência do time, não só da
+  feature 01.
+
+Para o status técnico de implementação da feature 01 (mapa hiperlocal),
+ver [`PROXIMOS-PASSOS.md`](../PROXIMOS-PASSOS.md) na raiz do repo.
