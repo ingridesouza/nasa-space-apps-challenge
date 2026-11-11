@@ -11,7 +11,7 @@
 | 5 | Mineralogia — CRISM | ⚠️ bloqueado | índice de observações, cobertura esparsa (ver abaixo) |
 | 6 | Topografia local 1m — DTM HiRISE | ✅ confirmado | `Gale_DEM_SMG_1m` (ArcGIS, elevação real) |
 | 7 | Clima — REMS | ✅ confirmado | PDS Atmospheres Node, produto RNV por sol |
-| 8 | Radiação — RAD | ⚠️ dado real achado, parser pendente | PDS-PPI (UCLA), formato complexo (1306 seções) |
+| 8 | Radiação — RAD | ✅ confirmado | PDS-PPI (UCLA), dose do detector E por observação |
 | 9 | Fotos do rover — MSL | ❌ não começado | API de imagens do MSL |
 | 10 | Classe de terreno — AI4Mars | ❌ não começado | Zenodo/Hugging Face |
 | 11 | Posição/trajeto — MMGIS | ❌ não começado | mars.nasa.gov |
@@ -64,26 +64,24 @@ diretório):**
 "RNV" é o ambiental calibrado (o que interessa); "ADR"/"RMD"/"RTL" são
 outros níveis de processamento, não usados.
 
-## RAD (radiação, item 8): dado real confirmado, mas formato complexo
+## RAD (radiação, item 8) resolvido ✅ (2026-11-11)
 
-Achei o arquivo real do sol 4650 em
+`adapters/pds_rad.py` baixa o arquivo real do sol em
 `pds-ppi.igpp.ucla.edu/data/MSL-M-RAD-3-RDR-V1.0/DATA/SOL_<lo>_<hi>/RAD_RDR_<ano>_<doy>_<hh>_<mm>_<sol>_V00.TXT`
-(mesma convenção de buckets `SOL_<lo>_<hi>` do REMS). Confirmei um valor
-real de dose em `[DOSIMETRY_TOTAL_DOSE_E: 00]` = `6.64562` (unidade a
-confirmar na documentação SIS).
+(mesma convenção de buckets `SOL_<lo>_<hi>` do REMS) e extrai a dose do
+detector E (`DOSIMETRY_TOTAL_DOSE_E`) por observação, casada com o
+horário (`OBSERVATION`) pelo mesmo índice `NN` — a dosimetria só existe
+em índices pares (nem toda observação baixa telemetria completa).
+Unidade: µGy/hora (confirmado no `RAD_RDR_SIS.HTM`, seção 4.2.1.6).
 
-**Por que não virou adaptador ainda:** o arquivo tem **1306 seções**
-num formato texto proprietário (housekeeping, histogramas, LET,
-dosimetria por detector...), bem mais complexo que o CSV do REMS. Não é
-um bloqueador de disponibilidade de dado — é só mais trabalho de parser
-dedicado.
+Testado contra o sol 4650: 87 leituras, dose média ~6.53 µGy/h → ~157
+µGy/dia estimado, mesma ordem de grandeza da dose diária conhecida na
+superfície de Marte. Rodar: `python scripts/fetch_rad_test.py [sol]`.
 
-- [ ] Escrever parser focado só no que a feature 05 precisa: extrair
-      `DOSIMETRY_TOTAL_DOSE_E` (dose total, detector E) por sol — não
-      tentar parsear as outras ~1300 seções (histogramas/LET/PHA são
-      para análise científica fina, fora de escopo do MVP).
-- [ ] Confirmar a unidade real do valor de dose na documentação SIS
-      (`RAD_EDR_SIS.HTM` / RDR equivalente) antes de exibir na UI.
+O arquivo tem 1306 seções no total (housekeeping, histogramas, LET,
+PHA...) — só extraímos `OBSERVATION` e `DOSIMETRY_TOTAL_DOSE_E`,
+suficiente pro painel de condições (feature 05). As outras seções são
+análise científica fina, fora de escopo do MVP.
 
 ## Próximos blocos de trabalho
 
