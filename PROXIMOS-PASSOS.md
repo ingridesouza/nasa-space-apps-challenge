@@ -9,7 +9,7 @@
 | 3 | Topografia regional — MOLA | ✅ confirmado | `mola128_mola64_merge_90Nto90S_SimpleC_clon0` (ArcGIS) |
 | 4 | Térmica — THEMIS | ✅ confirmado (só visual) | `THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018` (WMTS) |
 | 5 | Mineralogia — CRISM | ⚠️ bloqueado | índice de observações, cobertura esparsa (ver abaixo) |
-| 6 | Topografia local 1m — DTM HiRISE | ✅ confirmado | `Gale_DEM_SMG_1m` (ArcGIS, elevação real) |
+| 6 | Topografia local 1m — DTM HiRISE | ✅ confirmado | `Gale_DEM_SMG_1m` (ArcGIS, elevação real) + hillshade visual no mapa |
 | 7 | Clima — REMS | ✅ confirmado | PDS Atmospheres Node, produto RNV por sol |
 | 8 | Radiação — RAD | ✅ confirmado | PDS-PPI (UCLA), dose do detector E por observação |
 | 9 | Fotos do rover — MSL | ❌ não começado | API de imagens do MSL |
@@ -96,10 +96,20 @@ análise científica fina, fora de escopo do MVP.
 
 ## Pendências gerais
 
-- [ ] Estruturar os 8-10 alvos científicos da ficha "pokédex" (feature 4
-      da Victoria) a partir de notícias/blog do Curiosity e do PDS.
+- [x] ~~Estruturar alvos científicos~~ **parcial**: 3 achados reais e
+      citáveis da campanha de boxwork 2025 (cristas cimentadas por
+      sulfato, furo "Altadena", alvos "Totoral/Sillar") inseridos via
+      `db/seed_science_targets.py` — posições são **aproximadas**
+      (nenhuma fonte pública dá lat/lon exata do alvo, só sol e nome
+      informal). O conjunto completo de 8-10 alvos (ficha "pokédex") é
+      trabalho da feature 4 (Victoria), isto só desbloqueia a categoria
+      "medições do Curiosity como pontos" da feature 01 com o mínimo
+      real.
 - [ ] Confirmar tudo contra a aba Resources assim que abrir (sexta) —
       nenhuma integração é definitiva antes disso.
+- [ ] Quando a posição real do rover nos sóis 4564/4600-4606/4650 for
+      localizada (MMGIS ou PDS), substituir as coordenadas aproximadas
+      acima pelas reais.
 
 ## Banco local + API resolvidos ✅ (2026-11-11)
 
@@ -120,12 +130,37 @@ análise científica fina, fora de escopo do MVP.
   óptica, THEMIS) são tiles PNG sem georreferência por arquivo — só
   servem pra exibir no mapa, não pra consultar valor num ponto.
 
+## Frontend resolvido ✅ (2026-11-11)
+
+`frontend/` (React + Vite + TS + MapLibre GL), tema HUD/centro de
+missão. Núcleo funcionando com dado 100% real:
+- Mapa com CTX/HiRISE/Relevo(hillshade)/THEMIS, cada um com
+  toggle+opacidade (`LayerControlPanel`) — os tiles WMTS não dão pra
+  servir como fonte `tiles` XYZ padrão do MapLibre (grade do Mars Trek
+  não é Web Mercator, ver `api/mosaics.py`), por isso viram mosaico
+  único (`GET /mosaics/{layer}.png`) exibido via `ImageSource`.
+- Relevo: hillshade real gerado na hora a partir do DTM
+  (`build_hillshade_png`, fórmula Horn/ESRI, não é algoritmo oficial
+  calibrado mas usa elevação real).
+- Clique no ponto → `PointInfoPanel`: veredito de segurança colorido
+  (slope vs. limite de 20° da Artemis, ver `raster_sampling.classify_slope`),
+  fotos próximas e ficha científica (agora com os 3 alvos reais acima).
+- `ConditionsPanel`: REMS+RAD do sol de referência (4650), cacheado
+  localmente (`data-pipeline/scripts/cache_conditions.py`) — sem
+  chamada de rede em tempo de request.
+- "Geofísica: fora de escopo" e "Mineralogia (CRISM): em breve"
+  explícitos no painel de camadas (spec pedia "dizer isso com clareza").
+
+**Pendente nessa frente:** a "continuidade" do zoom é por overzoom de
+uma única amostra por camada (não uma pirâmide completa) — ver nota em
+`frontend/src/map/style.ts`. O bbox usado em tudo isto ainda é a
+amostra de teste, não o boxwork final.
+
 ## Próximo passo
 
-- Primeiro protótipo de mapa em `frontend/` (MapLibre GL) consumindo os
-  tiles locais gerados pelo pipeline, OU
 - Fotos do rover (item 9) / MMGIS (item 11) pra popular `rover_images`
-  e ativar `nearby_photos` de verdade.
+  e ativar `nearby_photos` de verdade, OU
+- Confirmar o bbox final do boxwork (pendência de equipe/Resources).
 
 ## Notas técnicas do adaptador WMTS
 

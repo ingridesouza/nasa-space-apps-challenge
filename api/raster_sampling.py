@@ -11,6 +11,20 @@ import rasterio
 
 from geo import MARS_METERS_PER_DEGREE
 
+# Limite de 20° citado no doc da feature 01 (seção "feature 02"): mesmo
+# limite de inclinação de caminhada usado pelo programa Artemis.
+# "atencao" é uma faixa de alerta antes de bater no limite real.
+LIMITE_SLOPE_ATENCAO_DEG = 15.0
+LIMITE_SLOPE_PERIGO_DEG = 20.0
+
+
+def classify_slope(slope_deg: float) -> str:
+    if slope_deg >= LIMITE_SLOPE_PERIGO_DEG:
+        return "perigo"
+    if slope_deg >= LIMITE_SLOPE_ATENCAO_DEG:
+        return "atencao"
+    return "seguro"
+
 
 def _slope_degrees(dataset: rasterio.DatasetReader, row: int, col: int) -> float | None:
     """Calcula a inclinação (slope) por diferença finita numa janela
@@ -54,6 +68,7 @@ def sample_point(local_tile_path: str, lat: float, lon: float) -> dict | None:
         slope = _slope_degrees(dataset, row, col)
         if slope is not None:
             resultado["slope_deg"] = round(slope, 2)
+            resultado["slope_status"] = classify_slope(slope)
         return resultado
 
 
