@@ -34,3 +34,19 @@ layers:
       min_lat: -4.61
       max_lon: 137.48
       max_lat: -4.57
+
+  # DTM HiRISE 1m de Gale -- CONFIRMADO em 2026-11-11 via
+  # scripts/lookup_mars_trek_product.py "Gale Crater" --details.
+  # Resolve a pendência do item 6 da tabela da feature 01: valores reais
+  # de elevação (F32), testado entre -4531 m e -4476 m (consistente com
+  # o piso da Cratera Gale).
+  dtm_hirise_1m:
+    adapter: ArcGISImageServerAdapter
+    categoria: topografica
+    image_server_url: "https://trek.nasa.gov/mars/trekarcgis/rest/services/Gale_DEM_SMG_1m/ImageServer"
+    spatial_ref_wkid: 104905
+    bbox_teste:
+      min_lon: 137.40
+      min_lat: -4.61
+      max_lon: 137.48
+      max_lat: -4.57

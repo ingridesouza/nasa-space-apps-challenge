@@ -18,21 +18,31 @@ que tentar adivinhar o `product_id` ou navegar/zoom manualmente — a
 busca já teve dois resultados específicos de Gale (CTX e HiRISE DEM) no
 mesmo lugar.
 
+## DTM HiRISE 1m resolvido ✅ (2026-11-11)
+
+Camada `dtm_hirise_1m`: produto **`Gale_DEM_SMG_1m`**, servido via
+ArcGIS ImageServer (`adapters/arcgis_image_server.py`), confirmado com
+valores reais de elevação (-4531 m a -4476 m, consistente com o piso da
+Cratera Gale). Resolve o item 6 da tabela da feature 01 — a tabela
+previa que seria preciso ir atrás do PDS Annex/USGS, mas o próprio Mars
+Trek já serve o dado bruto (não só visualização) via `exportImage`.
+Testado: `python scripts/fetch_dtm_test.py`.
+
+## Ferramenta de busca automatizada
+
+`scripts/lookup_mars_trek_product.py "<termo>" --details` substitui o
+processo manual de DevTools para achar `product_id`/endpoint de
+qualquer produto do Mars Trek. Endpoint descoberto inspecionando o
+`jpl/config/config.json` do próprio site.
+
 ## Bloqueador atual
 
-- **Descobrir o `product_id` do HiRISE DEM de Gale.** No mesmo painel de
-  busca "Gale Crater" apareceu um resultado **"MRO HiRISE, Gale Crater
-  DEM"** — é bem provável que seja exatamente o DTM de 1 m pendente (item
-  6 da tabela do doc da feature 01). Repetir o processo: clicar no
-  resultado → **Add** → pegar a Request URL do `WMTSCapabilities.xml`
-  novo no Network → atualizar/criar entrada em `layers.yaml`.
-  - Atenção: a tabela da feature 01 diz que o DTM "não é WMTS genérico"
-    e pode estar em GeoTIFF via PDS Annex/USGS em vez de WMTS — se o
-    resultado do Trek for só uma visualização e não o dado bruto
-    utilizável para sampling de elevação, pode ser necessário achar o
-    produto real no PDS Annex do HiRISE mesmo assim.
-  - Depois, repetir para MOLA e THEMIS (itens 3-4 da tabela) buscando
-    pelo nome do local no mesmo painel.
+- Repetir a busca automatizada para achar MOLA e THEMIS (itens 3-4 da
+  tabela da feature 01), e CRISM (mineralogia) — buscar por termos como
+  `"MOLA Gale"`, `"THEMIS Gale"`, `"CRISM Gale"` com o script acima.
+  Se não aparecer nada específico de Gale, cair pro produto global
+  (MOLA e THEMIS são cobertura completa do planeta, então deve existir
+  algo tipo "MOLA Elevation" sem o nome do local).
 
 ## O que já está pronto e validado
 
