@@ -1,0 +1,38 @@
+# Configuração de camadas por fonte. Sexta à noite, quando a aba
+# Resources abrir, o que muda aqui é `product_id` / `bbox_teste` --
+# a lógica dos adaptadores (data-pipeline/adapters/) não muda.
+
+layers:
+  # Smoke test: produto CONFIRMADO contra o GetCapabilities real do
+  # Mars Trek (testado em 2026-11-10) -- usar para validar que o
+  # adaptador/pipeline está funcionando, não é a camada final da
+  # feature 01 (é um mosaico de referência global, não CTX/HiRISE).
+  smoke_test:
+    adapter: MarsTrekWMTSAdapter
+    categoria: optica
+    product_id: "msss_atlas_simp_clon"
+    region: "Mars/EQ"
+    bbox_teste:
+      min_lon: 137.40
+      min_lat: -4.61
+      max_lon: 137.48
+      max_lat: -4.57
+
+  # CTX real -- PENDENTE. "product_id" abaixo é um placeholder (dá 404
+  # hoje); falta descobrir o nome exato do produto CTX no catálogo do
+  # Mars Trek. Ver pendência na seção 5 do
+  # feature-01-mapa-hiperlocal-boxwork.md. O adaptador já está validado
+  # (ver smoke_test) -- só falta o ID certo aqui.
+  ctx_optica:
+    adapter: MarsTrekWMTSAdapter
+    categoria: optica
+    product_id: "Mars_MRO_CTX_mosaic_global_6m"  # TODO: confirmar no catálogo Trek
+    region: "Mars/EQ"
+    # bbox de teste ~3x3 km ao redor do local de pouso do Curiosity em
+    # Gale (ponto de referência do doc da feature 01, seção 3.2) --
+    # NÃO é o recorte final do boxwork, só serve para provar o pipeline.
+    bbox_teste:
+      min_lon: 137.40
+      min_lat: -4.61
+      max_lon: 137.48
+      max_lat: -4.57
