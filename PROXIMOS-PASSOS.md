@@ -101,14 +101,31 @@ análise científica fina, fora de escopo do MVP.
 - [ ] Confirmar tudo contra a aba Resources assim que abrir (sexta) —
       nenhuma integração é definitiva antes disso.
 
-## Depois de fechar as camadas restantes
+## Banco local + API resolvidos ✅ (2026-11-11)
 
-- Banco local (SQLite + SpatiaLite/GeoPackage) com as tabelas
-  `rover_images`, `science_targets`, `raster_registry`.
-- Endpoint `GET /api/point?lat&lon` em `api/` (contrato reusado pela
-  feature 02 de Hugo e pela feature 08).
+- `data-pipeline/db/schema.sql`: `rover_images`, `science_targets`,
+  `raster_registry` + índices espaciais via **R-Tree nativo do SQLite**
+  (sem precisar de SpatiaLite/GDAL — mais simples de rodar em qualquer
+  máquina do time). `populate_raster_registry.py` já carrega as 5
+  camadas raster confirmadas.
+- `api/main.py`: `GET /api/point?lat&lon` funcionando de verdade.
+  Testado: `lat=-4.59&lon=137.44` devolve elevação real da DTM
+  (-4503m, slope 3.55°) e da MOLA (-4501m, slope 0.62°) — consistente
+  entre as duas fontes. Fora do bbox devolve vazio sem quebrar.
+- **Pendente:** `nearby_photos`/`science_target` têm a lógica pronta
+  (busca por raio real, distância/bearing calculados com o raio de
+  Marte) mas as tabelas estão vazias até os itens 9 (fotos MSL) e 4
+  (alvos científicos) serem resolvidos.
+- **Fora de escopo do sampling:** camadas `tiles_wmts` (CTX, HiRISE
+  óptica, THEMIS) são tiles PNG sem georreferência por arquivo — só
+  servem pra exibir no mapa, não pra consultar valor num ponto.
+
+## Próximo passo
+
 - Primeiro protótipo de mapa em `frontend/` (MapLibre GL) consumindo os
-  tiles locais gerados pelo pipeline.
+  tiles locais gerados pelo pipeline, OU
+- Fotos do rover (item 9) / MMGIS (item 11) pra popular `rover_images`
+  e ativar `nearby_photos` de verdade.
 
 ## Notas técnicas do adaptador WMTS
 
