@@ -18,15 +18,13 @@ layers:
       max_lon: 137.48
       max_lat: -4.57
 
-  # CTX real -- PENDENTE. "product_id" abaixo é um placeholder (dá 404
-  # hoje); falta descobrir o nome exato do produto CTX no catálogo do
-  # Mars Trek. Ver pendência na seção 5 do
-  # feature-01-mapa-hiperlocal-boxwork.md. O adaptador já está validado
-  # (ver smoke_test) -- só falta o ID certo aqui.
+  # CTX real -- CONFIRMADO em 2026-11-11 via DevTools no trek.nasa.gov/mars
+  # (busca "Gale Crater" > "MRO CTX, Gale Crater Mosaic" > Add).
+  # Mosaico específico de Gale (melhor que um global genérico pro boxwork).
   ctx_optica:
     adapter: MarsTrekWMTSAdapter
     categoria: optica
-    product_id: "Mars_MRO_CTX_mosaic_global_6m"  # TODO: confirmar no catálogo Trek
+    product_id: "Gale_CTX_BlockAdj_dd"
     region: "Mars/EQ"
     # bbox de teste ~3x3 km ao redor do local de pouso do Curiosity em
     # Gale (ponto de referência do doc da feature 01, seção 3.2) --
