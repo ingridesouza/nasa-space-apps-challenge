@@ -35,14 +35,41 @@ processo manual de DevTools para achar `product_id`/endpoint de
 qualquer produto do Mars Trek. Endpoint descoberto inspecionando o
 `jpl/config/config.json` do próprio site.
 
-## Bloqueador atual
+## MOLA e THEMIS resolvidos ✅ (2026-11-11)
 
-- Repetir a busca automatizada para achar MOLA e THEMIS (itens 3-4 da
-  tabela da feature 01), e CRISM (mineralogia) — buscar por termos como
-  `"MOLA Gale"`, `"THEMIS Gale"`, `"CRISM Gale"` com o script acima.
-  Se não aparecer nada específico de Gale, cair pro produto global
-  (MOLA e THEMIS são cobertura completa do planeta, então deve existir
-  algo tipo "MOLA Elevation" sem o nome do local).
+- `mola_topografia_regional`: produto global
+  `mola128_mola64_merge_90Nto90S_SimpleC_clon0`, via ArcGIS (elevação
+  real testada: -4513 m a -4465 m, consistente com a HiRISE).
+- `themis_termica`: produto global
+  `THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018`, só WMTS (imagem IR
+  renderizada, sem valor de temperatura amostrável por pixel — serve só
+  como camada visual, não para sampling numérico).
+
+## Bloqueador real: CRISM (mineralogia) não é uma camada simples
+
+Diferente das outras, CRISM **não tem um raster pronto de mineral por
+pixel** no Mars Trek — o que existe é um índice de observações pontuais
+(`mars_mro_crism_mtrdr_c0a_humex_frt_sites`, serviço `ArcGISFeature`).
+Consultei esse índice contra toda a extensão da Cratera Gale e só achei
+**3 observações CRISM** (`FRT0000A091`, `FRT000037DF`, `FRT000045F2`),
+nenhuma cobrindo o bbox de teste do boxwork usado até agora — a mais
+próxima fica a ~60 km de distância.
+
+**Isso é um risco real para a feature 4 (ficha científica/CRISM) e
+precisa ser resolvido assim que o recorte final do boxwork for
+decidido:**
+- [ ] Repetir a consulta de bbox contra
+      `mars_mro_crism_mtrdr_c0a_humex_frt_sites/MapServer/0/query` com
+      as coordenadas REAIS do boxwork escolhido (não o bbox de teste) —
+      ver se alguma das 3 observações (ou outras fora do recorte atual
+      de busca) realmente intersecta.
+- [ ] Se não houver cobertura CRISM no boxwork exato: usar o campo
+      `medicao_curiosity` (texto, já previsto no schema
+      `science_targets`) como fonte principal de mineralogia — o
+      próprio doc da feature 01 já trata isso como complementar
+      ("medições do Curiosity como pontos"), não como bloqueador.
+- [ ] Se houver: baixar o produto via `ProdURL` (aponta pro PDS/ODE,
+      `ode.rsl.wustl.edu`), não pelo Mars Trek.
 
 ## O que já está pronto e validado
 
