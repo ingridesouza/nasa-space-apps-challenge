@@ -51,6 +51,23 @@ layers:
       max_lon: 137.48
       max_lat: -4.57
 
+  # Óptica detalhe HiRISE 25cm (item 1 da tabela) -- CONFIRMADO em
+  # 2026-11-11 via lookup_mars_trek_product.py "HiRISE Curiosity".
+  # Mosaico específico ao longo do trajeto do rover (não é cobertura
+  # global -- HiRISE só fotografa pontos específicos). Testado: 480
+  # tiles no zoom máximo (nível 16/17) cobrindo o bbox de teste,
+  # textura de detalhe reconhecível (rochas/sombras), não borrado.
+  hirise_optica:
+    adapter: MarsTrekWMTSAdapter
+    categoria: optica
+    product_id: "curiosity_hirise_mosaic"
+    region: "Mars/EQ"
+    bbox_teste:
+      min_lon: 137.40
+      min_lat: -4.61
+      max_lon: 137.48
+      max_lat: -4.57
+
   # MOLA regional (item 3 da tabela) -- CONFIRMADO em 2026-11-11 via
   # lookup_mars_trek_product.py "MOLA". Produto global (cobertura
   # completa do planeta, por isso não tem "Gale" no nome). Testado:
