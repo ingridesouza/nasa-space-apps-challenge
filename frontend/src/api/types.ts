@@ -54,6 +54,26 @@ export interface PointResponse {
   nearby_photos: NearbyPhoto[]
   science_target: ScienceTarget | null
   raster_values: RasterValues
+  /** Feature 08 (`api/alertas.py`): já ordenados do mais grave ao menos
+   * grave. Lista vazia = nenhum alerta, nunca "seguro". */
+  alertas: Alerta[]
+}
+
+export interface Alerta {
+  nivel: 'perigo' | 'atencao' | 'info'
+  tipo: 'inclinacao' | 'terreno_historico' | 'volta_base' | 'sem_dado'
+  mensagem: string
+  fonte: string
+}
+
+/** Espelha um item de `GET /api/rover-track`: parada do Curiosity com a
+ * inclinação medida pelo próprio rover (`tilt`, em graus). */
+export interface RoverStop {
+  lat: number
+  lon: number
+  sol: number
+  tilt: number
+  status: SlopeStatus
 }
 
 /** Espelha `GET /api/conditions` -- resumo de clima (REMS) e radiação
