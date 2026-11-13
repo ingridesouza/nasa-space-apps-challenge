@@ -7,6 +7,8 @@ layers:
   # Mars Trek (testado em 2026-11-10) -- usar para validar que o
   # adaptador/pipeline está funcionando, não é a camada final da
   # feature 01 (é um mosaico de referência global, não CTX/HiRISE).
+  # Mantido no bbox antigo (perto do pouso) só pra smoke test -- não
+  # precisa ser a área real do boxwork.
   smoke_test:
     adapter: MarsTrekWMTSAdapter
     categoria: optica
@@ -26,63 +28,58 @@ layers:
     categoria: optica
     product_id: "Gale_CTX_BlockAdj_dd"
     region: "Mars/EQ"
-    # bbox de teste ~3x3 km ao redor do local de pouso do Curiosity em
-    # Gale (ponto de referência do doc da feature 01, seção 3.2) --
-    # NÃO é o recorte final do boxwork, só serve para provar o pipeline.
+    # bbox REAL da campanha de boxwork (sol ~4500-4684), confirmado em
+    # 2026-11-13 via MSL_waypoints.json (MMGIS oficial) -- 3x3km
+    # centrado na posição de verdade do rover, não mais o chute
+    # inicial perto do pouso (que ficava 13.3km de distância).
     bbox_teste:
-      min_lon: 137.40
-      min_lat: -4.61
-      max_lon: 137.48
-      max_lat: -4.57
+      min_lon: 137.3586
+      min_lat: -4.8263
+      max_lon: 137.4094
+      max_lat: -4.7757
 
   # DTM HiRISE 1m de Gale -- CONFIRMADO em 2026-11-11 via
   # scripts/lookup_mars_trek_product.py "Gale Crater" --details.
   # Resolve a pendência do item 6 da tabela da feature 01: valores reais
-  # de elevação (F32), testado entre -4531 m e -4476 m (consistente com
-  # o piso da Cratera Gale).
+  # de elevação (F32).
   dtm_hirise_1m:
     adapter: ArcGISImageServerAdapter
     categoria: topografica
     image_server_url: "https://trek.nasa.gov/mars/trekarcgis/rest/services/Gale_DEM_SMG_1m/ImageServer"
     spatial_ref_wkid: 104905
     bbox_teste:
-      min_lon: 137.40
-      min_lat: -4.61
-      max_lon: 137.48
-      max_lat: -4.57
+      min_lon: 137.3586
+      min_lat: -4.8263
+      max_lon: 137.4094
+      max_lat: -4.7757
 
   # Óptica detalhe HiRISE 25cm (item 1 da tabela) -- CONFIRMADO em
   # 2026-11-11 via lookup_mars_trek_product.py "HiRISE Curiosity".
   # Mosaico específico ao longo do trajeto do rover (não é cobertura
-  # global -- HiRISE só fotografa pontos específicos). Testado: 480
-  # tiles no zoom máximo (nível 16/17) cobrindo o bbox de teste,
-  # textura de detalhe reconhecível (rochas/sombras), não borrado.
+  # global -- HiRISE só fotografa pontos específicos).
   hirise_optica:
     adapter: MarsTrekWMTSAdapter
     categoria: optica
     product_id: "curiosity_hirise_mosaic"
     region: "Mars/EQ"
     bbox_teste:
-      min_lon: 137.40
-      min_lat: -4.61
-      max_lon: 137.48
-      max_lat: -4.57
+      min_lon: 137.3586
+      min_lat: -4.8263
+      max_lon: 137.4094
+      max_lat: -4.7757
 
   # MOLA regional (item 3 da tabela) -- CONFIRMADO em 2026-11-11 via
-  # lookup_mars_trek_product.py "MOLA". Produto global (cobertura
-  # completa do planeta, por isso não tem "Gale" no nome). Testado:
-  # elevação real entre -4513 m e -4465 m (bate com HiRISE, mais
-  # grosseiro por ser ~200m/px).
+  # lookup_mars_trek_product.py "MOLA". Produto global.
   mola_topografia_regional:
     adapter: ArcGISImageServerAdapter
     categoria: topografica
     image_server_url: "https://trek.nasa.gov/mars/trekarcgis/rest/services/mola128_mola64_merge_90Nto90S_SimpleC_clon0/ImageServer"
     spatial_ref_wkid: 104905
     bbox_teste:
-      min_lon: 137.40
-      min_lat: -4.61
-      max_lon: 137.48
-      max_lat: -4.57
+      min_lon: 137.3586
+      min_lat: -4.8263
+      max_lon: 137.4094
+      max_lat: -4.7757
 
   # THEMIS térmica (item 4 da tabela) -- CONFIRMADO em 2026-11-11 via
   # lookup_mars_trek_product.py "THEMIS". Só tem WMTS (imagem IR
@@ -94,7 +91,7 @@ layers:
     product_id: "THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018"
     region: "Mars/EQ"
     bbox_teste:
-      min_lon: 137.40
-      min_lat: -4.61
-      max_lon: 137.48
-      max_lat: -4.57
+      min_lon: 137.3586
+      min_lat: -4.8263
+      max_lon: 137.4094
+      max_lat: -4.7757

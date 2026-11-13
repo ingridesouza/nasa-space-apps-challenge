@@ -1,216 +1,184 @@
 # Próximos passos — feature 01 (mapa hiperlocal do boxwork)
 
-## Status das camadas (tabela da feature 01, seção 1)
+## Status das 12 fontes (tabela da feature 01, seção 1)
 
-| # | Camada | Status | `product_id` / fonte |
+| # | Fonte | Status | `product_id` / fonte |
 |---|---|---|---|
 | 1 | Óptica detalhe — HiRISE 25cm | ✅ confirmado | `curiosity_hirise_mosaic` (WMTS) |
 | 2 | Óptica contexto — CTX ~6m | ✅ confirmado | `Gale_CTX_BlockAdj_dd` (WMTS) |
 | 3 | Topografia regional — MOLA | ✅ confirmado | `mola128_mola64_merge_90Nto90S_SimpleC_clon0` (ArcGIS) |
 | 4 | Térmica — THEMIS | ✅ confirmado (só visual) | `THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018` (WMTS) |
-| 5 | Mineralogia — CRISM | ⚠️ bloqueado | índice de observações, cobertura esparsa (ver abaixo) |
-| 6 | Topografia local 1m — DTM HiRISE | ✅ confirmado | `Gale_DEM_SMG_1m` (ArcGIS, elevação real) + hillshade visual no mapa |
+| 5 | Mineralogia — CRISM | ⚠️ bloqueado | só 3 observações em toda Gale, nenhuma no bbox (ver abaixo) |
+| 6 | Topografia local 1m — DTM HiRISE | ✅ confirmado | `Gale_DEM_SMG_1m` (ArcGIS) + hillshade visual |
 | 7 | Clima — REMS | ✅ confirmado | PDS Atmospheres Node, produto RNV por sol |
-| 8 | Radiação — RAD | ✅ confirmado | PDS-PPI (UCLA), dose do detector E por observação |
-| 9 | Fotos do rover — MSL | ⚠️ bloqueado por posição | API funciona, falta lat/lon (depende do item 11) |
-| 10 | Classe de terreno — AI4Mars | ❌ indisponível (dataset não cobre a época) | Hugging Face, testado até sol 2579 (2019) |
-| 11 | Posição/trajeto — MMGIS | ⚠️ bloqueado | 2 feature services reais achados, nenhum chega em 2025 |
-| 12 | Nomenclatura — USGS/IAU | ✅ confirmado | webmap USGS no ArcGIS, 13 feições reais em Gale |
+| 8 | Radiação — RAD | ✅ confirmado | PDS-PPI (UCLA), dose do detector E |
+| 9 | Fotos do rover — MSL | ✅ confirmado | 200 fotos reais, posição via MMGIS |
+| 10 | Classe de terreno — AI4Mars | ❌ indisponível (dataset não cobre a época) | testado até sol 2579 (2019) |
+| 11 | Posição/trajeto — MMGIS | ✅ confirmado | `MSL_waypoints.json` oficial, 1388 pontos (sol 3-5070) |
+| 12 | Nomenclatura — USGS/IAU | ✅ confirmado | webmap USGS no ArcGIS, 13 feições em Gale |
 
-Todas as confirmadas (1-4, 6) estão em `data-pipeline/config/layers.yaml`
-e testadas com dado real (ver commits do dia 2026-11-11).
+**9 de 12 resolvidas.** Só CRISM (sem cobertura real) e AI4Mars
+(dataset antigo demais) ficam de fora — não por falta de esforço, são
+limitações reais do dado existente.
 
-## Ferramenta de busca automatizada (use antes de tentar achar qualquer produto novo)
+---
 
-`python scripts/lookup_mars_trek_product.py "<termo>" --details` busca
-direto no índice do Mars Trek, sem precisar de DevTools/navegador.
-Endpoint descoberto inspecionando `jpl/config/config.json` do próprio
-site (`searchAutoLayerItemsUrl`). Útil só para o que o Mars Trek serve
-(itens 1-6); REMS/RAD/MSL/AI4Mars/MMGIS/nomenclatura são fontes
-diferentes (PDS, APIs próprias).
+## ⚠️ Correção importante (2026-11-13): o bbox mudou
 
-## Bloqueador real: CRISM (mineralogia, item 5)
+O bbox de teste usado até aqui (`137.40-137.48, -4.61~-4.57`) era um
+chute perto do **local de pouso** do Curiosity (sol 3). Com o MMGIS
+real (ver item 11), descobrimos que a posição do rover durante a
+campanha de boxwork (sol ~4500-4684) é **13,3 km de distância** dali.
+
+**Bbox real agora em uso** (3x3km, centrado na posição real do rover
+durante o boxwork):
+```
+min_lon: 137.3586   min_lat: -4.8263
+max_lon: 137.4094   max_lat: -4.7757
+```
+Já propagado em `data-pipeline/config/layers.yaml`,
+`db/populate_raster_registry.py` e `frontend/src/map/style.ts`. Todas
+as camadas visuais (CTX/HiRISE/DTM/MOLA/THEMIS/hillshade) e os 3 alvos
+científicos foram re-baixados/recalculados pro bbox novo.
+
+---
+
+## MMGIS (item 11) resolvido ✅ — e destravou o item 9 junto
+
+Achado via DevTools em `https://science.nasa.gov/mission/msl-curiosity/location-map/`
+(filtro `json` no Network): o endpoint oficial e público é
+
+```
+https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json
+```
+
+GeoJSON sem autenticação, 1388 pontos, do sol 3 até o sol 5070 (atual
+na época da consulta). Cada ponto tem `sol`, `site`, `drive`,
+`lat`/`lon` reais, `elev_geoid`. Baixado e cacheado por
+`data-pipeline/scripts/fetch_rover_waypoints.py` em
+`data/local/rover_waypoints.json`.
+
+**Isso resolveu o item 9 (fotos do rover) de graça**: a API de fotos
+(`mars.nasa.gov/api/v1/raw_image_items/`) dá o `sol` de cada foto, só
+não dava posição. Agora cruzamos com o waypoint de sol mais próximo
+pra pegar lat/lon real. `db/seed_rover_images.py` populou **200 fotos
+reais** dos sóis 4560-4609 (início da campanha de boxwork), cada uma
+com a posição real do rover naquele sol — `nearby_photos` no
+`/api/point` agora devolve distância/direção de verdade, não mais
+lista vazia.
+
+**Limitação honesta:** a posição é "onde o rover estava no fim do sol
+de deslocamento", não o ponto exato de onde cada foto foi tirada
+dentro daquele sol — mas é posição real e verificável, granular o
+suficiente pra a busca por raio fazer sentido.
+
+---
+
+## Nomenclatura (item 12) resolvido ✅
+
+Achado via busca pública na API do ArcGIS Online
+(`arcgis.com/sharing/rest/search`) — webmap "Mars High-Resolution
+Mosaic Viewer" da USGS (owner `thare@usgs.gov_USGS`) com 5 camadas de
+nomenclatura IAU embutidas como `featureCollection` no próprio JSON do
+item.
+
+`data-pipeline/scripts/fetch_nomenclature.py` baixa e filtra pra região
+de Gale: 13 feições reais, incluindo **Aeolis Mons** (nome oficial do
+"Monte Sharp"), **Aeolis Palus**, **Gediz Vallis** e a cratera
+**Yellowknife**. Exposto via `GET /api/nomenclature`; o frontend mostra
+a feição mais próxima do clique com link pro Gazetteer oficial.
+
+**Mesma técnica (busca pública no ArcGIS) também achou o mapa geológico
+global da USGS** (Tanaka et al. 2014) com camada consultável por
+coordenada — contexto geológico real mas em escala global (1:20M), não
+substitui dado hiperlocal.
+
+---
+
+## Bloqueador real restante: CRISM (mineralogia, item 5)
 
 CRISM **não tem um raster pronto de mineral por pixel** no Mars Trek —
-o que existe é um índice de observações pontuais
-(`mars_mro_crism_mtrdr_c0a_humex_frt_sites`, serviço `ArcGISFeature`,
-query em `.../MapServer/0/query`). Consultado contra toda a extensão da
-Cratera Gale: só **3 observações** (`FRT0000A091`, `FRT000037DF`,
-`FRT000045F2`), nenhuma cobrindo o bbox de teste do boxwork usado até
-agora — a mais próxima fica a ~60 km.
+é um índice de observações pontuais
+(`mars_mro_crism_mtrdr_c0a_humex_frt_sites`, `ArcGISFeature`). Só **3
+observações** em toda a Cratera Gale, nenhuma cobrindo o bbox atual.
 
-- [ ] Repetir a consulta com as coordenadas REAIS do boxwork escolhido
-      assim que decididas (não o bbox de teste).
-- [ ] Se não houver cobertura: usar o campo `medicao_curiosity` (texto,
-      já previsto no schema `science_targets`) como fonte principal de
-      mineralogia — o próprio doc da feature 01 já trata isso como
-      complementar, não como bloqueador.
-- [ ] Se houver: baixar o produto via `ProdURL` (aponta pro PDS/ODE,
-      `ode.rsl.wustl.edu`), não pelo Mars Trek.
+- [ ] Reconsultar com o bbox real atualizado (ver seção acima) — ainda
+      não refeito.
+- [ ] Sem cobertura: usar `medicao_curiosity` (já populado nos 3 alvos
+      científicos) como fonte principal de mineralogia.
 
-## REMS (clima, item 7) resolvido ✅ (2026-11-11)
+## Bloqueador real: AI4Mars (item 10) — indisponível, não pendente
 
-`adapters/pds_rems.py` baixa a tabela ambiental calibrada (ENVRDR) de
-qualquer sol do PDS Atmospheres Node e extrai pressão, temperatura do
-ar, UV e umidade. Testado com o sol 4650 (mesmo exemplo do doc da
-feature 01): pressão ~709 Pa, temperatura -69.5°C de madrugada subindo
-conforme o sol nasce, UV aparecendo a partir de ~6h local — tudo
-plausível para Marte. Rodar: `python scripts/fetch_rems_test.py [sol]`.
+Dataset publicado em 2021, cobre só até ~sol 2579 (nov/2019) — quase
+2000 sóis antes da campanha de boxwork (sol 4564+, 2025). Não existe
+(e não pode existir) classificação AI4Mars pra essa região. Item
+encerrado como indisponível.
 
-**Estrutura real (não documentada publicamente, descoberta navegando o
-diretório):**
-`atmos.nmsu.edu/PDS/data/PDS4/msl_rems_bundle/data_calibrated/SOL_<lo>_<hi>/SOL<sol>/`
-— pastas em buckets de ~90-135 sols, uma pasta por sol dentro. O produto
-"RNV" é o ambiental calibrado (o que interessa); "ADR"/"RMD"/"RTL" são
-outros níveis de processamento, não usados.
+---
 
-## RAD (radiação, item 8) resolvido ✅ (2026-11-11)
+## REMS (clima, item 7) ✅ e RAD (radiação, item 8) ✅
 
-`adapters/pds_rad.py` baixa o arquivo real do sol em
-`pds-ppi.igpp.ucla.edu/data/MSL-M-RAD-3-RDR-V1.0/DATA/SOL_<lo>_<hi>/RAD_RDR_<ano>_<doy>_<hh>_<mm>_<sol>_V00.TXT`
-(mesma convenção de buckets `SOL_<lo>_<hi>` do REMS) e extrai a dose do
-detector E (`DOSIMETRY_TOTAL_DOSE_E`) por observação, casada com o
-horário (`OBSERVATION`) pelo mesmo índice `NN` — a dosimetria só existe
-em índices pares (nem toda observação baixa telemetria completa).
-Unidade: µGy/hora (confirmado no `RAD_RDR_SIS.HTM`, seção 4.2.1.6).
+`adapters/pds_rems.py` e `adapters/pds_rad.py` baixam dado real por
+sol (PDS Atmospheres Node / PDS-PPI UCLA). Testado com sol 4650:
+pressão ~709 Pa, temp -69.5°C a -8.1°C, dose ~157 µGy/dia — plausível
+pra Marte. Cacheado localmente por `cache_conditions.py`, sem chamada
+de rede em tempo de request (requisito de rodar offline).
 
-Testado contra o sol 4650: 87 leituras, dose média ~6.53 µGy/h → ~157
-µGy/dia estimado, mesma ordem de grandeza da dose diária conhecida na
-superfície de Marte. Rodar: `python scripts/fetch_rad_test.py [sol]`.
+**Nota:** o sol de referência (4650) usado no cache é dentro do bbox
+real do boxwork — não precisa re-cachear.
 
-O arquivo tem 1306 seções no total (housekeeping, histogramas, LET,
-PHA...) — só extraímos `OBSERVATION` e `DOSIMETRY_TOTAL_DOSE_E`,
-suficiente pro painel de condições (feature 05). As outras seções são
-análise científica fina, fora de escopo do MVP.
+---
 
-## Próximos blocos de trabalho
+## Banco local + API ✅
 
-- [ ] **Fotos do rover** (item 9, feature 3 da Victoria) — **bloqueado
-      por posição, não por foto**. A API pública de imagens
-      (`mars.nasa.gov/api/v1/raw_image_items/`) funciona e devolve fotos
-      reais (testado, sol 4650), mas `site`/`drive`/`xyz` vêm `null` --
-      não dá posição. Tentei: índice PDS do volume Mastcam
-      (`MSLMST_0032/INDEX/RDRINDEX.LBL`) tem `ROVER_MOTION_COUNTER`
-      (site/drive), mas isso sozinho não converte pra lat/lon sem uma
-      tabela de localização; procurei um traverse já publicado por
-      terceiros (GeoJSON/CSV) e não achei nenhum atual. Conclusão: cada
-      foto precisa de posição real e DIFERENTE pra "fotos próximas" (por
-      raio) fazer sentido -- não dá pra usar posição aproximada única
-      como fizemos pros alvos científicos, isso falsearia a busca por
-      distância. Resolver exige o mesmo processo que destravou o
-      product_id do CTX: abrir o MMGIS/Mars Trek no navegador com
-      DevTools e capturar o endpoint real de posição por site/drive.
-      **Depende do item 11 (abaixo), não é independente.**
-- [x] ~~AI4Mars~~ (item 10) — **bloqueador estrutural, não de busca**:
-      testei o mirror `harpreetsahota/ai4mars-msl` no Hugging Face
-      (23.400 imagens reais). A imagem mais recente do dataset
-      corresponde a **~sol 2579 (nov/2019)** -- quase 2000 sóis ANTES da
-      campanha de boxwork (sol 4564-4660, set/2025). O dataset foi
-      publicado em 2021, antes do Curiosity chegar no boxwork -- não
-      existe (e não pode existir) classificação AI4Mars pra essa região,
-      independente de quanto se procure. Item encerrado como
-      definitivamente indisponível, não como pendência.
-- [ ] **MMGIS** (item 11) — achei DOIS feature services reais com
-      `sol` + posição (via busca na API do ArcGIS, mesmo método do item
-      12 abaixo): `Curiosity_Location_Data` (owner `ttsui_NASA`, 3
-      camadas mas todas vazias/sem dado -- projeto abandonado) e
-      `Curiosity_Waypoints` (owner `lukepringle`, 876 pontos reais com
-      campo `sol`!). O segundo quase resolve, mas **para no sol 3284
-      (~2022)** -- mesmo padrão do AI4Mars, o dado existente não chega
-      na era do boxwork (sol 4564+, 2025). Confirma que não existe
-      posição pública pronta pra sóis recentes; resolver exige mesmo
-      assim abrir o MMGIS oficial no navegador com DevTools (processo
-      do CTX). Bloqueador real pro item 9.
-- [x] ~~Nomenclatura~~ (item 12) **resolvido** ✅ (2026-11-13): achei o
-      webmap "Mars High-Resolution Mosaic Viewer" da USGS no ArcGIS
-      Online (owner `thare@usgs.gov_USGS`), com 5 camadas de
-      nomenclatura IAU embutidas como `featureCollection` no próprio
-      JSON do item (não precisa de FeatureServer separada).
-      `data-pipeline/scripts/fetch_nomenclature.py` baixa e filtra pra
-      região de Gale: 13 feições reais, incluindo **Aeolis Mons**
-      (nome oficial do "Monte Sharp"), **Aeolis Palus** (planície de
-      pouso), **Gediz Vallis** e a cratera **Yellowknife** -- essas
-      duas últimas praticamente dentro do bbox de teste. Exposto via
-      `GET /api/nomenclature`, e no frontend o `PointInfoPanel` mostra
-      a feição nomeada mais próxima do clique com link pro Gazetteer
-      oficial.
+`data-pipeline/db/schema.sql`: `rover_images`, `science_targets`,
+`raster_registry` + R-Tree nativo do SQLite (sem SpatiaLite/GDAL).
+
+`api/main.py`: `GET /api/point`, `/layers`, `/mosaics/{layer}.png`,
+`/api/conditions`, `/api/nomenclature`. Veredito de segurança (slope
+vs. limite de 20° da Artemis) em `raster_sampling.classify_slope`.
+
+---
+
+## Frontend ✅
+
+`frontend/` (React + Vite + TS + MapLibre GL), tema HUD. Mapa com
+CTX/HiRISE/Relevo/THEMIS (toggle+opacidade cada), clique no ponto →
+briefing de segurança + fotos próximas reais + ficha científica + nome
+oficial da feição mais próxima. `ConditionsPanel` com REMS/RAD do sol
+de referência.
+
+**Nota técnica:** tiles do Mars Trek não são Web Mercator, então viram
+mosaico único (`api/mosaics.py`) servido como `ImageSource`, não
+`tiles` XYZ padrão do MapLibre. "Zoom contínuo" é por overzoom de uma
+amostra por camada, não pirâmide completa.
+
+---
 
 ## Pendências gerais
 
-- [x] ~~Estruturar alvos científicos~~ **parcial**: 3 achados reais e
-      citáveis da campanha de boxwork 2025 (cristas cimentadas por
-      sulfato, furo "Altadena", alvos "Totoral/Sillar") inseridos via
-      `db/seed_science_targets.py` — posições são **aproximadas**
-      (nenhuma fonte pública dá lat/lon exata do alvo, só sol e nome
-      informal). O conjunto completo de 8-10 alvos (ficha "pokédex") é
-      trabalho da feature 4 (Victoria), isto só desbloqueia a categoria
-      "medições do Curiosity como pontos" da feature 01 com o mínimo
-      real.
-- [ ] Confirmar tudo contra a aba Resources assim que abrir (sexta) —
-      nenhuma integração é definitiva antes disso.
-- [ ] Quando a posição real do rover nos sóis 4564/4600-4606/4650 for
-      localizada (MMGIS ou PDS), substituir as coordenadas aproximadas
-      acima pelas reais.
+- [ ] Reconsultar CRISM com o bbox real (ver seção acima).
+- [ ] Confirmar tudo contra a aba Resources assim que abrir — **já
+      verificado em 2026-11-12**: Mars Trek (nossa base) bate com o
+      oficial; galeria de fotos oficial aponta pra Jezero/Perseverance,
+      mantivemos Gale com a API da Curiosity (já validada).
+- [ ] Estruturar os 8-10 alvos científicos completos da ficha "pokédex"
+      é trabalho da feature 4 (Victoria) — já temos 3 reais prontos
+      pra ela reaproveitar.
+- [ ] `docs/PITCH.md` tem o argumento central (Gale vs. Jezero: só Gale
+      tem clima+radiação co-localizados) pronto pra quem for montar a
+      apresentação.
 
-## Banco local + API resolvidos ✅ (2026-11-11)
+## Notas técnicas
 
-- `data-pipeline/db/schema.sql`: `rover_images`, `science_targets`,
-  `raster_registry` + índices espaciais via **R-Tree nativo do SQLite**
-  (sem precisar de SpatiaLite/GDAL — mais simples de rodar em qualquer
-  máquina do time). `populate_raster_registry.py` já carrega as 5
-  camadas raster confirmadas.
-- `api/main.py`: `GET /api/point?lat&lon` funcionando de verdade.
-  Testado: `lat=-4.59&lon=137.44` devolve elevação real da DTM
-  (-4503m, slope 3.55°) e da MOLA (-4501m, slope 0.62°) — consistente
-  entre as duas fontes. Fora do bbox devolve vazio sem quebrar.
-- **Pendente:** `nearby_photos`/`science_target` têm a lógica pronta
-  (busca por raio real, distância/bearing calculados com o raio de
-  Marte) mas as tabelas estão vazias até os itens 9 (fotos MSL) e 4
-  (alvos científicos) serem resolvidos.
-- **Fora de escopo do sampling:** camadas `tiles_wmts` (CTX, HiRISE
-  óptica, THEMIS) são tiles PNG sem georreferência por arquivo — só
-  servem pra exibir no mapa, não pra consultar valor num ponto.
-
-## Frontend resolvido ✅ (2026-11-11)
-
-`frontend/` (React + Vite + TS + MapLibre GL), tema HUD/centro de
-missão. Núcleo funcionando com dado 100% real:
-- Mapa com CTX/HiRISE/Relevo(hillshade)/THEMIS, cada um com
-  toggle+opacidade (`LayerControlPanel`) — os tiles WMTS não dão pra
-  servir como fonte `tiles` XYZ padrão do MapLibre (grade do Mars Trek
-  não é Web Mercator, ver `api/mosaics.py`), por isso viram mosaico
-  único (`GET /mosaics/{layer}.png`) exibido via `ImageSource`.
-- Relevo: hillshade real gerado na hora a partir do DTM
-  (`build_hillshade_png`, fórmula Horn/ESRI, não é algoritmo oficial
-  calibrado mas usa elevação real).
-- Clique no ponto → `PointInfoPanel`: veredito de segurança colorido
-  (slope vs. limite de 20° da Artemis, ver `raster_sampling.classify_slope`),
-  fotos próximas e ficha científica (agora com os 3 alvos reais acima).
-- `ConditionsPanel`: REMS+RAD do sol de referência (4650), cacheado
-  localmente (`data-pipeline/scripts/cache_conditions.py`) — sem
-  chamada de rede em tempo de request.
-- "Geofísica: fora de escopo" e "Mineralogia (CRISM): em breve"
-  explícitos no painel de camadas (spec pedia "dizer isso com clareza").
-
-**Pendente nessa frente:** a "continuidade" do zoom é por overzoom de
-uma única amostra por camada (não uma pirâmide completa) — ver nota em
-`frontend/src/map/style.ts`. O bbox usado em tudo isto ainda é a
-amostra de teste, não o boxwork final.
-
-## Próximo passo
-
-- Fotos do rover (item 9) / MMGIS (item 11) pra popular `rover_images`
-  e ativar `nearby_photos` de verdade, OU
-- Confirmar o bbox final do boxwork (pendência de equipe/Resources).
-
-## Notas técnicas do adaptador WMTS
-
-- `adapters/mars_trek_wmts.py` lida com dois casos de CRS: geográfico
-  (graus) e projetado (metros) — detectado automaticamente pela
-  magnitude do `TopLeftCorner`.
-- Alguns campos numéricos do XML do Mars Trek vêm como float (`"2.0"`)
-  mesmo sendo inteiros por definição do schema WMTS — já tratado.
-- `adapters/arcgis_image_server.py` serve rasters com valor real de
-  pixel (elevação, não imagem renderizada) via `exportImage` — usar
-  sempre que o produto tiver um endpoint `ArcGISImageService`, é melhor
-  que o WMTS equivalente para sampling.
+- `adapters/mars_trek_wmts.py`: lida com CRS geográfico (graus) e
+  projetado (metros), detectado pela magnitude do `TopLeftCorner`.
+  Alguns campos numéricos do XML vêm como float (`"2.0"`) mesmo sendo
+  inteiros — já tratado.
+- `adapters/arcgis_image_server.py`: serve rasters com valor real de
+  pixel via `exportImage` — preferir sempre que existir
+  `ArcGISImageService`, é melhor que WMTS equivalente pra sampling.
+- Busca pública no ArcGIS Online (`arcgis.com/sharing/rest/search`,
+  sem auth) é uma técnica reutilizável pra achar conteúdo
+  USGS/Esri-hospedado fora do Mars Trek (geologia, nomenclatura,
+  trajetos) — ver memória de sessão pra detalhes.

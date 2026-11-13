@@ -4,11 +4,11 @@ import { mosaicUrl } from '../api/client'
 import type { LayerMeta } from '../api/types'
 import { TOGGLEABLE_LAYERS } from './layers'
 
-/** Bbox de teste usado em todo o pipeline (ver PROXIMOS-PASSOS.md) --
- * NÃO é o recorte final do boxwork, só o que já temos dado real
- * baixado pra exibir. Usado só como fallback de câmera inicial; o
+/** Bbox REAL da campanha de boxwork (sol ~4500-4684), confirmado em
+ * 2026-11-13 via MSL_waypoints.json (MMGIS oficial) -- ver
+ * PROXIMOS-PASSOS.md. Usado só como fallback de câmera inicial; o
  * bbox real de cada camada vem de `/layers`. */
-export const TEST_BBOX_CENTER: [number, number] = [137.44, -4.59]
+export const TEST_BBOX_CENTER: [number, number] = [137.384, -4.801]
 
 /** Começa no nível mais detalhado que baixamos (HiRISE) -- é a
  * primeira coisa que o usuário deve ver. Dar zoom OUT revela o CTX

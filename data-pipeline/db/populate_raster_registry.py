@@ -18,9 +18,11 @@ from connection import init_db
 
 TILES_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "local", "tiles")
 
-# bbox de teste usado em todos os fetch_*_test.py até agora -- ver
-# PROXIMOS-PASSOS.md. Troca quando o recorte final do boxwork sair.
-BBOX_TESTE = (137.40, -4.61, 137.48, -4.57)
+# bbox REAL da campanha de boxwork (sol ~4500-4684), confirmado em
+# 2026-11-13 via MSL_waypoints.json (MMGIS oficial) -- ver
+# PROXIMOS-PASSOS.md. Substitui o chute inicial perto do pouso, que
+# ficava 13.3km da posição real do rover durante a campanha.
+BBOX_TESTE = (137.3586, -4.8263, 137.4094, -4.7757)
 
 CAMADAS = [
     {

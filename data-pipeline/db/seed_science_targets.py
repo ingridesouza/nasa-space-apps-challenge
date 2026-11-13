@@ -2,13 +2,15 @@
 boxwork da Curiosity (2025), pesquisados em fontes NASA/JPL -- ver
 `fonte_url` de cada entrada.
 
-Posições são APROXIMADAS: nenhuma das fontes publica lat/lon exata do
-alvo (só sol e nome informal do alvo). Em vez de inventar uma
-coordenada precisa, cada entrada é colocada dentro do bbox de teste já
-usado no resto do pipeline, com isso marcado explicitamente no campo
-`confianca`. Quando o recorte final do boxwork sair e a posição real do
-rover naqueles sóis for localizada (via MMGIS/PDS), isto deve ser
-corrigido -- ver PROXIMOS-PASSOS.md.
+Posições são REAIS (atualizado em 2026-11-13): nenhuma fonte de
+notícia publica lat/lon exata do alvo em si (só sol e nome informal),
+mas a posição do ROVER naquele sol é pública e oficial via
+`MSL_waypoints.json` do MMGIS (https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json).
+Usamos a posição do rover no sol mais próximo de cada observação como
+coordenada do alvo -- é uma aproximação de "onde o rover estava", não
+o ponto exato do alvo em si (que pode estar a alguns metros de
+distância, dentro do alcance do braço robótico), mas é MUITO mais
+preciso que o chute de bbox usado antes (corrigia um erro de 13km).
 
 Cobre parcialmente a pendência "medições do Curiosity como pontos" da
 feature 01; o conjunto completo de 8-10 alvos (ficha "pokédex") é
@@ -27,8 +29,9 @@ from connection import init_db
 ALVOS = [
     {
         "nome": "Cristas de boxwork — cimentação por sulfato",
-        "lat": -4.585,
-        "lon": 137.415,
+        # posição real do rover no sol 4650 (MSL_waypoints.json)
+        "lat": -4.80689,
+        "lon": 137.37984,
         "mineral_crism": None,
         "classe_ai4mars": None,
         "medicao_curiosity": (
@@ -38,13 +41,14 @@ ALVOS = [
             "eventos (o que cimentou primeiro) ainda é questão em aberto pela equipe da missão."
         ),
         "nome_iau_usgs": None,
-        "confianca": "alta (achado publicado pela JPL) — posição aproximada, coordenada exata do alvo não divulgada",
+        "confianca": "alta — posição real do rover no sol 4650 (MMGIS), alvo em si pode estar a alguns metros de distância (alcance do braço robótico)",
         "fonte_url": "https://www.jpl.nasa.gov/news/nasas-curiosity-mars-rover-starts-unpacking-boxwork-formations/",
     },
     {
         "nome": "Altadena — furo de perfuração #43",
-        "lat": -4.595,
-        "lon": 137.445,
+        # posição real do rover no sol 4560, mais próximo do sol 4564 (MSL_waypoints.json)
+        "lat": -4.79985,
+        "lon": 137.38354,
         "mineral_crism": None,
         "classe_ai4mars": None,
         "medicao_curiosity": (
@@ -53,13 +57,14 @@ ALVOS = [
             "material residual examinados por ChemCam, Mastcam, APXS e MAHLI."
         ),
         "nome_iau_usgs": None,
-        "confianca": "alta (furo real e documentado) — posição aproximada, coordenada exata não divulgada",
+        "confianca": "alta — posição real do rover no sol 4560 (mais próximo de 4564 no MMGIS), furo em si a poucos metros de distância",
         "fonte_url": "https://astrobiology.com/2025/06/examining-the-altadena-drill-hole-on-mars.html",
     },
     {
         "nome": "Totoral / Sillar — crista vs. depressão",
-        "lat": -4.602,
-        "lon": 137.462,
+        # posição real do rover no sol 4605, dentro da janela 4600-4606 (MSL_waypoints.json)
+        "lat": -4.80443,
+        "lon": 137.37956,
         "mineral_crism": None,
         "classe_ai4mars": None,
         "medicao_curiosity": (
@@ -68,7 +73,7 @@ ALVOS = [
             "campanha de caracterização do boxwork (~sol 4600-4606, jul/2025)."
         ),
         "nome_iau_usgs": None,
-        "confianca": "média (nomes de alvo reais, sol e posição aproximados)",
+        "confianca": "alta — posição real do rover no sol 4605 (dentro da janela 4600-4606, MMGIS)",
         "fonte_url": "https://www.spacedaily.com/reports/Curiosity_Rovers_Boxwork_Campaign_Reaches_New_Heights_on_Mount_Sharp_999.html",
     },
 ]
