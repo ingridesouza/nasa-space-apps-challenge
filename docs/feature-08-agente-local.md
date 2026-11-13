@@ -128,6 +128,17 @@ Radiação e poeira continuam no agente, mas como alertas raros e secundários. 
 
 O instrumento de partículas do MAVEN media só até 6 MeV, e a dose na superfície vem de partículas acima de cerca de 150 MeV. Já houve evento forte visto em órbita [sem sinal no chão](https://ui.adsabs.harvard.edu/abs/2016AGUFM.P13A1880L/abstract). Além disso, o MAVEN não opera mais.
 
+## Adições planejadas
+
+Quatro adições aproveitam dado que já existe ou um recurso oficial do desafio. As duas primeiras entram junto com a etapa 1 do plano, porque são baratas e deixam a demo visual e de segurança.
+
+| Adição | O que faz | Por que agrega | Dado | Esforço |
+| --- | --- | --- | --- | --- |
+| **Trilha do Curiosity no mapa** | Desenha as 293 paradas como uma linha colorida pela inclinação medida pelo rover (verde abaixo de 15°, âmbar de 15° a 20°, vermelho a partir de 20°) | Torna o coringa visível: "o mapa diz 11°, o rover mediu 22° aqui". Hoje a trilha só aparece num comentário de `frontend/src/map/style.ts` | `data/local/rover_waypoints.json`, já baixado | Baixo: uma camada de linha no MapLibre |
+| **Limite de volta à base** | Alerta quando o ponto fica além de 2 km do módulo (o limite do Artemis citado na proposta) ou quando o O₂ restante não cobre a volta com margem | É a regra de segurança mais usada em EVA real e ninguém implementou. Usa o orçamento de O₂ simulado da feature 02 | Posição da base (tabela fixa) e O₂ da feature 02 | Baixo: uma regra a mais em `alertas` |
+| **Zonas sem rádio** | Calcula, a partir do DTM, de quais trechos o habitat fica escondido atrás do relevo: "neste trecho você perde contato com a base" | Leva o tema da comunicação para a escala da EVA: além do apagão com a Terra, existe o apagão com a própria base | DTM local (512×512) e posição da base | Médio. Ressalva: com cerca de 6 m por pixel, as cristas de 1 a 2 m não bloqueiam no cálculo, então só o relevo maior conta |
+| **Mapa geológico do USGS** | Acrescenta a unidade geológica do ponto ao `/api/point` e às respostas do agente ("que terreno é este?") | É um dos 5 recursos oficiais do desafio e o único útil ainda não usado | [USGS-NASA Planetary Geologic Mapping](https://astrogeology-usgs.hub.arcgis.com/pages/interactive-maps-mars) | Médio: ingestão nova no `data-pipeline` |
+
 ## Pontos de atenção
 
 O risco mais sério é o alerta de inclinação: hoje ele não enxerga as cristas do boxwork, e agora temos a medição do rover para provar. Os outros itens são ajustes pequenos, mas que bloqueiam ou enganam o agente.
@@ -147,7 +158,7 @@ O risco mais sério é o alerta de inclinação: hoje ele não enxerga as crista
 
 ## Plano de implementação
 
-São seis etapas, cada uma demonstrável sozinha. Se o tempo acabar, o que já está pronto continua de pé.
+São dez etapas, cada uma demonstrável sozinha. As etapas 7 e 8 entram junto com a etapa 1. Se o tempo acabar, o que já está pronto continua de pé.
 
 - [ ] **1. Alertas por regra + memória do terreno** — uma função `alertas(point, conditions)` em `api/` que lê `slope_status`, os campos `null`, o sol do dado e as paradas do rover num raio de cerca de 25 m. Devolve frases prontas com a fonte. Vira um campo `alertas` no `/api/point`, um acréscimo que não quebra a feature 02. Deixar um teste com `assert` para 15°, 20°, `null` e o ponto do sol 4309.
 - [ ] **2. `POST /api/ask`** — recebe pergunta, lat, lon e sol; monta o contexto com as funções existentes mais os alertas; chama o Ollama (`qwen2.5:3b`) via `urllib`. Liberar POST no CORS. Teste: uma pergunta fora do contexto tem que responder "não sei".
@@ -155,6 +166,10 @@ São seis etapas, cada uma demonstrável sozinha. Se o tempo acabar, o que já e
 - [ ] **4. Voz** — a fala de saída usa `speechSynthesis`. A entrada usa `MediaRecorder` mais `faster-whisper` (modelo `base`). Começar com uma caixa de texto.
 - [ ] **5. Corrigir a inclinação** — baixar o DTM em resolução nativa e medir de novo contra as 25 paradas do rover com 15° ou mais.
 - [ ] **6. Demo de radiação (opcional)** — reproduzir o evento de 20/mai/2024 com as leituras do RAD. Antes, confirmar o número do sol e se ele já está publicado no PDS.
+- [ ] **7. Trilha do Curiosity no mapa** — camada de linha no frontend a partir de `rover_waypoints.json`, colorida pela inclinação medida (15° e 20°, os mesmos limites de `api/raster_sampling.py`). Entra junto com a etapa 1.
+- [ ] **8. Limite de volta à base** — regra em `alertas`: distância até a base acima de 2 km, ou O₂ restante menor que o necessário para voltar com margem. Entra junto com a etapa 1; a parte de O₂ depende da feature 02.
+- [ ] **9. Zonas sem rádio** — linha de visada entre o ponto e a base sobre o DTM. Teste: um ponto atrás de uma elevação conhecida tem que dar "sem visada".
+- [ ] **10. Mapa geológico do USGS** — baixar as unidades geológicas do bbox, cruzar com o ponto e acrescentar o campo ao `/api/point`, sem quebrar o contrato da feature 02.
 
 **Decisões em aberto:**
 
@@ -162,6 +177,7 @@ São seis etapas, cada uma demonstrável sozinha. Se o tempo acabar, o que já e
 - Raio de 25 m e limiar de 15° na memória do terreno, 50% de queda de UV e a linha de base de radiação: todos são escolhas nossas e precisam aparecer como tal no pitch.
 - O modelo cabe no hardware da demo? Num i5-8600 sem GPU, espera-se cerca de 10 tokens/s com um modelo de 3B. Isso é uma estimativa ainda não medida.
 - Gravação de vídeo de backup, como a proposta recomenda para o risco de travar ao vivo.
+- Onde fica a base (habitat ou módulo) no boxwork? As etapas 8 e 9 precisam de uma coordenada fixa; nenhuma existe no repo ainda.
 
 ## Fontes
 
