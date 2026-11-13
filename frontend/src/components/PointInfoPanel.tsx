@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { getPoint } from '../api/client'
-import type { NomenclatureFeature } from '../api/types'
+import type { NomenclatureFeature, PointResponse } from '../api/types'
 import { nearestNomenclature } from '../map/nomenclature'
 import { SLOPE_VERDICT } from '../theme/verdict'
 import { NearbyPhotosSection } from './NearbyPhotosSection'
