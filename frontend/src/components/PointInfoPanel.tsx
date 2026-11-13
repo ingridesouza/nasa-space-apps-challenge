@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { getPoint } from '../api/client'
-import type { NomenclatureFeature, PointResponse } from '../api/types'
+import type { Alerta, NomenclatureFeature, PointResponse } from '../api/types'
 import { nearestNomenclature } from '../map/nomenclature'
 import { SLOPE_VERDICT } from '../theme/verdict'
 import { NearbyPhotosSection } from './NearbyPhotosSection'
@@ -11,6 +11,14 @@ interface PointInfoPanelProps {
   point: { lat: number; lon: number } | null
   onClose: () => void
   nomenclature: NomenclatureFeature[]
+}
+
+/** Alertas da feature 08 (`api/alertas.py`): perigo/atenção usam as
+ * mesmas cores do veredito de inclinação. */
+const ALERTA_COR: Record<Alerta['nivel'], string> = {
+  perigo: 'var(--verdict-perigo)',
+  atencao: 'var(--verdict-atencao)',
+  info: 'var(--ink-3)',
 }
 
 const CATEGORIA_LABEL: Record<string, string> = {
@@ -104,6 +112,21 @@ export function PointInfoPanel({ point, onClose, nomenclature }: PointInfoPanelP
         </div>
       )}
       {error && <div style={{ color: 'var(--danger)', fontSize: 'var(--t-small)' }}>{error}</div>}
+
+      {data && data.alertas.length > 0 && (
+        <div style={{ marginBottom: 'var(--s-4)' }}>
+          {data.alertas.map((a) => (
+            <div
+              key={a.tipo + a.mensagem}
+              className="h2g2-mono"
+              title={`fonte: ${a.fonte}`}
+              style={{ color: ALERTA_COR[a.nivel], fontSize: 'var(--t-small)', marginBottom: 'var(--s-1)' }}
+            >
+              ● {a.mensagem}
+            </div>
+          ))}
+        </div>
+      )}
 
       {data && (
         <>
