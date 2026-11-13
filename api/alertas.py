@@ -108,7 +108,8 @@ def _regra_volta_base(lat: float, lon: float) -> list[dict]:
     dist = haversine_m(lat, lon, *BASE_LAT_LON)
     if dist <= LIMITE_VOLTA_BASE_M:
         return []
-    msg = f"A {_num(dist / 1000)} km da base: além do limite de 2 km de distância do módulo (Artemis)."
+    metros = f"{dist:,.0f}".replace(",", ".")  # 2029.4 -> "2.029": em km arredondaria pra "2,0", que lê como dentro do limite
+    msg = f"A {metros} m da base: além do limite de 2.000 m de distância do módulo (Artemis)."
     return [_alerta("perigo", "volta_base", msg, "Proposta H2G2 (limite Artemis)")]
 
 

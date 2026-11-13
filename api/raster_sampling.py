@@ -4,6 +4,7 @@ GeoTIFF georreferenciado, ex. o DTM/MOLA), não para `tiles_wmts` (tiles
 PNG soltos, sem georreferência própria por arquivo -- precisariam virar
 um mosaico primeiro, ver PROXIMOS-PASSOS.md)."""
 
+import os
 import sqlite3
 
 import numpy as np
@@ -52,7 +53,11 @@ def _slope_degrees(dataset: rasterio.DatasetReader, row: int, col: int) -> float
 
 def sample_point(local_tile_path: str, lat: float, lon: float) -> dict | None:
     """Abre o GeoTIFF e devolve {valor, slope_deg} no ponto, ou None se
-    o ponto cair fora da extensão do raster."""
+    o ponto cair fora da extensão do raster -- ou se o arquivo não
+    existe: o registry pode listar uma camada ainda não baixada (hoje o
+    MOLA, sem script de fetch), e isso não pode derrubar o /api/point."""
+    if not os.path.isfile(local_tile_path):
+        return None
     with rasterio.open(local_tile_path) as dataset:
         bounds = dataset.bounds
         if not (bounds.left <= lon <= bounds.right and bounds.bottom <= lat <= bounds.top):
