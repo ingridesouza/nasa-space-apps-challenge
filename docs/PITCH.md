@@ -1,47 +1,46 @@
 # Pitch — H2G2
 
-## O diferencial central: Gale é o único lugar com segurança real
+## A ideia central: a gente é o único lugar de Marte com segurança de verdade
 
-O enunciado do desafio pede explicitamente que o projeto ajude a
-proteger o astronauta — cita radiação, clima espacial e segurança da
-equipe como prioridade NASA #1.
+O desafio pede isso bem na cara: proteger o astronauta é a prioridade
+número 1 da NASA. Radiação, clima espacial, segurança da equipe — tá
+tudo lá no enunciado.
 
-**Nenhum time usando Jezero consegue atender isso com dado real.** A
-Perseverance (rover de Jezero) não carrega os instrumentos de clima
-(REMS) e radiação (RAD) que o Curiosity carrega. Só a Cratera Gale tem
-esses dois sensores medindo no mesmo ponto da superfície — é um fato
-técnico, não uma escolha de marketing.
+E aqui que a gente ganha: **ninguém usando Jezero consegue entregar
+isso com dado real.** A Perseverance (o rover de lá) simplesmente não
+carrega sensor de clima nem de radiação. Só o Curiosity, em Gale, tem
+os dois medindo no mesmo lugar. Não é spin, é física — o equipamento
+não existe no outro rover.
 
-**O que isso significa na prática pro H2G2:** quando o astronauta
-clica num ponto do mapa, a gente não mostra só uma foto bonita — mostra
-um veredito de segurança real: inclinação do terreno (seguro/atenção/
-perigo, baseado no limite de 20° que a própria Artemis usa), mais
-temperatura, pressão, UV e dose de radiação medidos de verdade naquele
-sol. Isso é dado científico real virando decisão operacional — não é
-estimativa, não é mockup.
+**Na prática, o que isso vira no nosso mapa:** o astronauta clica num
+ponto e não recebe só uma foto bonita. Recebe um veredito de verdade —
+seguro, atenção ou perigo, baseado no mesmo limite de inclinação que a
+Artemis usa — junto com temperatura, pressão, UV e dose de radiação
+medidos naquele sol de verdade. Dado virando decisão. Não é estimativa,
+não é mockup, é leitura real de instrumento.
 
-### Frase pronta pro pitch
+### A frase que resume tudo
 
-> "A maioria dos projetos desse desafio escolheu Jezero porque é onde a
-> Perseverance está. Mas a Perseverance não tem sensor de clima nem de
-> radiação. A gente escolheu Gale porque é o único lugar de Marte onde
-> dá pra mostrar, com dado real, se é seguro caminhar ali agora — não
-> só bonito de ver."
+> "A maioria escolheu Jezero porque é onde a Perseverance tá. Só que a
+> Perseverance não tem sensor de clima nem de radiação. A gente
+> escolheu Gale porque é o único lugar de Marte onde dá pra dizer, com
+> dado real, se é seguro caminhar ali agora — não só bonito de olhar."
 
-## Outros pontos fortes (apoio, não o centro)
+## Outros pontos fortes (reforço, não o carro-chefe)
 
-- **Zoom contínuo hiperlocal** (CTX ~6m → HiRISE 25cm) — o próprio
-  desafio reconhece que ferramentas como Mars Trek são regionais/
-  globais, não hiperlocais. É a lacuna que o H2G2 preenche.
-- **Achados reais da campanha de boxwork 2025** da Curiosity (cristas
-  cimentadas por sulfato, furo "Altadena", alvos "Totoral/Sillar") —
-  ciência recente, não reciclada de anos atrás.
-- **100% dado real, nada mockado** — cada camada, cada número no
-  briefing de segurança vem de uma fonte NASA verificável.
+- **Zoom contínuo e hiperlocal** (CTX ~6m até HiRISE 25cm) — o próprio
+  desafio já admite que ferramentas tipo Mars Trek são regionais e
+  globais demais. A gente preenche exatamente esse buraco.
+- **Achado científico fresquinho**: a campanha de boxwork de 2025 do
+  Curiosity (cristas cimentadas por sulfato, o furo "Altadena", os
+  alvos "Totoral/Sillar") — ciência de poucos meses atrás, não coisa
+  requentada de 2015.
+- **Tudo é dado real.** Cada camada, cada número no briefing de
+  segurança vem de uma fonte da NASA que dá pra verificar.
 
-## Honestidade que também é ponto forte
+## Ser honesto também é ponto forte
 
-Onde o dado não existe (CRISM esparso em Gale, nomenclatura ainda
-pendente), a interface diz isso com clareza em vez de esconder ou
-fingir. Isso também é defensável no pitch: mostra rigor científico, não
-é uma falha a esconder.
+Onde o dado não existe — CRISM esparso em Gale, nomenclatura ainda
+faltando — a interface fala isso de cara, sem fingir ou esconder atrás
+de uma camada vazia. Isso não é fraqueza, é rigor científico, e dá pra
+usar isso a nosso favor na apresentação.
