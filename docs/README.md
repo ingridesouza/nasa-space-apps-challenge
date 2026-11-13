@@ -10,5 +10,9 @@ Salvador 2026).
 - [`PITCH.md`](PITCH.md) — argumento central pra apresentação: por que
   Gale (não Jezero) é o diferencial real do projeto.
 
+- [`feature-08-agente-local.md`](feature-08-agente-local.md) — análise da feature 08 (agente
+  local): dados disponíveis, alertas por regra, modo sem Terra
+  (conjunção solar, radiação, poeira) e plano de implementação.
+
 Para o status técnico de implementação da feature 01 (mapa hiperlocal),
 ver [`PROXIMOS-PASSOS.md`](../PROXIMOS-PASSOS.md) na raiz do repo.
