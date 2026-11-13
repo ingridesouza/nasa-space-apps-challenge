@@ -85,13 +85,27 @@ análise científica fina, fora de escopo do MVP.
 
 ## Próximos blocos de trabalho
 
-- [ ] **Fotos do rover** (item 9, feature 3 da Victoria): API de imagens
-      do MSL (`mars.nasa.gov/raw_images/...`). Baixar ~200 imagens do
-      boxwork pra teste offline de busca por raio.
+- [ ] **Fotos do rover** (item 9, feature 3 da Victoria) — **bloqueado
+      por posição, não por foto**. A API pública de imagens
+      (`mars.nasa.gov/api/v1/raw_image_items/`) funciona e devolve fotos
+      reais (testado, sol 4650), mas `site`/`drive`/`xyz` vêm `null` --
+      não dá posição. Tentei: índice PDS do volume Mastcam
+      (`MSLMST_0032/INDEX/RDRINDEX.LBL`) tem `ROVER_MOTION_COUNTER`
+      (site/drive), mas isso sozinho não converte pra lat/lon sem uma
+      tabela de localização; procurei um traverse já publicado por
+      terceiros (GeoJSON/CSV) e não achei nenhum atual. Conclusão: cada
+      foto precisa de posição real e DIFERENTE pra "fotos próximas" (por
+      raio) fazer sentido -- não dá pra usar posição aproximada única
+      como fizemos pros alvos científicos, isso falsearia a busca por
+      distância. Resolver exige o mesmo processo que destravou o
+      product_id do CTX: abrir o MMGIS/Mars Trek no navegador com
+      DevTools e capturar o endpoint real de posição por site/drive.
+      **Depende do item 11 (abaixo), não é independente.**
 - [ ] **AI4Mars** (item 10): dataset no Zenodo/Hugging Face, filtrar por
       sol/local do boxwork.
 - [ ] **MMGIS** (item 11): trajeto do rover por sol/site/drive → lat/lon
-      — liga fotos e clima/radiação a uma coordenada real.
+      — liga fotos e clima/radiação a uma coordenada real. Bloqueador
+      real pro item 9 (ver acima).
 - [ ] **Nomenclatura** (item 12): USGS/IAU Gazetteer.
 
 ## Pendências gerais
