@@ -101,8 +101,15 @@ análise científica fina, fora de escopo do MVP.
       product_id do CTX: abrir o MMGIS/Mars Trek no navegador com
       DevTools e capturar o endpoint real de posição por site/drive.
       **Depende do item 11 (abaixo), não é independente.**
-- [ ] **AI4Mars** (item 10): dataset no Zenodo/Hugging Face, filtrar por
-      sol/local do boxwork.
+- [x] ~~AI4Mars~~ (item 10) — **bloqueador estrutural, não de busca**:
+      testei o mirror `harpreetsahota/ai4mars-msl` no Hugging Face
+      (23.400 imagens reais). A imagem mais recente do dataset
+      corresponde a **~sol 2579 (nov/2019)** -- quase 2000 sóis ANTES da
+      campanha de boxwork (sol 4564-4660, set/2025). O dataset foi
+      publicado em 2021, antes do Curiosity chegar no boxwork -- não
+      existe (e não pode existir) classificação AI4Mars pra essa região,
+      independente de quanto se procure. Item encerrado como
+      definitivamente indisponível, não como pendência.
 - [ ] **MMGIS** (item 11): trajeto do rover por sol/site/drive → lat/lon
       — liga fotos e clima/radiação a uma coordenada real. Bloqueador
       real pro item 9 (ver acima).
