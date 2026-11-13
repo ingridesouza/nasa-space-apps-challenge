@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 
 import { getPoint } from '../api/client'
-import type { PointResponse, RasterValue } from '../api/types'
+import type { NomenclatureFeature, PointResponse, RasterValue } from '../api/types'
+import { nearestNomenclature } from '../map/nomenclature'
 import { SLOPE_VERDICT } from '../theme/verdict'
 import { NearbyPhotosSection } from './NearbyPhotosSection'
 import { ScienceTargetSection } from './ScienceTargetSection'
@@ -9,6 +10,7 @@ import { ScienceTargetSection } from './ScienceTargetSection'
 interface PointInfoPanelProps {
   point: { lat: number; lon: number } | null
   onClose: () => void
+  nomenclature: NomenclatureFeature[]
 }
 
 const CATEGORIA_LABEL: Record<string, string> = {
@@ -31,7 +33,7 @@ function pickPrimaryElevation(rasterValues: Record<string, RasterValue>): [strin
   return entries.length > 0 ? entries[0] : null
 }
 
-export function PointInfoPanel({ point, onClose }: PointInfoPanelProps) {
+export function PointInfoPanel({ point, onClose, nomenclature }: PointInfoPanelProps) {
   const [data, setData] = useState<PointResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,6 +55,7 @@ export function PointInfoPanel({ point, onClose }: PointInfoPanelProps) {
   const rasterEntries = data ? Object.entries(data.raster_values) : []
   const primary = data ? pickPrimaryElevation(data.raster_values) : null
   const outrasFontes = primary ? rasterEntries.filter(([nome]) => nome !== primary[0]) : []
+  const perto = nearestNomenclature(nomenclature, point.lat, point.lon)
 
   return (
     <div
@@ -75,9 +78,26 @@ export function PointInfoPanel({ point, onClose }: PointInfoPanelProps) {
         </button>
       </div>
 
-      <div className="h2g2-mono" style={{ fontSize: 'var(--t-small)', color: 'var(--hud-cyan)', marginBottom: 'var(--s-4)' }}>
+      <div className="h2g2-mono" style={{ fontSize: 'var(--t-small)', color: 'var(--hud-cyan)' }}>
         {point.lat.toFixed(5)}, {point.lon.toFixed(5)}
       </div>
+
+      {perto && (
+        <div className="h2g2-dim" style={{ fontSize: 'var(--t-micro)', marginBottom: 'var(--s-4)' }}>
+          perto de{' '}
+          <a
+            href={perto.feature.fonte_url}
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: 'var(--ink-2)' }}
+            title={`Nome oficial IAU/USGS · ${perto.feature.tipo}`}
+          >
+            {perto.feature.nome}
+          </a>{' '}
+          ({(perto.distance_m / 1000).toFixed(1)}km)
+        </div>
+      )}
+      {!perto && <div style={{ marginBottom: 'var(--s-4)' }} />}
 
       {loading && (
         <div className="h2g2-dim h2g2-mono" style={{ fontSize: 'var(--t-small)' }}>

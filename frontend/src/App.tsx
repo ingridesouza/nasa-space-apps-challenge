@@ -1,8 +1,8 @@
 import type { Map } from 'maplibre-gl'
 import { useEffect, useState } from 'react'
 
-import { getConditions, getLayers } from './api/client'
-import type { ConditionsResponse, LayerMeta } from './api/types'
+import { getConditions, getLayers, getNomenclature } from './api/client'
+import type { ConditionsResponse, LayerMeta, NomenclatureFeature } from './api/types'
 import { ConditionsPanel } from './components/ConditionsPanel'
 import { LayerControlPanel } from './components/LayerControlPanel'
 import { PointInfoPanel } from './components/PointInfoPanel'
@@ -16,6 +16,7 @@ export default function App() {
   const [layersError, setLayersError] = useState<string | null>(null)
   const [conditions, setConditions] = useState<ConditionsResponse | null>(null)
   const [conditionsError, setConditionsError] = useState<string | null>(null)
+  const [nomenclature, setNomenclature] = useState<NomenclatureFeature[]>([])
 
   useEffect(() => {
     getLayers()
@@ -25,6 +26,11 @@ export default function App() {
     getConditions()
       .then(setConditions)
       .catch((e) => setConditionsError(String(e)))
+
+    // lista pequena (13 feições), falha silenciosa não impede o resto do app
+    getNomenclature()
+      .then(setNomenclature)
+      .catch(() => {})
   }, [])
 
   return (
@@ -60,7 +66,7 @@ export default function App() {
       <TopHud lastClick={selectedPoint} sol={conditions?.sol ?? null} />
       <LayerControlPanel map={map} />
       <ConditionsPanel conditions={conditions} error={conditionsError} />
-      <PointInfoPanel point={selectedPoint} onClose={() => setSelectedPoint(null)} />
+      <PointInfoPanel point={selectedPoint} onClose={() => setSelectedPoint(null)} nomenclature={nomenclature} />
     </div>
   )
 }

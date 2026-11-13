@@ -12,10 +12,10 @@
 | 6 | Topografia local 1m — DTM HiRISE | ✅ confirmado | `Gale_DEM_SMG_1m` (ArcGIS, elevação real) + hillshade visual no mapa |
 | 7 | Clima — REMS | ✅ confirmado | PDS Atmospheres Node, produto RNV por sol |
 | 8 | Radiação — RAD | ✅ confirmado | PDS-PPI (UCLA), dose do detector E por observação |
-| 9 | Fotos do rover — MSL | ❌ não começado | API de imagens do MSL |
-| 10 | Classe de terreno — AI4Mars | ❌ não começado | Zenodo/Hugging Face |
-| 11 | Posição/trajeto — MMGIS | ❌ não começado | mars.nasa.gov |
-| 12 | Nomenclatura — USGS/IAU | ❌ não começado | planetarynames |
+| 9 | Fotos do rover — MSL | ⚠️ bloqueado por posição | API funciona, falta lat/lon (depende do item 11) |
+| 10 | Classe de terreno — AI4Mars | ❌ indisponível (dataset não cobre a época) | Hugging Face, testado até sol 2579 (2019) |
+| 11 | Posição/trajeto — MMGIS | ⚠️ bloqueado | 2 feature services reais achados, nenhum chega em 2025 |
+| 12 | Nomenclatura — USGS/IAU | ✅ confirmado | webmap USGS no ArcGIS, 13 feições reais em Gale |
 
 Todas as confirmadas (1-4, 6) estão em `data-pipeline/config/layers.yaml`
 e testadas com dado real (ver commits do dia 2026-11-11).
@@ -110,10 +110,30 @@ análise científica fina, fora de escopo do MVP.
       existe (e não pode existir) classificação AI4Mars pra essa região,
       independente de quanto se procure. Item encerrado como
       definitivamente indisponível, não como pendência.
-- [ ] **MMGIS** (item 11): trajeto do rover por sol/site/drive → lat/lon
-      — liga fotos e clima/radiação a uma coordenada real. Bloqueador
-      real pro item 9 (ver acima).
-- [ ] **Nomenclatura** (item 12): USGS/IAU Gazetteer.
+- [ ] **MMGIS** (item 11) — achei DOIS feature services reais com
+      `sol` + posição (via busca na API do ArcGIS, mesmo método do item
+      12 abaixo): `Curiosity_Location_Data` (owner `ttsui_NASA`, 3
+      camadas mas todas vazias/sem dado -- projeto abandonado) e
+      `Curiosity_Waypoints` (owner `lukepringle`, 876 pontos reais com
+      campo `sol`!). O segundo quase resolve, mas **para no sol 3284
+      (~2022)** -- mesmo padrão do AI4Mars, o dado existente não chega
+      na era do boxwork (sol 4564+, 2025). Confirma que não existe
+      posição pública pronta pra sóis recentes; resolver exige mesmo
+      assim abrir o MMGIS oficial no navegador com DevTools (processo
+      do CTX). Bloqueador real pro item 9.
+- [x] ~~Nomenclatura~~ (item 12) **resolvido** ✅ (2026-11-13): achei o
+      webmap "Mars High-Resolution Mosaic Viewer" da USGS no ArcGIS
+      Online (owner `thare@usgs.gov_USGS`), com 5 camadas de
+      nomenclatura IAU embutidas como `featureCollection` no próprio
+      JSON do item (não precisa de FeatureServer separada).
+      `data-pipeline/scripts/fetch_nomenclature.py` baixa e filtra pra
+      região de Gale: 13 feições reais, incluindo **Aeolis Mons**
+      (nome oficial do "Monte Sharp"), **Aeolis Palus** (planície de
+      pouso), **Gediz Vallis** e a cratera **Yellowknife** -- essas
+      duas últimas praticamente dentro do bbox de teste. Exposto via
+      `GET /api/nomenclature`, e no frontend o `PointInfoPanel` mostra
+      a feição nomeada mais próxima do clique com link pro Gazetteer
+      oficial.
 
 ## Pendências gerais
 

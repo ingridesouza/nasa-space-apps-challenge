@@ -1,4 +1,4 @@
-import type { ConditionsResponse, LayerMeta, PointResponse } from './types'
+import type { ConditionsResponse, LayerMeta, NomenclatureFeature, PointResponse } from './types'
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
@@ -16,6 +16,14 @@ export async function getConditions(sol?: number): Promise<ConditionsResponse> {
   const resp = await fetch(`${API_BASE_URL}/api/conditions${qs}`)
   if (!resp.ok) {
     throw new Error(`/api/conditions falhou: ${resp.status}`)
+  }
+  return resp.json()
+}
+
+export async function getNomenclature(): Promise<NomenclatureFeature[]> {
+  const resp = await fetch(`${API_BASE_URL}/api/nomenclature`)
+  if (!resp.ok) {
+    throw new Error(`/api/nomenclature falhou: ${resp.status}`)
   }
   return resp.json()
 }

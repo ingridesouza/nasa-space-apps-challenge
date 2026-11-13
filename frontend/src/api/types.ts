@@ -58,6 +58,19 @@ export interface ConditionsResponse {
   }
 }
 
+/** Espelha `GET /api/nomenclature` -- feições com nome oficial
+ * IAU/USGS na região de Gale. */
+export interface NomenclatureFeature {
+  nome: string
+  tipo: string
+  categoria_camada: string
+  lat: number
+  lon: number
+  diametro_km: number
+  aprovado_iau: string
+  fonte_url: string
+}
+
 /** Espelha uma linha de `raster_registry`, devolvida por `GET /layers`. */
 export interface LayerMeta {
   layer_name: string

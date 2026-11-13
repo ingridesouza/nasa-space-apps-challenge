@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from conditions import get_cached_conditions
 from db import get_connection
 from mosaics import build_hillshade_png, build_mosaic_png
+from nomenclature import get_cached_nomenclature
 from raster_sampling import sample_all_rasters
 from vector_queries import nearby_photos, nearest_science_target
 
@@ -122,6 +123,21 @@ def get_conditions(sol: int = REFERENCE_SOL):
         raise HTTPException(
             status_code=404,
             detail=f"Sol {sol} não cacheado ainda -- rodar data-pipeline/scripts/cache_conditions.py {sol}",
+        )
+    return dados
+
+
+@app.get("/api/nomenclature")
+def get_nomenclature():
+    """Feições com nome oficial IAU/USGS na região de Gale (item 12 da
+    feature 01) -- cacheado por
+    data-pipeline/scripts/fetch_nomenclature.py, sem chamada de rede
+    aqui."""
+    dados = get_cached_nomenclature()
+    if dados is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Nomenclatura não cacheada -- rodar data-pipeline/scripts/fetch_nomenclature.py",
         )
     return dados
 
