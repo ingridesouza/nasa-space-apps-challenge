@@ -1,6 +1,6 @@
 PY := $(CURDIR)/.venv/bin/python
 
-.PHONY: build run
+.PHONY: build run front
 
 build:
 	test -x $(PY) || python3 -m venv .venv
@@ -21,3 +21,6 @@ build:
 
 run:
 	cd api && $(PY) -m uvicorn main:app --reload
+
+front:
+	cd frontend && npm run dev
