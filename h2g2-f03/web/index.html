@@ -3,63 +3,64 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>H2G2 · Panorama no ponto</title>
-  <link rel="stylesheet" href="/web/lib/leaflet.css">
+  <title>H2G2 · Visor</title>
   <link rel="stylesheet" href="/web/lib/pannellum.css">
   <link rel="stylesheet" href="/web/style.css">
 </head>
 <body>
-  <header>
-    <h1>H2G2 <span>· Panorama no ponto</span></h1>
-    <p class="sub">Boxwork do Monte Sharp, Cratera Gale · dados reais do Curiosity · funciona offline</p>
-  </header>
-
-  <main>
-    <section class="painel">
-      <form id="form" autocomplete="off">
-        <label>Latitude (°)
-          <input id="lat" type="number" step="any" min="-90" max="90" required placeholder="-4.806797">
-        </label>
-        <label>Longitude (°E)
-          <input id="lon" type="number" step="any" required placeholder="137.379412">
-        </label>
-        <button type="submit">Buscar</button>
-      </form>
-      <p class="dica">Latitude planetocêntrica; longitude leste positiva (valor negativo vira +360).</p>
-      <div id="exemplos" class="exemplos"></div>
-      <p id="aviso" class="aviso" hidden></p>
-      <div id="map"></div>
-      <p class="credito">Base: HiRISE colorido, 25 cm/px · NASA/JPL/University of Arizona/USGS ·
-        <span class="leg pano"></span> parada com panorama <span class="leg sem"></span> parada sem panorama</p>
-    </section>
-
-    <section class="resultado">
-      <div id="estado" class="estado">Digite uma coordenada ou escolha um ponto de exemplo.</div>
-      <div id="pano-wrap" hidden>
-        <p id="pano-rotulo" class="rotulo"></p>
-        <div id="pano"></div>
-        <p id="pano-credito" class="credito"></p>
+  <div class="app">
+    <!-- VISOR: visão do astronauta -->
+    <main id="visor" class="visor grid-bg">
+      <div class="visor-hud mono">
+        <span class="eyebrow">H2G2 · visor</span>
+        <span id="hud-pos" class="hud-pos">sem posição</span>
       </div>
-      <div id="sem-pano" class="vazio" hidden></div>
 
-      <h2>Fotos próximas <small id="fotos-n"></small></h2>
-      <div id="fotos" class="fotos"></div>
+      <div id="visor-stage" class="visor-stage">
+        <p id="visor-vazio" class="visor-vazio mono">Informe uma coordenada para posicionar o visor.</p>
+        <img id="visor-img" class="visor-img" alt="" hidden>
+      </div>
+      <button id="visor-fechar" class="ibtn visor-fechar" type="button" title="Voltar (Esc)" hidden>✕</button>
 
-      <h2>Vista orbital <small>recorte HiRISE de 100 × 100 m, centrado no ponto</small></h2>
-      <figure class="orbital">
-        <img id="orbital" alt="Recorte HiRISE do ponto" hidden>
-        <figcaption class="credito">NASA/JPL/University of Arizona/USGS</figcaption>
-      </figure>
-    </section>
-  </main>
+      <form id="coords" class="coords panel frame" autocomplete="off" novalidate>
+        <div class="eyebrow">Coordenadas</div>
+        <label class="campo"><span class="mono">LAT °</span>
+          <input id="lat" class="mono" type="number" step="any" value="-4.806797" placeholder="-4.806797" required>
+        </label>
+        <label class="campo"><span class="mono">LON °E</span>
+          <input id="lon" class="mono" type="number" step="any" value="137.379412" placeholder="137.379412" required>
+        </label>
+        <button class="btn btn-red btn-sm" type="submit">Enviar</button>
+        <p id="coords-msg" class="coords-msg mono" hidden></p>
+      </form>
+    </main>
 
-  <dialog id="foto-grande">
-    <img id="foto-grande-img" alt="">
-    <p id="foto-grande-rotulo"></p>
-    <button id="fechar" type="button">Fechar</button>
-  </dialog>
+    <!-- CARDS FLUTUANTES: só aparecem após enviar uma coordenada -->
+    <div id="flutuante" class="flutuante" hidden>
+      <section id="c-status" class="card panel" hidden></section>
 
-  <script src="/web/lib/leaflet.min.js"></script>
+      <section id="c-pano" class="card panel" hidden>
+        <div class="pano-slot"><div id="pano"></div>
+          <button id="pano-expandir" class="ibtn ibtn-sm" type="button" title="Expandir no visor">⤢</button>
+        </div>
+        <p id="pano-rotulo" class="rotulo mono"></p>
+      </section>
+
+      <section id="c-fotos" class="card panel" hidden>
+        <div id="fotos" class="fotos"></div>
+      </section>
+
+    </div>
+    <!-- FICHAS: coluna à esquerda da barra, alinhada ao bloco de fotos; empilha para cima -->
+    <div id="fichas" class="fichas">
+      <details id="c-ficha" class="card panel ficha-card" hidden>
+        <summary><span id="ficha-nome" class="ficha-nome"></span><span id="ficha-tipo" class="tag tag-red"></span></summary>
+        <div id="ficha" class="ficha-body"></div>
+      </details>
+    </div>
+    <button id="flutuante-toggle" class="ibtn ibtn-sm flutuante-toggle" type="button" title="Recolher barra" aria-expanded="true" aria-controls="flutuante">›</button>
+  </div>
+
   <script src="/web/lib/pannellum.js"></script>
   <script src="/web/app.js"></script>
 </body>

@@ -224,6 +224,44 @@ Desvios do plano:
 - `PositionSource` ganhou `list_stops`; fonte `official` é stub até os Resources (M11).
 - Python 3.14 no `.venv`, não 3.11.
 
+## Interface gráfica (visor do astronauta)
+
+Substitui o `h2g2-f03/web/index.html` atual. Visual herdado da landing `Projetos_Github/nasa_landingpage` (tokens de cor, Chakra Petch / IBM Plex Sans / JetBrains Mono, `.panel`, `.frame`, `.kv`, `.tag`, `.btn`). HTML/CSS/JS puro, offline.
+
+**Layout:** visor preto em tela cheia (~68% da largura) à esquerda; caixa de coordenadas no canto inferior esquerdo do visor (futuro minimapa); painel direito (~32%) com seções colapsáveis, várias abertas ao mesmo tempo, sem scroll da página (100vh).
+
+### UI-1. Tokens e base visual
+Portar cores, fontes (locais) e componentes da landing para `web/style.css`.
+**Deu certo quando:** fontes e cores corretas sem internet.
+
+### UI-2. Grid principal
+Visor 100vh + painel direito; abaixo de 900px o painel desce para baixo do visor.
+**Deu certo quando:** sem quebra em 1440, 1280 e 900 px.
+
+### UI-3. Caixa de coordenadas
+LAT e LON (°E, 0–360), botão ENVIAR, Enter envia, validação e aviso de ponto fora da janela do boxwork.
+**Deu certo quando:** entrada inválida mostra erro; válida dispara busca.
+
+### UI-4. Fluxo de envio e estados
+`/panoramas/nearest` e `/photos/near` em paralelo; estados carregando, vazio e erro por seção.
+**Deu certo quando:** os três estados aparecem em todas as seções.
+
+### UI-5. Seção Status da posição
+Sol, site/drive, distância, rumo, data e LMST da parada.
+**Deu certo quando:** valores batem com a resposta da API.
+
+### UI-6. Panorama em destaque
+Pannellum no painel abrindo no `yaw_inicial`; botão expande para o visor, Esc volta.
+**Deu certo quando:** alterna painel ↔ visor sem recarregar e sem perder o yaw.
+
+### UI-7. Fotos próximas
+Faixa horizontal de miniaturas com distância e câmera; clique abre a foto no visor.
+**Deu certo quando:** todas as fotos do raio aparecem e abrem no visor.
+
+### UI-8. Ficha científica (somente layout)
+Card com alvo, tipo, sol, o que foi feito, link do blog, foto Mastcam e estado vazio, preenchido com dados de exemplo (Mojo). A associação ponto → alvo fica para a feature 04.
+**Deu certo quando:** card renderiza com exemplo e com estado vazio.
+
 ## Tarefas manuais (sem código)
 
 Doze tarefas se fazem no navegador, numa planilha, no QGIS ou no pendrive, sem abrir a IDE. Cada uma destrava uma tarefa técnica do plano. As três primeiras (M1, M2, M4) mostram o que é possível, então vêm antes de tudo.
