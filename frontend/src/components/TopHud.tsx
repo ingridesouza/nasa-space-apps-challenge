@@ -20,11 +20,11 @@ export function TopHud({ lastClick, sol }: TopHudProps) {
       }}
     >
       <div>
-        <div className="h2g2-panel-title" style={{ margin: 0, fontSize: 'var(--t-small)', letterSpacing: '0.1em' }}>
-          H2G2 · Mapa hiperlocal do boxwork
+        <div className="h2g2-display" style={{ fontSize: 'var(--t-4)', color: 'var(--ink)', lineHeight: 1.1 }}>
+          H2G2 <span style={{ color: 'var(--mars2)' }}>·</span> Mapa hiperlocal do boxwork
         </div>
-        <div className="h2g2-dim h2g2-mono" style={{ fontSize: 'var(--t-micro)' }}>
-          Cratera Gale · Monte Sharp
+        <div className="h2g2-dim h2g2-mono" style={{ fontSize: 'var(--t-micro)', letterSpacing: '0.08em' }}>
+          CRATERA GALE · MONTE SHARP
         </div>
       </div>
 

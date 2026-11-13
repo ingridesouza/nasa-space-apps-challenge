@@ -28,19 +28,19 @@ export function LayerControlPanel({ map }: LayerControlPanelProps) {
   function renderLayerRow(layer: (typeof TOGGLEABLE_LAYERS)[number]) {
     const state = layerState[layer.id]
     return (
-      <div key={layer.id} style={{ marginBottom: 'var(--s-3)' }}>
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--s-2)',
-            fontSize: 'var(--t-small)',
-            cursor: 'pointer',
-          }}
-        >
-          <input type="checkbox" checked={state.visible} onChange={() => toggle(layer.id)} />
-          {layer.label}
-        </label>
+      <div key={layer.id} className={`h2g2-layer-row ${state.visible ? 'on' : ''}`} style={{ marginBottom: 'var(--s-2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-2)' }}>
+          <span style={{ fontSize: 'var(--t-small)', color: 'var(--ink)' }}>{layer.label}</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={state.visible}
+            onClick={() => toggle(layer.id)}
+            className={`h2g2-switch ${state.visible ? 'on' : ''}`}
+          >
+            <span />
+          </button>
+        </div>
         <input
           type="range"
           min={0}

@@ -139,9 +139,11 @@ export function PointInfoPanel({ point, onClose, nomenclature }: PointInfoPanelP
                       ● {veredito.label}
                     </div>
                   )}
-                  <div className="h2g2-mono" style={{ fontSize: 'var(--t-3)', color: 'var(--ink)', lineHeight: 1.1 }}>
+                  <div className="h2g2-display" style={{ fontSize: 'var(--t-3)', color: 'var(--ink)', lineHeight: 1.1 }}>
                     {v.valor.toFixed(1)}
-                    <span style={{ fontSize: 'var(--t-small)', color: 'var(--ink-3)' }}>m</span>
+                    <span className="h2g2-mono" style={{ fontSize: 'var(--t-small)', color: 'var(--ink-3)' }}>
+                      {' '}m
+                    </span>
                   </div>
                   {v.slope_deg !== undefined && (
                     <div className="h2g2-dim h2g2-mono" style={{ fontSize: 'var(--t-small)' }}>
