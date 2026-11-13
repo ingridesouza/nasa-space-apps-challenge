@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { getPoint } from '../api/client'
-import type { NomenclatureFeature, PointResponse, RasterValue } from '../api/types'
+import type { NomenclatureFeature } from '../api/types'
 import { nearestNomenclature } from '../map/nomenclature'
 import { SLOPE_VERDICT } from '../theme/verdict'
 import { NearbyPhotosSection } from './NearbyPhotosSection'
@@ -20,17 +20,14 @@ const CATEGORIA_LABEL: Record<string, string> = {
   espectral_quimica: 'Mineralogia',
 }
 
-/** Preferência de qual camada de elevação vira o veredito principal --
- * a mais precisa disponível primeiro (DTM HiRISE 1m antes do MOLA
- * regional, bem mais grosseiro). */
-const PRIORIDADE_ELEVACAO = ['dtm_hirise_1m', 'mola_topografia_regional']
-
-function pickPrimaryElevation(rasterValues: Record<string, RasterValue>): [string, RasterValue] | null {
-  for (const nome of PRIORIDADE_ELEVACAO) {
-    if (rasterValues[nome]) return [nome, rasterValues[nome]]
-  }
-  const entries = Object.entries(rasterValues)
-  return entries.length > 0 ? entries[0] : null
+/** Nome da camada que virou o valor "oficial" de `elevacao_m`/`slope_deg`
+ * no topo da resposta (ver `PRIORIDADE_ELEVACAO` em
+ * `api/raster_sampling.py`) -- usado só pra exibir a legenda da fonte. */
+function primaryLayerName(fontes: Record<string, unknown>): string | null {
+  if ('dtm_hirise_1m' in fontes) return 'dtm_hirise_1m'
+  if ('mola_topografia_regional' in fontes) return 'mola_topografia_regional'
+  const nomes = Object.keys(fontes)
+  return nomes.length > 0 ? nomes[0] : null
 }
 
 export function PointInfoPanel({ point, onClose, nomenclature }: PointInfoPanelProps) {
@@ -52,9 +49,11 @@ export function PointInfoPanel({ point, onClose, nomenclature }: PointInfoPanelP
 
   if (!point) return null
 
-  const rasterEntries = data ? Object.entries(data.raster_values) : []
-  const primary = data ? pickPrimaryElevation(data.raster_values) : null
-  const outrasFontes = primary ? rasterEntries.filter(([nome]) => nome !== primary[0]) : []
+  const layerName = data ? primaryLayerName(data.raster_values.fontes) : null
+  const hasPrimary = data !== null && data.raster_values.elevacao_m !== null
+  const outrasFontes = data
+    ? Object.entries(data.raster_values.fontes).filter(([nome]) => nome !== layerName)
+    : []
   const perto = nearestNomenclature(nomenclature, point.lat, point.lon)
 
   return (
@@ -108,14 +107,15 @@ export function PointInfoPanel({ point, onClose, nomenclature }: PointInfoPanelP
 
       {data && (
         <>
-          {primary === null ? (
+          {!hasPrimary || !data ? (
             <div className="h2g2-empty-state">
               Fora da área de teste com dado baixado (ver PROXIMOS-PASSOS.md).
             </div>
           ) : (
             (() => {
-              const [layerName, v] = primary
-              const veredito = v.slope_status ? SLOPE_VERDICT[v.slope_status] : null
+              const rv = data.raster_values
+              const veredito = rv.slope_status ? SLOPE_VERDICT[rv.slope_status] : null
+              const categoria = layerName ? rv.fontes[layerName]?.categoria : undefined
               return (
                 <div
                   style={{
@@ -140,18 +140,18 @@ export function PointInfoPanel({ point, onClose, nomenclature }: PointInfoPanelP
                     </div>
                   )}
                   <div className="h2g2-display" style={{ fontSize: 'var(--t-3)', color: 'var(--ink)', lineHeight: 1.1 }}>
-                    {v.valor.toFixed(1)}
+                    {rv.elevacao_m!.toFixed(1)}
                     <span className="h2g2-mono" style={{ fontSize: 'var(--t-small)', color: 'var(--ink-3)' }}>
                       {' '}m
                     </span>
                   </div>
-                  {v.slope_deg !== undefined && (
+                  {rv.slope_deg !== null && (
                     <div className="h2g2-dim h2g2-mono" style={{ fontSize: 'var(--t-small)' }}>
-                      slope {v.slope_deg.toFixed(2)}°
+                      slope {rv.slope_deg!.toFixed(2)}°
                     </div>
                   )}
                   <div className="h2g2-dim" style={{ fontSize: 'var(--t-micro)', marginTop: 'var(--s-1)' }}>
-                    {CATEGORIA_LABEL[v.categoria] ?? v.categoria} · {layerName}
+                    {categoria ? (CATEGORIA_LABEL[categoria] ?? categoria) : ''} · {layerName}
                   </div>
                 </div>
               )
@@ -163,9 +163,9 @@ export function PointInfoPanel({ point, onClose, nomenclature }: PointInfoPanelP
               <p className="h2g2-panel-title" style={{ fontSize: 'var(--t-micro)' }}>
                 Outras fontes de elevação
               </p>
-              {outrasFontes.map(([layerName, v]) => (
-                <div key={layerName} className="h2g2-dim h2g2-mono" style={{ fontSize: 'var(--t-small)' }}>
-                  {layerName}: {v.valor.toFixed(1)}m
+              {outrasFontes.map(([nome, v]) => (
+                <div key={nome} className="h2g2-dim h2g2-mono" style={{ fontSize: 'var(--t-small)' }}>
+                  {nome}: {v.valor.toFixed(1)}m
                   {v.slope_deg !== undefined && ` · ${v.slope_deg.toFixed(2)}°`}
                 </div>
               ))}

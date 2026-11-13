@@ -72,9 +72,29 @@ def sample_point(local_tile_path: str, lat: float, lon: float) -> dict | None:
         return resultado
 
 
+#: qual camada de elevação vira o valor "oficial" (`elevacao_m`/`slope_deg`
+#: no topo da resposta) quando mais de uma cobre o ponto -- a mais
+#: precisa primeiro.
+PRIORIDADE_ELEVACAO = ["dtm_hirise_1m", "mola_topografia_regional"]
+
+
 def sample_all_rasters(conn: sqlite3.Connection, lat: float, lon: float) -> dict:
     """Consulta o raster_registry e amostra todas as camadas do tipo
-    `raster_unico` que cobrem o ponto."""
+    `raster_unico` que cobrem o ponto.
+
+    Formato de resposta no nível raiz (`elevacao_m`, `slope_deg`,
+    `slope_status`, `classe_ai4mars`, `mineral_crism`) segue
+    EXATAMENTE o contrato documentado em
+    feature-01-mapa-hiperlocal-boxwork.md, seção 3.2 -- é o que a
+    feature 02 (rota/A*) e a feature 08 (voz) devem ler. `classe_ai4mars`
+    e `mineral_crism` ficam `None` (não `"desconhecido"` nem inventado):
+    AI4Mars não cobre a época do boxwork e CRISM não tem observação no
+    bbox -- ver PROXIMOS-PASSOS.md.
+
+    `fontes` é uma extensão nossa (não está na spec original): todas as
+    fontes de elevação que cobrem o ponto, não só a "oficial" -- usado
+    pelo frontend pra mostrar "outras fontes de elevação" de forma
+    transparente."""
     rows = conn.execute(
         """
         SELECT layer_name, local_tile_path, categoria
@@ -86,9 +106,25 @@ def sample_all_rasters(conn: sqlite3.Connection, lat: float, lon: float) -> dict
         (lon, lon, lat, lat),
     ).fetchall()
 
-    resultado = {}
+    fontes = {}
     for row in rows:
         valores = sample_point(row["local_tile_path"], lat, lon)
         if valores is not None:
-            resultado[row["layer_name"]] = {"categoria": row["categoria"], **valores}
-    return resultado
+            fontes[row["layer_name"]] = {"categoria": row["categoria"], **valores}
+
+    principal = None
+    for nome in PRIORIDADE_ELEVACAO:
+        if nome in fontes:
+            principal = fontes[nome]
+            break
+    if principal is None and fontes:
+        principal = next(iter(fontes.values()))
+
+    return {
+        "elevacao_m": principal["valor"] if principal else None,
+        "slope_deg": principal.get("slope_deg") if principal else None,
+        "slope_status": principal.get("slope_status") if principal else None,
+        "classe_ai4mars": None,  # AI4Mars não cobre a época do boxwork -- ver PROXIMOS-PASSOS.md
+        "mineral_crism": None,  # CRISM sem observação no bbox -- ver PROXIMOS-PASSOS.md
+        "fontes": fontes,
+    }

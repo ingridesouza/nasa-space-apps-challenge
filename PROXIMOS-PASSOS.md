@@ -102,10 +102,14 @@ CRISM **não tem um raster pronto de mineral por pixel** no Mars Trek —
 (`mars_mro_crism_mtrdr_c0a_humex_frt_sites`, `ArcGISFeature`). Só **3
 observações** em toda a Cratera Gale, nenhuma cobrindo o bbox atual.
 
-- [ ] Reconsultar com o bbox real atualizado (ver seção acima) — ainda
-      não refeito.
-- [ ] Sem cobertura: usar `medicao_curiosity` (já populado nos 3 alvos
-      científicos) como fonte principal de mineralogia.
+- [x] Reconsultado com o bbox real corrigido
+      (`137.3586,-4.8263,137.4094,-4.7757`) em 2026-11-13: query direta
+      no `MapServer/0` retornou `"features": []` — zero observações
+      CRISM nessa área, confirmado. Bloqueio real, não é falta de
+      tentar.
+- [x] Sem cobertura: `medicao_curiosity` (já populado nos 3 alvos
+      científicos) é a fonte de mineralogia usada; `mineral_crism`
+      fica `None` em `/api/point` (nunca inventado).
 
 ## Bloqueador real: AI4Mars (item 10) — indisponível, não pendente
 
@@ -157,17 +161,68 @@ amostra por camada, não pirâmide completa.
 
 ## Pendências gerais
 
-- [ ] Reconsultar CRISM com o bbox real (ver seção acima).
-- [ ] Confirmar tudo contra a aba Resources assim que abrir — **já
+- [x] Reconsultar CRISM com o bbox real — feito em 2026-11-13, zero
+      cobertura confirmado (ver seção acima).
+- [x] Confirmar tudo contra a aba Resources assim que abrir — **já
       verificado em 2026-11-12**: Mars Trek (nossa base) bate com o
       oficial; galeria de fotos oficial aponta pra Jezero/Perseverance,
       mantivemos Gale com a API da Curiosity (já validada).
 - [ ] Estruturar os 8-10 alvos científicos completos da ficha "pokédex"
       é trabalho da feature 4 (Victoria) — já temos 3 reais prontos
-      pra ela reaproveitar.
+      pra ela reaproveitar. **Gap real, acknowledged** (não é bug, é
+      escopo de outra feature).
 - [ ] `docs/PITCH.md` tem o argumento central (Gale vs. Jezero: só Gale
       tem clima+radiação co-localizados) pronto pra quem for montar a
       apresentação.
+
+## Auditoria "certeza absoluta" contra a spec original (2026-11-13)
+
+Antes de começar a feature 02 (rota/A*) em cima do `GET /api/point`
+desta feature, foi feita uma auditoria linha a linha contra
+`feature-01-mapa-hiperlocal-boxwork.md`, verificando o sistema rodando
+de verdade (não só o código/memória). Dois desvios reais do contrato
+documentado foram encontrados e **corrigidos**:
+
+1. **`raster_values` não batia com a spec.** Vinha aninhado por
+   camada (`{"dtm_hirise_1m": {...}, "mola_topografia_regional":
+   {...}}`) em vez do formato plano documentado
+   (`elevacao_m`/`slope_deg`/`classe_ai4mars`/`mineral_crism` como
+   chaves de topo). Corrigido em `api/raster_sampling.py`
+   (`sample_all_rasters`): agora devolve exatamente as chaves da
+   spec, escolhendo a camada mais precisa disponível (DTM HiRISE 1m
+   antes do MOLA regional, mais grosseiro) como fonte de
+   `elevacao_m`/`slope_deg`. `classe_ai4mars` e `mineral_crism` ficam
+   `None` (não inventados — ver blocos AI4Mars/CRISM acima). Mantido
+   um campo extra `fontes` (fora da spec original, mas aditivo) com o
+   detalhe por camada, usado pelo painel "outras fontes de elevação"
+   do frontend. **Testado ao vivo**: reiniciei a API e confirmei via
+   `curl /api/point?lat=-4.80689&lon=137.37984` que o shape bate
+   exatamente com a spec. `frontend/src/api/types.ts` e
+   `PointInfoPanel.tsx` foram atualizados pro novo formato;
+   `npx tsc --noEmit` limpo.
+2. **Grid de fotos faltando.** `NearbyPhotosSection.tsx` renderizava
+   só uma lista de texto (distância/direção/sol/câmera), nunca a
+   imagem — a spec (seção 4) pede explicitamente "grid/lightbox de
+   fotos estáticas, ordenadas por distância e direção". Corrigido:
+   grid 2 colunas com `<img>` real (usa `p.url` que a API já
+   devolvia) + lightbox em clique.
+
+**Conferido e OK, sem mudança necessária:**
+- `nearby_photos` e `science_target`: shape já batia com a spec.
+- Contagens reais via SQLite: `rover_images` = 200 (bate com "~200
+  imagens" da spec), `raster_registry` = 6 camadas.
+- "Geofísica" marcada como `fora_de_escopo` no
+  `frontend/src/map/layers.ts`, visível na UI — spec pede
+  comunicar a exclusão, não esconder.
+- `science_target.classe_terreno` é renome intencional da coluna
+  `classe_ai4mars` do banco pra bater com o nome exato da chave JSON
+  da spec — não é bug.
+- Zoom contínuo via `ImageSource` sempre renderizado (não
+  minzoom/maxzoom-gated como a spec sugere) — simplificação já
+  documentada, não é uma surpresa nova.
+
+**Gap real, não é bug, é escopo de outra feature:** só 3 de 8-10 alvos
+científicos (ficha "pokédex" completa é trabalho da feature 4/Victoria).
 
 ## Notas técnicas
 

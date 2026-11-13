@@ -32,11 +32,28 @@ export interface RasterValue {
   slope_status?: SlopeStatus
 }
 
+/** Segue EXATAMENTE o contrato documentado em
+ * feature-01-mapa-hiperlocal-boxwork.md, seção 3.2 -- as chaves de
+ * topo (`elevacao_m`, `slope_deg`, `classe_ai4mars`, `mineral_crism`)
+ * são o que a feature 02 (rota/A*) e a feature 08 (voz) devem ler.
+ * `classe_ai4mars`/`mineral_crism` ficam `null` quando não há dado
+ * real disponível (nunca inventado) -- ver PROXIMOS-PASSOS.md.
+ * `fontes` é extensão nossa: todas as camadas de elevação que cobrem
+ * o ponto, não só a usada como `elevacao_m`. */
+export interface RasterValues {
+  elevacao_m: number | null
+  slope_deg: number | null
+  slope_status: SlopeStatus | null
+  classe_ai4mars: string | null
+  mineral_crism: string | null
+  fontes: Record<string, RasterValue>
+}
+
 export interface PointResponse {
   point: { lat: number; lon: number }
   nearby_photos: NearbyPhoto[]
   science_target: ScienceTarget | null
-  raster_values: Record<string, RasterValue>
+  raster_values: RasterValues
 }
 
 /** Espelha `GET /api/conditions` -- resumo de clima (REMS) e radiação
