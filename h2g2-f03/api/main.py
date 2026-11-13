@@ -88,7 +88,8 @@ def candidates(table: str, tree: str, lat: float, lon: float, radius: float):
         d = haversine(lat, lon, r["lat"], r["lon"])
         if d <= radius:
             out.append((d, r))
-    out.sort(key=lambda x: (x[0], x[1]["sol"]))
+    # empate de distância (mesma parada): o colorido Mastcam vem primeiro
+    out.sort(key=lambda x: (round(x[0], 3), "camera" in x[1].keys() and x[1]["camera"] != "Mastcam", x[1]["sol"]))
     return out
 
 
@@ -123,8 +124,10 @@ def panorama_nearest(lat: float = Query(..., ge=-90, le=90), lon: float = Query(
     rumo_ponto_parada = bearing(lat, lon, p["lat"], p["lon"])
     rumo_parada_ponto = bearing(p["lat"], p["lon"], lat, lon)
     yaw = 0.0 if d < 1 else yaw_inicial(rumo_parada_ponto, p["center_az"])
+    cor = p["camera"] == "Mastcam"
+    sufixo = "Mastcam · cor · posição estimada" if cor else "Navcam"
     rotulo = (f"panorama tirado {fmt_dist(d)} daqui, a {compass(rumo_ponto_parada)}"
-              f" · sol {p['sol']}{fmt_date(p['date'])} · Navcam")
+              f" · sol {p['sol']}{fmt_date(p['date'])} · {sufixo}")
     return {
         "found": True, "dentro_da_janela": inside,
         "id": p["id"], "sol": p["sol"], "date": p["date"], "rmc": f"{p['site']}_{p['drive']}",

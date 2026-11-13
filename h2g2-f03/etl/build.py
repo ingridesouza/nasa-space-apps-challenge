@@ -39,7 +39,7 @@ CREATE TABLE waypoints(rmc TEXT PRIMARY KEY, site INT, drive INT, sol INT,
 CREATE TABLE panoramas(id TEXT PRIMARY KEY, sol INT, site INT, drive INT,
   lat REAL, lon REAL, center_az REAL, haov REAL, vaov REAL, voffset REAL,
   img_path TEXT, page_url TEXT, credit TEXT, pos_quality TEXT,
-  date TEXT, rover_yaw REAL, width INT, height INT);
+  date TEXT, rover_yaw REAL, width INT, height INT, camera TEXT);
 CREATE TABLE photos(id TEXT PRIMARY KEY, instrument TEXT, sol INT, site INT, drive INT,
   date_taken TEXT, lat REAL, lon REAL, mast_az REAL, mast_el REAL,
   img_path TEXT, thumb_path TEXT, credit TEXT, pos_quality TEXT, source TEXT,
@@ -147,13 +147,38 @@ def build_panoramas(db, panos_src, positions, cfg, bundle):
         # horizonte lido visualmente (fração da altura); acima do centro -> vOffset negativo
         voff = round(-(0.5 - hz[int(pm.sol)]) * vaov, 2) if vaov and int(pm.sol) in hz else 0.0
         db.execute(
-            "INSERT OR REPLACE INTO panoramas VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT OR REPLACE INTO panoramas VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (pm.id, pm.sol, pm.site, pm.drive, pos.lat, pos.lon, pm.center_az, 360.0, vaov, voff,
-             img_rel, pm.page_url, pm.credit, f"{pos.source}_exato", pm.date, pos.yaw, w, h),
+             img_rel, pm.page_url, pm.credit, f"{pos.source}_exato", pm.date, pos.yaw, w, h, "Navcam"),
         )
         n_ok += 1
+    n_ok += build_color_panoramas(db, positions, cfg, bundle)
     log(f"[5] panoramas: {n_ok} gravados, {n_skip} sem posição")
     return n_ok
+
+
+def build_color_panoramas(db, positions, cfg, bundle) -> int:
+    """Panoramas Mastcam coloridos (config.yaml: color_panos). Entram como linha
+    especial: posição da parada, haov 360, vaov pela proporção da imagem."""
+    n = 0
+    for c in cfg.get("color_panos") or []:
+        src = (ROOT / c["image"]).resolve()
+        pos = positions.locate(c["site"], c["drive"], c["sol"])
+        if pos is None or not src.exists():
+            log(f"   ! panorama colorido {c['id']}: parada {c['site']}_{c['drive']} ou imagem ausente; ignorado")
+            continue
+        img_rel = f"panos/{c['id']}.jpg"
+        w, h = prepare_pano_image(src, bundle / img_rel, c.get("max_width", cfg["pano_max_width"]))
+        vaov = round(360 * h / w, 3)
+        voff = round(-(0.5 - c["horizon_frac"]) * vaov, 2) if "horizon_frac" in c else 0.0
+        db.execute(
+            "INSERT OR REPLACE INTO panoramas VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (f"{c['sol']}_{c['site']}_{c['drive']}_color", c["sol"], c["site"], c["drive"],
+             pos.lat, pos.lon, c["center_az"], 360.0, vaov, voff, img_rel, c.get("page_url", ""),
+             c["credit"], c.get("pos_quality", "estimada"), None, pos.yaw, w, h, c.get("camera", "Mastcam")),
+        )
+        n += 1
+    return n
 
 
 def download(session, url: str, dest: Path) -> bool:
@@ -216,7 +241,11 @@ def build_orbital(cfg, bundle, win):
     if not tif.exists():
         log("[9] base orbital: boxwork.tif não encontrado; mapa sem imagem de fundo")
         return None
-    import rasterio
+    try:
+        import rasterio
+    except ImportError:
+        log("[9] base orbital: rasterio não instalado; mapa sem imagem de fundo")
+        return None
 
     with rasterio.open(tif) as src:
         d2m = R_MARS * 3.141592653589793 / 180

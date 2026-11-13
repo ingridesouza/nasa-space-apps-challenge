@@ -27,6 +27,25 @@ photos:
   min_az_sep: 40          # separação mínima entre azimutes na mesma parada
 
 pano_max_width: 8000
+
+# Panoramas coloridos Mastcam (um por parada), gravados à parte dos Navcam.
+# Posição = a da parada (site/drive) ; center_az calibrado à mão contra a Navcam
+# do sol 4711 (mesma parada): mesa à direita e crista à esquerda dão ~140°, a
+# antena/RTG dá ~128° -> 135° ± 10°. vaov vem da proporção da imagem; horizon_frac
+# é a altura do horizonte lida na imagem (fração, 0 = topo).
+color_panos:
+  - id: color_PIA26696B
+    sol: 4718                  # sol de referência do furo (Nevado Sajama)
+    site: 120
+    drive: 82                  # parada 120_82 (sol 4711), a mais próxima de 4718
+    image: ../dados_panoramas/panos/colored_images.png
+    max_width: 8192
+    center_az: 135.0
+    horizon_frac: 0.27
+    page_url: https://science.nasa.gov/resource/curiosity-rover-360-degree-panorama-nevado-sajama/
+    credit: NASA/JPL-Caltech/MSSS
+    camera: Mastcam
+    pos_quality: estimada
 orbital_crop_m: 100
 mars_radius_m: 3396190
 
