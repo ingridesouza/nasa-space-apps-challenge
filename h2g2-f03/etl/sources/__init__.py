@@ -25,3 +25,15 @@ def make_sources(name: str, cfg: dict, base_dir: Path, cache_dir: Path, waypoint
         )
         return positions, panos, photos
     raise ValueError(f"fonte desconhecida: {name!r} (use mock | public | official)")
+
+
+def make_science_sources(name: str, cfg: dict, base_dir: Path):
+    """Fábrica da F04: devolve (ScienceSource, OrbitalMineralSource)."""
+    if name == "mock":
+        from .mock import MockOrbital, MockScience
+        return MockScience(base_dir / cfg["science"]["targets_csv"]), MockOrbital()
+    if name in ("public", "official"):
+        raise NotImplementedError(
+            f"science_source '{name}' ainda não implementada (tarefas 3 a 5 da F04). "
+            "Use science_source: mock no config.yaml.")
+    raise ValueError(f"science_source desconhecida: {name!r} (use mock | public | official)")

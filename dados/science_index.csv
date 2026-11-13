@@ -1,0 +1,711 @@
+sol,site,drive,instrumento,alvo,arquivo,url,n_obs
+4550,116,1260,APXS,,apb_801438263rwp45501161260_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04550/apb_801438263rwp45501161260_______p1.csv,1
+4550,116,1260,APXS,,apb_801446487rwp45501161260_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04550/apb_801446487rwp45501161260_______p1.csv,1
+4550,116,1260,ChemCam LIBS,Dripping_Springs,CL5_801418231EDR_F1161260CCAM03549M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04550/,10
+4550,116,1260,ChemCam RMI,Dripping_Springs,CR0_801418062EDR_F1161260CCAM03549M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04550/,2
+4551,116,1260,ChemCam LIBS,Mountain_Center,CL5_801496497EDR_F1161260CCAM04549M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04551/,10
+4551,116,1260,ChemCam RMI,Mountain_Center,CR0_801496329EDR_F1161260CCAM04549M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04551/,2
+4553,116,1596,APXS,,apb_801675773rwp45531161596_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04553/apb_801675773rwp45531161596_______p1.csv,1
+4553,116,1596,ChemCam LIBS,Sisquoc_River,CL5_801685527EDR_F1161596CCAM01553M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04553/,10
+4553,116,1596,ChemCam RMI,LD_Beyond_4553a,CR0_801686270EDR_F1161596CCAM02553M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04553/,12
+4553,116,1596,ChemCam RMI,Sisquoc_River,CR0_801685363EDR_F1161596CCAM01553M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04553/,2
+4554,116,1596,ChemCam LIBS,Santa_Monica_Bay,CL5_801773187EDR_F1161596CCAM01554M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04554/,10
+4554,116,1596,ChemCam RMI,LD_Beyond_4554a,CR0_801774434EDR_F1161596CCAM03554M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04554/,12
+4554,116,1596,ChemCam RMI,LD_Texoli_4554,CR0_801774110EDR_F1161596CCAM02554M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04554/,3
+4554,116,1596,ChemCam RMI,Santa_Monica_Bay,CR0_801773023EDR_F1161596CCAM01554M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04554/,2
+4554,116,1806,ChemCam RMI,Zenith Sky Flat,CR0_801789203EDR_F1161806CCAM05554M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04554/,2
+4555,116,1806,ChemCam LIBS,aegis_post_4555a,CL5_801859809EDR_F1161806CCAM06554M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04555/,10
+4555,116,1806,ChemCam RMI,aegis_post_4555a,CR0_801859611EDR_F1161806CCAM06554M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04555/,2
+4556,116,1806,ChemCam LIBS,La_Tuna_Canyon,CL5_801954642EDR_F1161806CCAM01556M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04556/,10
+4556,116,1806,ChemCam RMI,Encinal_Canyon,CR0_801955289EDR_F1161806CCAM02556M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04556/,13
+4556,116,1806,ChemCam RMI,La_Tuna_Canyon,CR0_801954456EDR_F1161806CCAM01556M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04556/,2
+4557,116,1806,ChemCam LIBS,Cooper_Canyon,CL5_802038752EDR_F1161806CCAM03556M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04557/,10
+4557,116,1806,ChemCam RMI,Cooper_Canyon,CR0_802038587EDR_F1161806CCAM03556M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04557/,2
+4559,116,1890,APXS,,apb_802237246rwp45591161890_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04559/apb_802237246rwp45591161890_______p1.csv,1
+4559,116,1890,APXS,,apb_802245546rwp45591161890_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04559/apb_802245546rwp45591161890_______p1.csv,1
+4559,116,1890,ChemCam LIBS,Stough_Saddle,CL5_802216281EDR_F1161890CCAM01559M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04559/,10
+4559,116,1890,ChemCam RMI,Stough_Saddle,CR0_802216108EDR_F1161890CCAM01559M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04559/,2
+4560,116,1890,ChemCam LIBS,Holcomb_Valley_ccam,CL5_802301366EDR_F1161890CCAM02559M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04560/,10
+4560,116,1890,ChemCam RMI,Holcomb_Valley_ccam,CR0_802301194EDR_F1161890CCAM02559M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04560/,2
+4560,116,1890,ChemCam RMI,LD_Boxwork_4560,CR0_802302053EDR_F1161890CCAM03559M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04560/,10
+4561,116,1944,APXS,,apb_802415236rwp45611161944_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04561/apb_802415236rwp45611161944_______p1.csv,1
+4561,116,1944,APXS,,apb_802423273rwp45611161944_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04561/apb_802423273rwp45611161944_______p1.csv,1
+4561,116,1944,ChemCam LIBS,Mission_Trails,CL5_802400783EDR_F1161944CCAM01561M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04561/,10
+4561,116,1944,ChemCam RMI,LD_MisheM_4561,CR0_802401440EDR_F1161944CCAM02561M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04561/,10
+4561,116,1944,ChemCam RMI,Mission_Trails,CR0_802400605EDR_F1161944CCAM01561M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04561/,2
+4562,116,1944,ChemCam LIBS,Altadena_ccam,CL5_802483699EDR_F1161944CCAM03561M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04562/,10
+4562,116,1944,ChemCam RMI,Altadena_ccam,CR0_802483536EDR_F1161944CCAM03561M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04562/,2
+4562,116,1944,ChemCam RMI,LD_Yardangs_4562,CR0_802484376EDR_F1161944CCAM04561M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04562/,7
+4563,116,1944,ChemCam LIBS,Chino_Hills,CL5_802563643EDR_F1161944CCAM01563M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04563/,10
+4563,116,1944,ChemCam RMI,Chino_Hills,CR0_802563472EDR_F1161944CCAM01563M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04563/,2
+4563,116,1944,ChemCam RMI,LD_Texoli_4563,CR0_802567285EDR_F1161944CCAM04563M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04563/,6
+4565,116,1944,ChemCam LIBS,Chavez_Ravine,CL5_802739344EDR_F1161944CCAM05563M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04565/,10
+4565,116,1944,ChemCam RMI,Chavez_Ravine,CR0_802739175EDR_F1161944CCAM05563M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04565/,2
+4566,116,1944,CheMin,,cmb_802930324min45661161944ch00113p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-chemin-4-rdr-v1/mslcmn_1xxx/data/rdr5/cmb_802930324min45661161944ch00113p1.csv,1
+4566,116,1944,ChemCam RMI,Altadena_RMI,CR0_802838703EDR_F1161944CCAM01566M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04566/,2
+4567,116,1944,ChemCam LIBS,Altadena_tailings,CL9_802932677EDR_F1161944CCAM03566M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04567/,10
+4567,116,1944,ChemCam LIBS,Bolsa_Chica,CL5_802931734EDR_F1161944CCAM02566M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04567/,10
+4567,116,1944,ChemCam RMI,Altadena_tailings,CR0_802932485EDR_F1161944CCAM03566M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04567/,2
+4567,116,1944,ChemCam RMI,Bolsa_Chica,CR0_802931548EDR_F1161944CCAM02566M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04567/,2
+4567,116,1944,ChemCam RMI,LD_Boxwork_4567,CR0_802933513EDR_F1161944CCAM04566M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04567/,9
+4567,116,1944,ChemCam RMI,LD_Texoli_4567,CR0_802934190EDR_F1161944CCAM05566M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04567/,9
+4568,116,1944,APXS,,apb_803040891rwp45681161944_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04568/apb_803040891rwp45681161944_______p1.csv,1
+4568,116,1944,ChemCam LIBS,Altadena_drill_hole,CL5_803015863EDR_F1161944CCAM01568M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04568/,10
+4568,116,1944,ChemCam RMI,Altadena_drill_hole,CR0_803015700EDR_F1161944CCAM01568M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04568/,2
+4568,116,1944,ChemCam RMI,LD_Boxwork_4568,CR0_803016520EDR_F1161944CCAM02568M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04568/,15
+4569,116,1944,ChemCam LIBS,Altadena_tgs_ccam,CL5_803104363EDR_F1161944CCAM03568M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04569/,10
+4569,116,1944,ChemCam RMI,Altadena_tgs_ccam,CR0_803104199EDR_F1161944CCAM03568M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04569/,2
+4569,116,1944,ChemCam RMI,LD_Beyond_4568,CR0_803105807EDR_F1161944CCAM05568M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04569/,5
+4569,116,1944,ChemCam RMI,LD_MisheM_4568,CR0_803105016EDR_F1161944CCAM04568M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04569/,10
+4570,116,1944,APXS,,apb_803212653rwp45701161944_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04570/apb_803212653rwp45701161944_______p1.csv,1
+4570,116,1944,APXS,,apb_803220691rwp45701161944_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04570/apb_803220691rwp45701161944_______p1.csv,1
+4570,116,1944,ChemCam LIBS,Boulder_Bay,CL9_803193892EDR_F1161944CCAM02570M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04570/,5
+4570,116,1944,ChemCam LIBS,Silver_Lake,CL5_803192997EDR_F1161944CCAM01570M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04570/,10
+4570,116,1944,ChemCam RMI,Boulder_Bay,CR0_803193648EDR_F1161944CCAM02570M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04570/,2
+4570,116,1944,ChemCam RMI,Silver_Lake,CR0_803192833EDR_F1161944CCAM01570M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04570/,2
+4571,116,1944,ChemCam LIBS,Signal_Hill,CL9_803280896EDR_F1161944CCAM04570M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04571/,15
+4571,116,1944,ChemCam RMI,Signal_Hill,CR0_803280712EDR_F1161944CCAM04570M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04571/,2
+4572,116,2214,ChemCam LIBS,aegis_post_4572a,CL5_803370179EDR_F1162214CCAM06570M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04572/,10
+4572,116,2214,ChemCam RMI,aegis_post_4572a,CR0_803369975EDR_F1162214CCAM06570M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04572/,2
+4573,116,2214,APXS,,apb_803455145rwp45731162214_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04573/apb_803455145rwp45731162214_______p1.csv,1
+4573,116,2214,ChemCam LIBS,Tacos,CL5_803458762EDR_F1162214CCAM01573M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04573/,10
+4573,116,2214,ChemCam RMI,LD_MisheM_4573,CR0_803459421EDR_F1162214CCAM02573M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04573/,10
+4573,116,2214,ChemCam RMI,Tacos,CR0_803458594EDR_F1162214CCAM01573M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04573/,2
+4575,116,2562,APXS,,apb_803628913rwp45751162562_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04575/apb_803628913rwp45751162562_______p1.csv,1
+4577,117,0,APXS,,apb_803835188rwp45771170000_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04577/apb_803835188rwp45771170000_______p1.csv,1
+4577,117,0,APXS,,apb_803843432rwp45771170000_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04577/apb_803843432rwp45771170000_______p1.csv,1
+4580,117,168,APXS,,apb_804072789rwp45801170168_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04580/apb_804072789rwp45801170168_______p1.csv,1
+4580,117,168,ChemCam LIBS,Ayparavi,CL5_804079118EDR_F1170168CCAM01580M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04580/,10
+4580,117,168,ChemCam RMI,Ayparavi,CR0_804078934EDR_F1170168CCAM01580M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04580/,2
+4580,117,168,ChemCam RMI,LD_B_Ridge_4580,CR0_804080692EDR_F1170168CCAM03580M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04580/,10
+4580,117,168,ChemCam RMI,LD_MisheM_4580,CR0_804079825EDR_F1170168CCAM02580M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04580/,15
+4582,117,420,ChemCam LIBS,Lasana,CL5_804258186EDR_F1170420CCAM01582M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04582/,10
+4582,117,420,ChemCam RMI,LD_MisheM_4582,CR0_804259900EDR_F1170420CCAM03582M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04582/,12
+4582,117,420,ChemCam RMI,LD_Uyuni_4582,CR0_804258831EDR_F1170420CCAM02582M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04582/,16
+4582,117,420,ChemCam RMI,Lasana,CR0_804258014EDR_F1170420CCAM01582M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04582/,2
+4583,117,492,ChemCam LIBS,Cal Target 10,CL5_804347328EDR_F1170492CCAM04582M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04583/,2
+4583,117,492,ChemCam LIBS,Cal Target 2,CL5_804348063EDR_F1170492CCAM04582M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04583/,2
+4583,117,492,ChemCam LIBS,Cal Target 3,CL5_804347927EDR_F1170492CCAM04582M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04583/,2
+4583,117,492,ChemCam LIBS,Cal Target 4,CL5_804347788EDR_F1170492CCAM04582M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04583/,2
+4583,117,492,ChemCam LIBS,Cal Target 9,CL5_804347632EDR_F1170492CCAM04582M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04583/,2
+4583,117,492,ChemCam RMI,Cal Target 10,CR0_804347583EDR_F1170492CCAM04582M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04583/,1
+4583,117,492,ChemCam RMI,Cal Target 2,CR0_804348148EDR_F1170492CCAM04582M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04583/,1
+4583,117,492,ChemCam RMI,Cal Target 3,CR0_804348010EDR_F1170492CCAM04582M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04583/,1
+4583,117,492,ChemCam RMI,Cal Target 4,CR0_804347871EDR_F1170492CCAM04582M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04583/,1
+4583,117,492,ChemCam RMI,Cal Target 9,CR0_804347715EDR_F1170492CCAM04582M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04583/,1
+4584,117,492,APXS,,apb_804455400rwp45841170492_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04584/apb_804455400rwp45841170492_______p1.csv,1
+4584,117,492,APXS,,apb_804464319rwp45841170492_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04584/apb_804464319rwp45841170492_______p1.csv,1
+4584,117,492,ChemCam LIBS,Ticatica,CL5_804437279EDR_F1170492CCAM01584M4.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04584/,10
+4584,117,492,ChemCam RMI,LD_LaChimba_4584,CR0_804437928EDR_F1170492CCAM02584M4.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04584/,10
+4584,117,492,ChemCam RMI,Ticatica,CR0_804437112EDR_F1170492CCAM01584M4.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04584/,2
+4585,117,492,ChemCam LIBS,Rio_Huasco,CL9_804524681EDR_F1170492CCAM04584M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04585/,15
+4585,117,492,ChemCam LIBS,Rio_Huasco_dawn,CL9_804498872EDR_F1170492CCAM03584M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04585/,15
+4585,117,492,ChemCam RMI,Rio_Huasco,CR0_804524505EDR_F1170492CCAM04584M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04585/,2
+4585,117,492,ChemCam RMI,Rio_Huasco_dawn,CR0_804498605EDR_F1170492CCAM03584M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04585/,2
+4586,117,702,APXS,,apb_804633078rwp45861170702_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04586/apb_804633078rwp45861170702_______p1.csv,1
+4586,117,702,APXS,,apb_804641318rwp45861170702_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04586/apb_804641318rwp45861170702_______p1.csv,1
+4586,117,702,ChemCam LIBS,La_Vega,CL5_804615566EDR_F1170702CCAM01586M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04586/,10
+4586,117,702,ChemCam RMI,LD_MisheM_4586,CR0_804616222EDR_F1170702CCAM02586M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04586/,10
+4586,117,702,ChemCam RMI,La_Vega,CR0_804615405EDR_F1170702CCAM01586M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04586/,2
+4587,117,702,ChemCam LIBS,La_Joya,CL5_804702254EDR_F1170702CCAM03586M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04587/,10
+4587,117,702,ChemCam RMI,LD_Boxwork_4587,CR0_804702900EDR_F1170702CCAM04586M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04587/,10
+4587,117,702,ChemCam RMI,La_Joya,CR0_804702091EDR_F1170702CCAM03586M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04587/,2
+4588,117,840,APXS,,apb_804782863rwp45881170840_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04588/apb_804782863rwp45881170840_______p1.csv,1
+4588,117,840,ChemCam LIBS,Taltal,CL5_804791333EDR_F1170840CCAM01588M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04588/,10
+4588,117,840,ChemCam RMI,LD_MisheM_4588,CR0_804792091EDR_F1170840CCAM02588M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04588/,10
+4588,117,840,ChemCam RMI,Taltal,CR0_804791172EDR_F1170840CCAM01588M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04588/,2
+4589,117,1008,ChemCam LIBS,Amboro,CL5_804886353EDR_F1171008CCAM01589M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04589/,10
+4589,117,1008,ChemCam RMI,Amboro,CR0_804886186EDR_F1171008CCAM01589M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04589/,2
+4589,117,1008,ChemCam RMI,LD_MisheM_4589,CR0_804887010EDR_F1171008CCAM02589M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04589/,10
+4590,117,1008,APXS,,apb_804988493rwp45901171008_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04590/apb_804988493rwp45901171008_______p1.csv,1
+4590,117,1008,APXS,,apb_804997366rwp45901171008_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04590/apb_804997366rwp45901171008_______p1.csv,1
+4590,117,1008,ChemCam LIBS,Tunari,CL5_804967418EDR_F1171008CCAM03589M3.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04590/,10
+4590,117,1008,ChemCam RMI,Tunari,CR0_804967244EDR_F1171008CCAM03589M3.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04590/,2
+4591,117,1008,ChemCam LIBS,Huellas_DD_ccam,CL5_805056642EDR_F1171008CCAM04589M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04591/,10
+4591,117,1008,ChemCam RMI,Huellas_DD_ccam,CR0_805056479EDR_F1171008CCAM04589M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04591/,2
+4591,117,1008,ChemCam RMI,LD_MisheM_4591,CR0_805057291EDR_F1171008CCAM05589M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04591/,10
+4592,117,1122,ChemCam LIBS,aegis_post_4592a,CL5_805136284EDR_F1171122CCAM07589M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04592/,10
+4592,117,1122,ChemCam RMI,aegis_post_4592a,CR0_805136094EDR_F1171122CCAM07589M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04592/,2
+4593,117,1122,APXS,,apb_805255099rwp45931171122_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04593/apb_805255099rwp45931171122_______p1.csv,1
+4593,117,1122,APXS,,apb_805263561rwp45931171122_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04593/apb_805263561rwp45931171122_______p1.csv,1
+4593,117,1122,ChemCam LIBS,Pichu_Pichu,CL5_805241262EDR_F1171122CCAM01593M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04593/,10
+4593,117,1122,ChemCam RMI,LD_boxwork_4593,CR0_805241945EDR_F1171122CCAM02593M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04593/,10
+4593,117,1122,ChemCam RMI,Pichu_Pichu,CR0_805241080EDR_F1171122CCAM01593M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04593/,2
+4594,117,1122,ChemCam LIBS,Tacune,CL5_805317972EDR_F1171122CCAM03593M3.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04594/,10
+4594,117,1122,ChemCam RMI,LD_bedrock_4594,CR0_805318623EDR_F1171122CCAM04593M3.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04594/,10
+4594,117,1122,ChemCam RMI,Tacune,CR0_805317808EDR_F1171122CCAM03593M3.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04594/,2
+4595,117,1434,APXS,,apb_805431613rwp45951171434_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04595/apb_805431613rwp45951171434_______p1.csv,1
+4595,117,1434,APXS,,apb_805440536rwp45951171434_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04595/apb_805440536rwp45951171434_______p1.csv,1
+4595,117,1434,ChemCam LIBS,Los_Andes,CL5_805412469EDR_F1171434CCAM01595M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04595/,10
+4595,117,1434,ChemCam RMI,LD_MisheM_4595,CR0_805413119EDR_F1171434CCAM02595M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04595/,10
+4595,117,1434,ChemCam RMI,Los_Andes,CR0_805412300EDR_F1171434CCAM01595M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04595/,2
+4596,117,1434,ChemCam LIBS,Torotoro,CL5_805490839EDR_F1171434CCAM03595M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04596/,10
+4596,117,1434,ChemCam RMI,LD_Paniri_4596,CR0_805491494EDR_F1171434CCAM04595M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04596/,14
+4596,117,1434,ChemCam RMI,Torotoro,CR0_805490669EDR_F1171434CCAM03595M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04596/,2
+4597,117,1890,APXS,,apb_805610634rwp45971171890_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04597/apb_805610634rwp45971171890_______p1.csv,1
+4597,117,1890,APXS,,apb_805618977rwp45971171890_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04597/apb_805618977rwp45971171890_______p1.csv,1
+4597,117,1890,ChemCam LIBS,Rio_San_Mateo,CL5_805592632EDR_F1171890CCAM01597M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04597/,10
+4597,117,1890,ChemCam RMI,LD_Boxwork_4597,CR0_805593300EDR_F1171890CCAM02597M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04597/,11
+4597,117,1890,ChemCam RMI,Rio_San_Mateo,CR0_805592469EDR_F1171890CCAM01597M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04597/,2
+4598,117,1890,ChemCam LIBS,Yerbas_Buenas,CL5_805675442EDR_F1171890CCAM03597M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04598/,10
+4598,117,1890,ChemCam RMI,LD_Boxwork_4598,CR0_805676110EDR_F1171890CCAM04597M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04598/,10
+4598,117,1890,ChemCam RMI,Yerbas_Buenas,CR0_805675279EDR_F1171890CCAM03597M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04598/,2
+4599,117,2166,ChemCam LIBS,CCAM_CCCT_Pass_Quartet,CL9_805769573EDR_F1172166CCAM15120M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04599/,4
+4599,117,2166,ChemCam LIBS,aegis_post_4599a,CL5_805768674EDR_F1172166CCAM06597M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04599/,10
+4599,117,2166,ChemCam RMI,CCAM_CCCT_Pass_Quartet,CR0_805769441EDR_F1172166CCAM15120M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04599/,4
+4599,117,2166,ChemCam RMI,aegis_post_4599a,CR0_805768480EDR_F1172166CCAM06597M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04599/,2
+4600,117,2166,ChemCam LIBS,El_Olivo,CL5_805855004EDR_F1172166CCAM01600M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04600/,10
+4600,117,2166,ChemCam RMI,El_Olivo,CR0_805854837EDR_F1172166CCAM01600M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04600/,2
+4600,117,2166,ChemCam RMI,LD_MisheM_4600,CR0_805855667EDR_F1172166CCAM02600M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04600/,10
+4601,117,2370,ChemCam LIBS,aegis_post_4601a,CL5_805945339EDR_F1172370CCAM04600M3.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04601/,10
+4601,117,2370,ChemCam RMI,aegis_post_4601a,CR0_805945139EDR_F1172370CCAM04600M3.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04601/,2
+4602,117,2370,APXS,,apb_806025713rwp46021172370_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04602/apb_806025713rwp46021172370_______p1.csv,1
+4602,117,2370,ChemCam LIBS,Altamora,CL5_806032621EDR_F1172370CCAM01602M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04602/,10
+4602,117,2370,ChemCam RMI,Altamora,CR0_806032429EDR_F1172370CCAM01602M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04602/,2
+4602,117,2370,ChemCam RMI,LD_Boxwork_4602,CR0_806033275EDR_F1172370CCAM02602M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04602/,10
+4603,117,2490,ChemCam LIBS,aegis_post_4603a,CL5_806122244EDR_F1172490CCAM04602M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04603/,10
+4603,117,2490,ChemCam RMI,aegis_post_4603a,CR0_806122040EDR_F1172490CCAM04602M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04603/,2
+4604,117,2490,APXS,,apb_806231447rwp46041172490_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04604/apb_806231447rwp46041172490_______p1.csv,1
+4604,117,2490,APXS,,apb_806239960rwp46041172490_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04604/apb_806239960rwp46041172490_______p1.csv,1
+4604,117,2490,ChemCam LIBS,Vicuna_ccam,CL5_806211269EDR_F1172490CCAM01604M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04604/,10
+4604,117,2490,ChemCam RMI,Vicuna_ccam,CR0_806211110EDR_F1172490CCAM01604M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04604/,2
+4605,117,2490,ChemCam LIBS,Chachani,CL5_806301293EDR_F1172490CCAM02604M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04605/,10
+4605,117,2490,ChemCam RMI,Chachani,CR0_806301127EDR_F1172490CCAM02604M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04605/,2
+4605,117,2490,ChemCam RMI,LD_Boxworks_4605,CR0_806302035EDR_F1172490CCAM03604M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04605/,10
+4608,117,2538,APXS,,apb_806586996rwp46081172538_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04608/apb_806586996rwp46081172538_______p1.csv,1
+4608,117,2538,APXS,,apb_806595205rwp46081172538_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04608/apb_806595205rwp46081172538_______p1.csv,1
+4608,117,2538,ChemCam LIBS,Lake_Titicaca,CL5_806568377EDR_F1172538CCAM01607M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04608/,10
+4608,117,2538,ChemCam RMI,LD_MisheM_4607a,CR0_806569032EDR_F1172538CCAM02607M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04608/,10
+4608,117,2538,ChemCam RMI,Lake_Titicaca,CR0_806568215EDR_F1172538CCAM01607M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04608/,2
+4609,117,2538,ChemCam LIBS,Yana_Qaqa,CL5_806651808EDR_F1172538CCAM01609M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04609/,10
+4609,117,2538,ChemCam RMI,LD_CuevaV_4609,CR0_806652680EDR_F1172538CCAM03609M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04609/,10
+4609,117,2538,ChemCam RMI,LD_MisheM_4609,CR0_806653436EDR_F1172538CCAM04609M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04609/,10
+4609,117,2538,ChemCam RMI,Punta_De_Lobos,CR0_806652443EDR_F1172538CCAM02609M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04609/,1
+4609,117,2538,ChemCam RMI,Yana_Qaqa,CR0_806651645EDR_F1172538CCAM01609M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04609/,2
+4610,117,2730,ChemCam LIBS,aegis_post_4610a,CL5_806743796EDR_F1172730CCAM06609M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04610/,10
+4610,117,2730,ChemCam RMI,aegis_post_4610a,CR0_806743585EDR_F1172730CCAM06609M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04610/,2
+4611,117,2730,APXS,,apb_806853213rwp46111172730_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04611/apb_806853213rwp46111172730_______p1.csv,1
+4611,117,2730,APXS,,apb_806861453rwp46111172730_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04611/apb_806861453rwp46111172730_______p1.csv,1
+4611,117,2730,ChemCam LIBS,El_Algodon,CL5_806832386EDR_F1172730CCAM01611M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04611/,10
+4611,117,2730,ChemCam RMI,El_Algodon,CR0_806832224EDR_F1172730CCAM01611M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04611/,2
+4611,117,2730,ChemCam RMI,LD_Uyuni_4611a,CR0_806833120EDR_F1172730CCAM02611M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04611/,16
+4612,117,2730,ChemCam LIBS,La_Coca,CL5_806921419EDR_F1172730CCAM03611M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04612/,10
+4612,117,2730,ChemCam RMI,Arequipa_Airport,CR0_806922059EDR_F1172730CCAM04611M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04612/,10
+4612,117,2730,ChemCam RMI,La_Coca,CR0_806921245EDR_F1172730CCAM03611M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04612/,2
+4613,117,2850,ChemCam LIBS,aegis_post_4613a,CL5_807009802EDR_F1172850CCAM06611M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04613/,10
+4613,117,2850,ChemCam RMI,aegis_post_4613a,CR0_807009606EDR_F1172850CCAM06611M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04613/,2
+4614,117,2850,APXS,,apb_807091123rwp46141172850_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04614/apb_807091123rwp46141172850_______p1.csv,1
+4614,117,2850,ChemCam LIBS,Dona_Ines,CL5_807097531EDR_F1172850CCAM01614M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04614/,10
+4614,117,2850,ChemCam RMI,Caine,CR0_807098213EDR_F1172850CCAM02614M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04614/,10
+4614,117,2850,ChemCam RMI,Dona_Ines,CR0_807097355EDR_F1172850CCAM01614M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04614/,2
+4615,118,0,ChemCam LIBS,aegis_post_4615a,CL5_807187366EDR_F1180000CCAM04614M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04615/,10
+4615,118,0,ChemCam RMI,aegis_post_4615a,CR0_807187159EDR_F1180000CCAM04614M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04615/,2
+4616,118,0,APXS,,apb_807268619rwp46161180000_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04616/apb_807268619rwp46161180000_______p1.csv,1
+4616,118,0,ChemCam LIBS,El_Salto_ccam,CL5_807274379EDR_F1180000CCAM01616M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04616/,10
+4616,118,0,ChemCam RMI,El_Salto_ccam,CR0_807274202EDR_F1180000CCAM01616M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04616/,2
+4616,118,0,ChemCam RMI,Llullaillaco,CR0_807275075EDR_F1180000CCAM02616M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04616/,9
+4617,118,162,ChemCam LIBS,aegis_post_4617a,CL5_807360780EDR_F1180162CCAM04616M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04617/,10
+4617,118,162,ChemCam RMI,aegis_post_4617a,CR0_807360584EDR_F1180162CCAM04616M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04617/,2
+4618,118,162,APXS,,apb_807446156rwp46181180162_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04618/apb_807446156rwp46181180162_______p1.csv,1
+4618,118,162,ChemCam LIBS,Airport_Domes,CL5_807452666EDR_F1180162CCAM01618M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04618/,10
+4618,118,162,ChemCam RMI,Airport_Domes,CR0_807452505EDR_F1180162CCAM01618M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04618/,2
+4618,118,162,ChemCam RMI,Pontezuelo,CR0_807453395EDR_F1180162CCAM02618M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04618/,10
+4619,118,198,ChemCam LIBS,aegis_post_4619a,CL5_807538649EDR_F1180198CCAM04618M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04619/,10
+4619,118,198,ChemCam RMI,aegis_post_4619a,CR0_807538458EDR_F1180198CCAM04618M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04619/,2
+4620,118,198,APXS,,apb_807652436rwp46201180198_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04620/apb_807652436rwp46201180198_______p1.csv,1
+4620,118,198,APXS,,apb_807660659rwp46201180198_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04620/apb_807660659rwp46201180198_______p1.csv,1
+4620,118,198,ChemCam LIBS,El_Carrizo,CL5_807630549EDR_F1180198CCAM01620M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04620/,10
+4620,118,198,ChemCam RMI,El_Carrizo,CR0_807630386EDR_F1180198CCAM01620M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04620/,2
+4621,118,198,ChemCam LIBS,Huasco,CL5_807710552EDR_F1180198CCAM02620M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04621/,10
+4621,118,198,ChemCam RMI,Huasco,CR0_807710368EDR_F1180198CCAM02620M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04621/,2
+4621,118,198,ChemCam RMI,LD_Boxwork_4621,CR0_807711217EDR_F1180198CCAM03620M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04621/,10
+4622,118,372,APXS,,apb_807830570rwp46221180372_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04622/apb_807830570rwp46221180372_______p1.csv,1
+4622,118,372,APXS,,apb_807838192rwp46221180372_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04622/apb_807838192rwp46221180372_______p1.csv,1
+4622,118,372,ChemCam LIBS,Vicguna,CL5_807809061EDR_F1180372CCAM01622M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04622/,10
+4622,118,372,ChemCam RMI,LD_Butte_4622,CR0_807809794EDR_F1180372CCAM02622M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04622/,8
+4622,118,372,ChemCam RMI,Vicguna,CR0_807808897EDR_F1180372CCAM01622M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04622/,2
+4623,118,372,ChemCam LIBS,Ibare,CL5_807892687EDR_F1180372CCAM03622M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04623/,10
+4623,118,372,ChemCam RMI,Ibare,CR0_807892522EDR_F1180372CCAM03622M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04623/,2
+4623,118,372,ChemCam RMI,LD_MisheM_4623,CR0_807893549EDR_F1180372CCAM04622M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04623/,12
+4624,118,534,APXS,,apb_808007129rwp46241180534_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04624/apb_808007129rwp46241180534_______p1.csv,1
+4624,118,534,APXS,,apb_808015402rwp46241180534_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04624/apb_808015402rwp46241180534_______p1.csv,1
+4624,118,534,ChemCam LIBS,Bococo,CL5_807985586EDR_F1180534CCAM01624M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04624/,10
+4624,118,534,ChemCam RMI,Bococo,CR0_807985408EDR_F1180534CCAM01624M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04624/,2
+4624,118,534,ChemCam RMI,LD_Boxwork_4624,CR0_807986427EDR_F1180534CCAM02624M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04624/,10
+4625,118,534,ChemCam LIBS,Britania,CL5_808076341EDR_F1180534CCAM03624M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04625/,10
+4625,118,534,ChemCam RMI,Britania,CR0_808076173EDR_F1180534CCAM03624M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04625/,2
+4626,118,762,ChemCam LIBS,aegis_post_4626a,CL5_808164303EDR_F1180762CCAM05624M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04626/,10
+4626,118,762,ChemCam RMI,aegis_post_4626a,CR0_808164107EDR_F1180762CCAM05624M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04626/,2
+4627,118,762,APXS,,apb_808273408rwp46271180762_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04627/apb_808273408rwp46271180762_______p1.csv,1
+4627,118,762,APXS,,apb_808281676rwp46271180762_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04627/apb_808281676rwp46271180762_______p1.csv,1
+4627,118,762,ChemCam LIBS,Palma_Seca,CL5_808253097EDR_F1180762CCAM01627M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04627/,10
+4627,118,762,ChemCam RMI,LD_Boxwork_4627,CR0_808253759EDR_F1180762CCAM02627M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04627/,10
+4627,118,762,ChemCam RMI,Palma_Seca,CR0_808252928EDR_F1180762CCAM01627M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04627/,2
+4628,118,762,ChemCam LIBS,Yavari,CL5_808336004EDR_F1180762CCAM03627M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04628/,10
+4628,118,762,ChemCam RMI,LD_MisheM_4628,CR0_808336694EDR_F1180762CCAM04627M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04628/,10
+4628,118,762,ChemCam RMI,Yavari,CR0_808335840EDR_F1180762CCAM03627M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04628/,2
+4629,118,924,APXS,,apb_808422310rwp46291180924_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04629/apb_808422310rwp46291180924_______p1.csv,1
+4629,118,924,ChemCam LIBS,Camanchaca,CL5_808428518EDR_F1180924CCAM01629M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04629/,10
+4629,118,924,ChemCam RMI,Camanchaca,CR0_808428356EDR_F1180924CCAM01629M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04629/,2
+4629,118,924,ChemCam RMI,LD_Boxwork_4629,CR0_808429248EDR_F1180924CCAM02629M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04629/,10
+4631,118,1194,APXS,,apb_808628588rwp46311181194_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04631/apb_808628588rwp46311181194_______p1.csv,1
+4631,118,1194,APXS,,apb_808636811rwp46311181194_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04631/apb_808636811rwp46311181194_______p1.csv,1
+4631,118,1194,ChemCam LIBS,El_Cerrito,CL5_808607115EDR_F1181194CCAM01631M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04631/,10
+4631,118,1194,ChemCam RMI,El_Cerrito,CR0_808606928EDR_F1181194CCAM01631M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04631/,2
+4631,118,1194,ChemCam RMI,Zeremote,CR0_808607769EDR_F1181194CCAM02631M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04631/,10
+4632,118,1194,ChemCam LIBS,La_Tirana,CL5_808696455EDR_F1181194CCAM03631M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04632/,10
+4632,118,1194,ChemCam RMI,La_Tirana,CR0_808696293EDR_F1181194CCAM03631M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04632/,2
+4633,118,1194,ChemCam LIBS,Tres_Puentes,CL5_808775496EDR_F1181194CCAM04631M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04633/,10
+4633,118,1194,ChemCam RMI,Tres_Puentes,CR0_808775323EDR_F1181194CCAM04631M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04633/,2
+4634,118,1350,APXS,,apb_808866564rwp46341181350_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04634/apb_808866564rwp46341181350_______p1.csv,1
+4634,118,1350,ChemCam LIBS,Gil_ccam,CL5_808872779EDR_F1181350CCAM01634M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04634/,10
+4634,118,1350,ChemCam RMI,Gil_ccam,CR0_808872609EDR_F1181350CCAM01634M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04634/,2
+4634,118,1350,ChemCam RMI,LD_MisheM_4634,CR0_808873454EDR_F1181350CCAM02634M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04634/,10
+4635,118,1608,ChemCam LIBS,aegis_post_4635a,CL5_808955889EDR_F1181608CCAM04634M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04635/,10
+4635,118,1608,ChemCam RMI,aegis_post_4635a,CR0_808955697EDR_F1181608CCAM04634M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04635/,2
+4636,118,1608,APXS,,apb_809043743rwp46361181608_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04636/apb_809043743rwp46361181608_______p1.csv,1
+4636,118,1608,ChemCam LIBS,El_Tapado,CL5_809049575EDR_F1181608CCAM01636M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04636/,10
+4636,118,1608,ChemCam RMI,El_Tapado,CR0_809049393EDR_F1181608CCAM01636M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04636/,2
+4636,118,1608,ChemCam RMI,LD_MisheM_4636,CR0_809050398EDR_F1181608CCAM02636M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04636/,9
+4637,118,1752,ChemCam LIBS,aegis_post_4637a,CL5_809137738EDR_F1181752CCAM04636M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04637/,10
+4637,118,1752,ChemCam RMI,aegis_post_4637a,CR0_809137528EDR_F1181752CCAM04636M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04637/,2
+4638,118,1752,APXS,,apb_809248804rwp46381181752_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04638/apb_809248804rwp46381181752_______p1.csv,1
+4638,118,1752,APXS,,apb_809257818rwp46381181752_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04638/apb_809257818rwp46381181752_______p1.csv,1
+4638,118,1752,ChemCam LIBS,Samaipata,CL5_809229978EDR_F1181752CCAM01638M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04638/,10
+4638,118,1752,ChemCam RMI,LD_MisheM_4638a,CR0_809230647EDR_F1181752CCAM02638M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04638/,9
+4638,118,1752,ChemCam RMI,Samaipata,CR0_809229794EDR_F1181752CCAM01638M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04638/,2
+4639,118,1752,ChemCam LIBS,Fort_Samaipata,CL5_809318458EDR_F1181752CCAM03638M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04639/,10
+4639,118,1752,ChemCam RMI,Fort_Samaipata,CR0_809318285EDR_F1181752CCAM03638M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04639/,2
+4639,118,1752,ChemCam RMI,LD_Dragones_4638c,CR0_809320004EDR_F1181752CCAM05638M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04639/,3
+4639,118,1752,ChemCam RMI,LD_MisheM_4638b,CR0_809319140EDR_F1181752CCAM04638M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04639/,15
+4640,118,1776,ChemCam LIBS,aegis_post_4640a,CL5_809405252EDR_F1181776CCAM07638M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04640/,10
+4640,118,1776,ChemCam RMI,aegis_post_4640a,CR0_809405044EDR_F1181776CCAM07638M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04640/,2
+4641,118,1776,APXS,,apb_809487615rwp46411181776_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04641/apb_809487615rwp46411181776_______p1.csv,1
+4641,118,1776,ChemCam LIBS,Sauces_ccam,CL5_809493819EDR_F1181776CCAM01641M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04641/,10
+4641,118,1776,ChemCam RMI,LD_Mojo_4641,CR0_809494497EDR_F1181776CCAM02641M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04641/,10
+4641,118,1776,ChemCam RMI,Sauces_ccam,CR0_809493645EDR_F1181776CCAM01641M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04641/,2
+4642,118,1944,ChemCam LIBS,aegis_post_4642a,CL5_809575003EDR_F1181944CCAM04641M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04642/,10
+4642,118,1944,ChemCam RMI,aegis_post_4642a,CR0_809574805EDR_F1181944CCAM04641M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04642/,2
+4643,118,1944,APXS,,apb_809665556rwp46431181944_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04643/apb_809665556rwp46431181944_______p1.csv,1
+4643,118,1944,ChemCam LIBS,Corani,CL5_809670765EDR_F1181944CCAM01643M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04643/,10
+4643,118,1944,ChemCam RMI,Babati_Mons_4643,CR0_809672415EDR_F1181944CCAM03643M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04643/,10
+4643,118,1944,ChemCam RMI,Cocotoni_4643,CR0_809671420EDR_F1181944CCAM02643M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04643/,12
+4643,118,1944,ChemCam RMI,Corani,CR0_809670575EDR_F1181944CCAM01643M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04643/,2
+4644,118,2028,ChemCam LIBS,aegis_post_4644a,CL5_809753087EDR_F1182028CCAM05643M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04644/,10
+4644,118,2028,ChemCam RMI,aegis_post_4644a,CR0_809752889EDR_F1182028CCAM05643M3.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04644/,2
+4645,118,2028,ChemCam LIBS,Pica,CL5_809848628EDR_F1182028CCAM01645M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04645/,10
+4645,118,2028,ChemCam RMI,LD_Briones_4645,CR0_809849277EDR_F1182028CCAM02645M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04645/,5
+4645,118,2028,ChemCam RMI,Pica,CR0_809848453EDR_F1182028CCAM01645M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04645/,2
+4646,118,2028,APXS,,apb_809960041rwp46461182028_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04646/apb_809960041rwp46461182028_______p1.csv,1
+4646,118,2028,APXS,,apb_809968251rwp46461182028_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04646/apb_809968251rwp46461182028_______p1.csv,1
+4646,118,2028,ChemCam LIBS,Tin_Tin,CL5_809937311EDR_F1182028CCAM03645M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04646/,10
+4646,118,2028,ChemCam RMI,LD_La_Serena_4646,CR0_809937959EDR_F1182028CCAM04645M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04646/,10
+4646,118,2028,ChemCam RMI,Tin_Tin,CR0_809937142EDR_F1182028CCAM03645M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04646/,2
+4647,118,2028,ChemCam LIBS,Olca,CL5_810026122EDR_F1182028CCAM05645M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04647/,10
+4647,118,2028,ChemCam RMI,LD_PV_4647,CR0_810026886EDR_F1182028CCAM06645M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04647/,10
+4647,118,2028,ChemCam RMI,Olca,CR0_810025944EDR_F1182028CCAM05645M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04647/,2
+4648,118,2268,ChemCam LIBS,aegis_post_4648a,CL5_810107680EDR_F1182268CCAM08645M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04648/,10
+4648,118,2268,ChemCam RMI,aegis_post_4648a,CR0_810107465EDR_F1182268CCAM08645M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04648/,2
+4649,118,2268,APXS,,apb_810226173rwp46491182268_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04649/apb_810226173rwp46491182268_______p1.csv,1
+4649,118,2268,APXS,,apb_810234524rwp46491182268_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04649/apb_810234524rwp46491182268_______p1.csv,1
+4649,118,2268,ChemCam LIBS,Caracote,CL5_810203133EDR_F1182268CCAM01649M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04649/,10
+4649,118,2268,ChemCam RMI,Caracote,CR0_810202947EDR_F1182268CCAM01649M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04649/,2
+4649,118,2268,ChemCam RMI,LD_Babati_4649b,CR0_810204799EDR_F1182268CCAM03649M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04649/,4
+4649,118,2268,ChemCam RMI,LD_Pama_4649a,CR0_810203905EDR_F1182268CCAM02649M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04649/,12
+4650,118,2268,ChemCam LIBS,Caranavi,CL5_810292184EDR_F1182268CCAM04649M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04650/,10
+4650,118,2268,ChemCam RMI,Caranavi,CR0_810292001EDR_F1182268CCAM04649M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04650/,2
+4650,118,2268,ChemCam RMI,LD_Yardangs_4649c,CR0_810292851EDR_F1182268CCAM05649M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04650/,10
+4651,118,2304,ChemCam LIBS,aegis_post_4651a,CL5_810380950EDR_F1182304CCAM07649M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04651/,10
+4651,118,2304,ChemCam RMI,aegis_post_4651a,CR0_810380738EDR_F1182304CCAM07649M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04651/,2
+4652,118,2304,APXS,,apb_810492368rwp46521182304_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04652/apb_810492368rwp46521182304_______p1.csv,1
+4652,118,2304,APXS,,apb_810500777rwp46521182304_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04652/apb_810500777rwp46521182304_______p1.csv,1
+4652,118,2304,ChemCam LIBS,Valle_Fertil,CL5_810467628EDR_F1182304CCAM01652M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04652/,10
+4652,118,2304,ChemCam RMI,LD_MisheM_4652a,CR0_810468903EDR_F1182304CCAM03652M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04652/,7
+4652,118,2304,ChemCam RMI,LD_MisheM_4652b,CR0_810469377EDR_F1182304CCAM04652M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04652/,10
+4652,118,2304,ChemCam RMI,LD_Paniri_4652,CR0_810468373EDR_F1182304CCAM02652M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04652/,6
+4652,118,2304,ChemCam RMI,Valle_Fertil,CR0_810467457EDR_F1182304CCAM01652M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04652/,2
+4653,118,2304,ChemCam LIBS,Norte_Grande,CL5_810558831EDR_F1182304CCAM05652M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04653/,10
+4653,118,2304,ChemCam RMI,LD_PV_4653,CR0_810559584EDR_F1182304CCAM06652M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04653/,10
+4653,118,2304,ChemCam RMI,Norte_Grande,CR0_810558645EDR_F1182304CCAM05652M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04653/,2
+4654,118,2466,ChemCam LIBS,aegis_post_4654a,CL5_810645582EDR_F1182466CCAM08652M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04654/,10
+4654,118,2466,ChemCam RMI,aegis_post_4654a,CR0_810645371EDR_F1182466CCAM08652M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04654/,2
+4655,118,2466,APXS,,apb_810731160rwp46551182466_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04655/apb_810731160rwp46551182466_______p1.csv,1
+4655,118,2466,ChemCam LIBS,Quechua,CL5_810735998EDR_F1182466CCAM01655M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04655/,10
+4655,118,2466,ChemCam RMI,Hollow_Edge_4655,CR0_810736725EDR_F1182466CCAM02655M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04655/,10
+4655,118,2466,ChemCam RMI,Quechua,CR0_810735826EDR_F1182466CCAM01655M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04655/,2
+4656,118,2538,ChemCam LIBS,Chita,CL5_810825889EDR_F1182538CCAM01656M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04656/,10
+4656,118,2538,ChemCam RMI,Chita,CR0_810825710EDR_F1182538CCAM01656M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04656/,2
+4656,118,2538,ChemCam RMI,LD_Coya_4656,CR0_810826642EDR_F1182538CCAM02656M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04656/,12
+4657,118,2538,ChemCam LIBS,Chaco,CL5_810907551EDR_F1182538CCAM03656M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04657/,10
+4657,118,2538,ChemCam RMI,Chaco,CR0_810907371EDR_F1182538CCAM03656M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04657/,2
+4657,118,2538,ChemCam RMI,LD_Macha_4657,CR0_810909975EDR_F1182538CCAM05656M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04657/,10
+4658,118,2538,APXS,,apb_811028923rwp46581182538_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04658/apb_811028923rwp46581182538_______p1.csv,1
+4658,118,2538,ChemCam LIBS,Tarata,CL5_810998354EDR_F1182538CCAM01658M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04658/,10
+4658,118,2538,ChemCam RMI,LD_El_Toro_4658,CR0_810999029EDR_F1182538CCAM02658M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04658/,16
+4658,118,2538,ChemCam RMI,Tarata,CR0_810998168EDR_F1182538CCAM01658M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04658/,2
+4659,118,2538,APXS,,apb_811116984rwp46591182538_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04659/apb_811116984rwp46591182538_______p1.csv,1
+4659,118,2538,ChemCam LIBS,Cobres,CL5_811091269EDR_F1182538CCAM03658M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04659/,10
+4659,118,2538,ChemCam RMI,Cobres,CR0_811091085EDR_F1182538CCAM03658M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04659/,2
+4660,118,2538,ChemCam LIBS,El_Sombrio_ccam,CL5_811174390EDR_F1182538CCAM04658M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04660/,10
+4660,118,2538,ChemCam RMI,El_Sombrio_ccam,CR0_811174216EDR_F1182538CCAM04658M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04660/,2
+4661,118,2742,APXS,,apb_811291522rwp46611182742_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04661/apb_811291522rwp46611182742_______p1.csv,1
+4661,118,2742,APXS,,apb_811299745rwp46611182742_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04661/apb_811299745rwp46611182742_______p1.csv,1
+4661,118,2742,ChemCam LIBS,Palcoco,CL5_811266549EDR_F1182742CCAM01661M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04661/,10
+4661,118,2742,ChemCam RMI,LD_MisheM_4661,CR0_811267206EDR_F1182742CCAM02661M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04661/,10
+4661,118,2742,ChemCam RMI,LD_Yardangs_4661,CR0_811268013EDR_F1182742CCAM03661M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04661/,12
+4661,118,2742,ChemCam RMI,Palcoco,CR0_811266370EDR_F1182742CCAM01661M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04661/,2
+4662,118,2742,ChemCam LIBS,Cuz_Cuz,CL5_811350309EDR_F1182742CCAM04661M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04662/,10
+4662,118,2742,ChemCam LIBS,Toledo,CL9_811351123EDR_F1182742CCAM05661M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04662/,5
+4662,118,2742,ChemCam RMI,Cuz_Cuz,CR0_811350130EDR_F1182742CCAM04661M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04662/,2
+4662,118,2742,ChemCam RMI,Toledo,CR0_811350946EDR_F1182742CCAM05661M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04662/,2
+4663,118,2832,APXS,,apb_811468774rwp46631182832_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04663/apb_811468774rwp46631182832_______p1.csv,1
+4663,118,2832,APXS,,apb_811477291rwp46631182832_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04663/apb_811477291rwp46631182832_______p1.csv,1
+4663,118,2832,ChemCam LIBS,Las_Pintadas,CL5_811441918EDR_F1182832CCAM01663M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04663/,10
+4663,118,2832,ChemCam RMI,LD_Yardangs_4663a,CR0_811442579EDR_F1182832CCAM02663M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04663/,12
+4663,118,2832,ChemCam RMI,Las_Pintadas,CR0_811441742EDR_F1182832CCAM01663M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04663/,2
+4664,118,2832,ChemCam LIBS,Camina,CL5_811528915EDR_F1182832CCAM03663M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04664/,10
+4664,118,2832,ChemCam RMI,Camina,CR0_811528740EDR_F1182832CCAM03663M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04664/,2
+4664,118,2832,ChemCam RMI,LD_Potosi_4663b,CR0_811530452EDR_F1182832CCAM05663M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04664/,3
+4664,118,2832,ChemCam RMI,Puerto_Barador,CR0_811529575EDR_F1182832CCAM04663M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04664/,12
+4665,118,3156,APXS,,apb_811646547rwp46651183156_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04665/apb_811646547rwp46651183156_______p1.csv,1
+4665,118,3156,APXS,,apb_811654779rwp46651183156_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04665/apb_811654779rwp46651183156_______p1.csv,1
+4665,118,3156,ChemCam LIBS,Nieve,CL5_811622663EDR_F1183156CCAM01665M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04665/,10
+4665,118,3156,ChemCam RMI,Nieve,CR0_811622486EDR_F1183156CCAM01665M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04665/,2
+4666,118,3156,ChemCam LIBS,Sacaba,CL5_811711367EDR_F1183156CCAM02665M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04666/,10
+4666,118,3156,ChemCam RMI,Sacaba,CR0_811711189EDR_F1183156CCAM02665M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04666/,2
+4666,118,3156,ChemCam RMI,Ticaco,CR0_811712031EDR_F1183156CCAM03665M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04666/,8
+4667,118,3156,ChemCam LIBS,Salinas,CL5_811798855EDR_F1183156CCAM04665M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04667/,10
+4667,118,3156,ChemCam RMI,LD_Yardangs_4665a,CR0_811799601EDR_F1183156CCAM05665M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04667/,12
+4667,118,3156,ChemCam RMI,Salinas,CR0_811798675EDR_F1183156CCAM04665M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04667/,2
+4668,119,0,APXS,,apb_811912664rwp46681190000_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04668/apb_811912664rwp46681190000_______p1.csv,1
+4668,119,0,APXS,,apb_811921007rwp46681190000_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04668/apb_811921007rwp46681190000_______p1.csv,1
+4668,119,0,ChemCam LIBS,Rio_Turbio,CL5_811888881EDR_F1190000CCAM01668M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04668/,10
+4668,119,0,ChemCam RMI,Cordillera_4668,CR0_811889548EDR_F1190000CCAM02668M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04668/,10
+4668,119,0,ChemCam RMI,Rio_Turbio,CR0_811888701EDR_F1190000CCAM01668M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04668/,2
+4669,119,0,ChemCam LIBS,Saltpetre_ccam,CL5_811972361EDR_F1190000CCAM03668M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04669/,10
+4669,119,0,ChemCam RMI,MisheM_4669,CR0_811973037EDR_F1190000CCAM04668M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04669/,10
+4669,119,0,ChemCam RMI,Saltpetre_ccam,CR0_811972183EDR_F1190000CCAM03668M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04669/,2
+4670,119,198,APXS,,apb_812090308rwp46701190198_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04670/apb_812090308rwp46701190198_______p1.csv,1
+4670,119,198,APXS,,apb_812098591rwp46701190198_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04670/apb_812098591rwp46701190198_______p1.csv,1
+4670,119,198,ChemCam LIBS,Isla_de_la_Luna,CL5_812064041EDR_F1190198CCAM01670M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04670/,10
+4670,119,198,ChemCam RMI,Isla_de_la_Luna,CR0_812063870EDR_F1190198CCAM01670M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04670/,2
+4670,119,198,ChemCam RMI,Monte_Grande,CR0_812064791EDR_F1190198CCAM02670M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04670/,14
+4671,119,198,ChemCam LIBS,Isla_del_Sol,CL5_812152417EDR_F1190198CCAM03670M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04671/,10
+4671,119,198,ChemCam RMI,Isla_del_Sol,CR0_812152237EDR_F1190198CCAM03670M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04671/,2
+4672,119,486,APXS,,apb_812267901rwp46721190486_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04672/apb_812267901rwp46721190486_______p1.csv,1
+4672,119,486,APXS,,apb_812276137rwp46721190486_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04672/apb_812276137rwp46721190486_______p1.csv,1
+4672,119,486,ChemCam LIBS,Yuto,CL5_812244091EDR_F1190486CCAM01672M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04672/,10
+4672,119,486,ChemCam RMI,Laguna_Aricota,CR0_812244853EDR_F1190486CCAM02672M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04672/,12
+4672,119,486,ChemCam RMI,Yuto,CR0_812243911EDR_F1190486CCAM01672M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04672/,2
+4673,119,486,ChemCam LIBS,Uli_Uli_ccam,CL5_812327614EDR_F1190486CCAM03672M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04673/,10
+4673,119,486,ChemCam RMI,Uli_Uli_ccam,CR0_812327441EDR_F1190486CCAM03672M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04673/,2
+4674,119,846,ChemCam LIBS,aegis_post_4674a,CL5_812416564EDR_F1190846CCAM05672M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04674/,10
+4674,119,846,ChemCam RMI,aegis_post_4674a,CR0_812416370EDR_F1190846CCAM05672M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04674/,2
+4675,119,846,ChemCam LIBS,Ancohuma,CL5_812510467EDR_F1190846CCAM01675M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04675/,10
+4675,119,846,ChemCam RMI,Ancohuma,CR0_812510296EDR_F1190846CCAM01675M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04675/,2
+4675,119,846,ChemCam RMI,Chela_4675,CR0_812511232EDR_F1190846CCAM02675M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04675/,12
+4676,119,846,APXS,,apb_812622948rwp46761190846_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04676/apb_812622948rwp46761190846_______p1.csv,1
+4676,119,846,APXS,,apb_812631216rwp46761190846_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04676/apb_812631216rwp46761190846_______p1.csv,1
+4676,119,846,ChemCam LIBS,Ascanti,CL5_812598645EDR_F1190846CCAM03675M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04676/,10
+4676,119,846,ChemCam RMI,Ascanti,CR0_812598468EDR_F1190846CCAM03675M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04676/,2
+4676,119,846,ChemCam RMI,LD_Cordillera_4676,CR0_812599399EDR_F1190846CCAM04675M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04676/,12
+4677,119,846,ChemCam LIBS,La_Escala_ccam,CL5_812682347EDR_F1190846CCAM05675M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04677/,10
+4677,119,846,ChemCam RMI,LD_Cordillera_4677,CR0_812683085EDR_F1190846CCAM06675M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04677/,12
+4677,119,846,ChemCam RMI,La_Escala_ccam,CR0_812682183EDR_F1190846CCAM05675M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04677/,2
+4678,119,924,ChemCam LIBS,aegis_post_4678a,CL5_812772065EDR_F1190924CCAM08675M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04678/,10
+4678,119,924,ChemCam RMI,aegis_post_4678a,CR0_812771875EDR_F1190924CCAM08675M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04678/,2
+4679,119,924,APXS,,apb_812889313rwp46791190924_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04679/apb_812889313rwp46791190924_______p1.csv,1
+4679,119,924,APXS,,apb_812897535rwp46791190924_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04679/apb_812897535rwp46791190924_______p1.csv,1
+4679,119,924,ChemCam LIBS,Cobija,CL5_812865092EDR_F1190924CCAM01679M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04679/,10
+4679,119,924,ChemCam RMI,Chepica_4679,CR0_812865837EDR_F1190924CCAM02679M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04679/,12
+4679,119,924,ChemCam RMI,Cobija,CR0_812864915EDR_F1190924CCAM01679M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04679/,2
+4680,119,924,ChemCam LIBS,Colomi,CL5_812950438EDR_F1190924CCAM03679M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04680/,10
+4680,119,924,ChemCam RMI,Chela_4680,CR0_812951198EDR_F1190924CCAM04679M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04680/,10
+4680,119,924,ChemCam RMI,Colomi,CR0_812950256EDR_F1190924CCAM03679M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04680/,2
+4681,119,1344,ChemCam LIBS,aegis_post_4681a,CL5_813038410EDR_F1191344CCAM06679M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04681/,10
+4681,119,1344,ChemCam RMI,aegis_post_4681a,CR0_813038213EDR_F1191344CCAM06679M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04681/,2
+4682,119,1344,ChemCam LIBS,Totora,CL5_813128204EDR_F1191344CCAM01682M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04682/,10
+4682,119,1344,ChemCam RMI,Lag_Socompa_4682,CR0_813128951EDR_F1191344CCAM02682M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04682/,10
+4682,119,1344,ChemCam RMI,Totora,CR0_813128033EDR_F1191344CCAM01682M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04682/,2
+4683,119,1344,APXS,,apb_813244332rwp46831191344_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04683/apb_813244332rwp46831191344_______p1.csv,1
+4683,119,1344,APXS,,apb_813252543rwp46831191344_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04683/apb_813252543rwp46831191344_______p1.csv,1
+4683,119,1344,ChemCam LIBS,Uribe,CL5_813215041EDR_F1191344CCAM03682M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04683/,10
+4683,119,1344,ChemCam RMI,Lag_Aricota_4683,CR0_813215788EDR_F1191344CCAM04682M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04683/,10
+4683,119,1344,ChemCam RMI,Uribe,CR0_813214850EDR_F1191344CCAM03682M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04683/,2
+4684,119,1344,ChemCam LIBS,Rio_Figueroa_ccam,CL5_813304332EDR_F1191344CCAM05682M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04684/,10
+4684,119,1344,ChemCam RMI,Lag_Aricota_4684,CR0_813305085EDR_F1191344CCAM06682M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04684/,10
+4684,119,1344,ChemCam RMI,Rio_Figueroa_ccam,CR0_813304153EDR_F1191344CCAM05682M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04684/,2
+4685,119,1554,ChemCam LIBS,aegis_post_4685a,CL5_813393104EDR_F1191554CCAM08682M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04685/,10
+4685,119,1554,ChemCam RMI,aegis_post_4685a,CR0_813392894EDR_F1191554CCAM08682M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04685/,2
+4686,119,1554,APXS,,apb_813510596rwp46861191554_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04686/apb_813510596rwp46861191554_______p1.csv,1
+4686,119,1554,APXS,,apb_813518803rwp46861191554_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04686/apb_813518803rwp46861191554_______p1.csv,1
+4686,119,1554,ChemCam LIBS,Camar,CL5_813483775EDR_F1191554CCAM01686M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04686/,10
+4686,119,1554,ChemCam RMI,Camar,CR0_813483589EDR_F1191554CCAM01686M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04686/,2
+4687,119,1554,ChemCam LIBS,Rodeo_Chico_ccam,CL5_813571113EDR_F1191554CCAM02686M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04687/,10
+4687,119,1554,ChemCam RMI,LD_Conchi_4687,CR0_813571797EDR_F1191554CCAM03686M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04687/,14
+4687,119,1554,ChemCam RMI,Rodeo_Chico_ccam,CR0_813570934EDR_F1191554CCAM02686M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04687/,2
+4688,119,1722,ChemCam LIBS,aegis_post_4688a,CL5_813659409EDR_F1191722CCAM05686M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04688/,10
+4688,119,1722,ChemCam RMI,aegis_post_4688a,CR0_813659214EDR_F1191722CCAM05686M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04688/,2
+4689,119,1722,ChemCam LIBS,CCAM_CCCT_Pass_Quartet,CL9_813751053EDR_F1191722CCAM15120M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04689/,4
+4689,119,1722,ChemCam LIBS,Valle_d_l_Luna_cc,CL5_813750253EDR_F1191722CCAM01689M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04689/,10
+4689,119,1722,ChemCam RMI,CCAM_CCCT_Pass_Quartet,CR0_813750913EDR_F1191722CCAM15120M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04689/,4
+4689,119,1722,ChemCam RMI,Valle_d_l_Luna_cc,CR0_813750092EDR_F1191722CCAM01689M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04689/,2
+4690,119,1722,APXS,,apb_813865884rwp46901191722_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04690/apb_813865884rwp46901191722_______p1.csv,1
+4690,119,1722,APXS,,apb_813874126rwp46901191722_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04690/apb_813874126rwp46901191722_______p1.csv,1
+4691,119,1722,ChemCam LIBS,Motaca,CL5_813926250EDR_F1191722CCAM02689M3.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04691/,10
+4691,119,1722,ChemCam RMI,LD_MG_ridge_4691,CR0_813926905EDR_F1191722CCAM03689M3.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04691/,12
+4691,119,1722,ChemCam RMI,Motaca,CR0_813926085EDR_F1191722CCAM02689M3.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04691/,2
+4695,119,1722,CheMin,,cmb_814381120min46951191722ch00113p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-chemin-4-rdr-v1/mslcmn_1xxx/data/rdr5/cmb_814381120min46951191722ch00113p1.csv,1
+4702,119,1722,ChemCam LIBS,Nazareth,CL5_814903247EDR_F1191722CCAM01702M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04702/,10
+4702,119,1722,ChemCam LIBS,VdlLuna_tailings_2,CL9_814904078EDR_F1191722CCAM02702M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04702/,10
+4702,119,1722,ChemCam RMI,Nazareth,CR0_814903082EDR_F1191722CCAM01702M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04702/,2
+4702,119,1722,ChemCam RMI,VdlLuna_RMI,CR0_814904844EDR_F1191722CCAM03702M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04702/,2
+4702,119,1722,ChemCam RMI,VdlLuna_tailings_2,CR0_814903883EDR_F1191722CCAM02702M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04702/,2
+4703,119,1722,ChemCam LIBS,Pachica_2,CL5_814991648EDR_F1191722CCAM04702M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04703/,10
+4703,119,1722,ChemCam RMI,LD_MonteG_4703,CR0_814992529EDR_F1191722CCAM05702M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04703/,11
+4703,119,1722,ChemCam RMI,Pachica_2,CR0_814991439EDR_F1191722CCAM04702M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04703/,2
+4704,119,1722,ChemCam LIBS,VdlLuna_hole_4704,CL5_815080843EDR_F1191722CCAM01704M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04704/,10
+4704,119,1722,ChemCam RMI,VdlLuna_hole_4704,CR0_815080662EDR_F1191722CCAM01704M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04704/,2
+4705,119,1722,ChemCam LIBS,Palpana_2,CL5_815168966EDR_F1191722CCAM02704M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04705/,10
+4705,119,1722,ChemCam RMI,LD_BW_Ridge_4705,CR0_815169705EDR_F1191722CCAM03704M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04705/,13
+4705,119,1722,ChemCam RMI,Palpana_2,CR0_815168792EDR_F1191722CCAM02704M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04705/,2
+4706,119,1722,APXS,,apb_815291021rwp47061191722_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04706/apb_815291021rwp47061191722_______p1.csv,1
+4706,119,1722,ChemCam LIBS,Bandera,CL5_815259846EDR_F1191722CCAM01706M4.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04706/,10
+4706,119,1722,ChemCam RMI,Bandera,CR0_815259681EDR_F1191722CCAM01706M4.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04706/,2
+4707,119,1722,ChemCam LIBS,Anapia,CL5_815344906EDR_F1191722CCAM02706M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04707/,10
+4707,119,1722,ChemCam RMI,Anapia,CR0_815344734EDR_F1191722CCAM02706M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04707/,2
+4707,119,1722,ChemCam RMI,LD_Yardangs_4707,CR0_815345577EDR_F1191722CCAM03706M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04707/,20
+4708,119,1722,ChemCam LIBS,VdlLuna_hole_4708,CL5_815434359EDR_F1191722CCAM04706M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04708/,10
+4708,119,1722,ChemCam RMI,VdlLuna_hole_4708,CR0_815434177EDR_F1191722CCAM04706M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04708/,2
+4709,119,1722,APXS,,apb_815526048rwp47091191722_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04709/apb_815526048rwp47091191722_______p1.csv,1
+4709,119,1722,ChemCam LIBS,VdlLuna_RAGE_4709,CL9_815525199EDR_F1191722CCAM01709M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04709/,10
+4709,119,1722,ChemCam RMI,MG_wall_4709,CR0_815525966EDR_F1191722CCAM02709M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04709/,5
+4709,119,1722,ChemCam RMI,VdlLuna_RAGE_4709,CR0_815525040EDR_F1191722CCAM01709M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04709/,2
+4710,120,0,ChemCam LIBS,aegis_post_4710a,CL5_815612460EDR_F1200000CCAM04709M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04710/,10
+4710,120,0,ChemCam RMI,aegis_post_4710a,CR0_815612255EDR_F1200000CCAM04709M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04710/,2
+4711,120,0,APXS,,apb_815703916rwp47111200000_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04711/apb_815703916rwp47111200000_______p1.csv,1
+4711,120,0,ChemCam LIBS,Luna_Muerta,CL5_815703360EDR_F1200000CCAM01711M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04711/,10
+4711,120,0,ChemCam RMI,Luna_Muerta,CR0_815703179EDR_F1200000CCAM01711M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04711/,2
+4711,120,0,ChemCam RMI,MG_wall_4711,CR0_815704116EDR_F1200000CCAM02711M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04711/,10
+4712,120,82,ChemCam LIBS,aegis_post_4712a,CL5_815790238EDR_F1200082CCAM04711M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04712/,10
+4712,120,82,ChemCam RMI,aegis_post_4712a,CR0_815790025EDR_F1200082CCAM04711M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04712/,2
+4713,120,82,APXS,,apb_815909932rwp47131200082_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04713/apb_815909932rwp47131200082_______p1.csv,1
+4713,120,82,APXS,,apb_815916525rwp47131200082_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04713/apb_815916525rwp47131200082_______p1.csv,1
+4713,120,82,ChemCam LIBS,Nevado_Sajama_cc,CL5_815879765EDR_F1200082CCAM01713M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04713/,10
+4713,120,82,ChemCam RMI,Nevado_Sajama_cc,CR0_815879602EDR_F1200082CCAM01713M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04713/,2
+4714,120,82,ChemCam LIBS,Carralito,CL5_815967510EDR_F1200082CCAM02713M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04714/,10
+4714,120,82,ChemCam RMI,Carralito,CR0_815967326EDR_F1200082CCAM02713M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04714/,2
+4714,120,82,ChemCam RMI,LD_MisheM_4714a,CR0_815968259EDR_F1200082CCAM03713M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04714/,9
+4714,120,82,ChemCam RMI,LD_MisheM_4714b,CR0_815968882EDR_F1200082CCAM04713M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04714/,10
+4715,120,82,ChemCam LIBS,Carrasco,CL5_816057252EDR_F1200082CCAM05713M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04715/,10
+4715,120,82,ChemCam RMI,Carrasco,CR0_816057067EDR_F1200082CCAM05713M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04715/,2
+4716,120,82,APXS,,apb_816173139rwp47161200082_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04716/apb_816173139rwp47161200082_______p1.csv,1
+4716,120,82,APXS,,apb_816180959rwp47161200082_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04716/apb_816180959rwp47161200082_______p1.csv,1
+4716,120,82,ChemCam LIBS,Camarones,CL5_816146348EDR_F1200082CCAM01716M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04716/,10
+4716,120,82,ChemCam RMI,Camarones,CR0_816146155EDR_F1200082CCAM01716M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04716/,2
+4717,120,82,ChemCam LIBS,Arenas_Blancas,CL5_816233915EDR_F1200082CCAM02716M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04717/,10
+4717,120,82,ChemCam RMI,Arenas_Blancas,CR0_816233730EDR_F1200082CCAM02716M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04717/,2
+4717,120,82,ChemCam RMI,MG_4717,CR0_816234741EDR_F1200082CCAM03716M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04717/,6
+4718,120,82,ChemCam LIBS,Exaltacion,CL5_816323927EDR_F1200082CCAM01718M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04718/,10
+4718,120,82,ChemCam RMI,Exaltacion,CR0_816323735EDR_F1200082CCAM01718M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04718/,2
+4719,120,82,ChemCam LIBS,TesoroPangal_ccam,CL5_816411919EDR_F1200082CCAM02718M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04719/,10
+4719,120,82,ChemCam RMI,LD_MisheM_4718,CR0_816412597EDR_F1200082CCAM03718M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04719/,10
+4719,120,82,ChemCam RMI,TesoroPangal_ccam,CR0_816411744EDR_F1200082CCAM02718M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04719/,2
+4720,120,82,CheMin,,cmb_816588834min47201200082ch00113p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-chemin-4-rdr-v1/mslcmn_1xxx/data/rdr5/cmb_816588834min47201200082ch00113p1.csv,1
+4720,120,82,ChemCam LIBS,Nevado_Saj_hole_1,CL5_816501195EDR_F1200082CCAM01720M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04720/,10
+4720,120,82,ChemCam LIBS,Nevado_Saj_tail,CL9_816502030EDR_F1200082CCAM02720M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04720/,10
+4720,120,82,ChemCam RMI,Nevado_Saj_hole_1,CR0_816501021EDR_F1200082CCAM01720M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04720/,2
+4720,120,82,ChemCam RMI,Nevado_Saj_tail,CR0_816501836EDR_F1200082CCAM02720M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04720/,2
+4721,120,82,ChemCam LIBS,Guacharo,CL5_816589861EDR_F1200082CCAM03720M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04721/,10
+4721,120,82,ChemCam RMI,Guacharo,CR0_816589661EDR_F1200082CCAM03720M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04721/,2
+4721,120,82,ChemCam RMI,LD_MisheM_4720,CR0_816590679EDR_F1200082CCAM04720M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04721/,10
+4723,120,82,ChemCam LIBS,Larati,CL5_816767534EDR_F1200082CCAM01723M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04723/,10
+4723,120,82,ChemCam RMI,LD_Wall_4723,CR0_816768187EDR_F1200082CCAM02723M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04723/,10
+4723,120,82,ChemCam RMI,Larati,CR0_816767344EDR_F1200082CCAM01723M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04723/,2
+4724,120,82,ChemCam LIBS,Cabrito,CL5_816855780EDR_F1200082CCAM03723M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04724/,10
+4724,120,82,ChemCam RMI,Cabrito,CR0_816855614EDR_F1200082CCAM03723M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04724/,2
+4724,120,82,ChemCam RMI,LD_NS_Wall_4724,CR0_816856448EDR_F1200082CCAM04723M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04724/,5
+4725,120,82,ChemCam LIBS,Tioza,CL5_816945081EDR_F1200082CCAM01725M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04725/,10
+4725,120,82,ChemCam RMI,Tioza,CR0_816944897EDR_F1200082CCAM01725M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04725/,2
+4726,120,82,ChemCam LIBS,Ichoa,CL5_817033167EDR_F1200082CCAM02725M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04726/,10
+4726,120,82,ChemCam RMI,Ichoa,CR0_817032985EDR_F1200082CCAM02725M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04726/,2
+4726,120,82,ChemCam RMI,LD_MisheM_4726,CR0_817035171EDR_F1200082CCAM04725M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04726/,10
+4726,120,82,ChemCam RMI,MG_wall_4726,CR0_817033834EDR_F1200082CCAM03725M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04726/,10
+4727,120,82,ChemCam LIBS,Tambillo,CL5_817122753EDR_F1200082CCAM01727M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04727/,10
+4727,120,82,ChemCam RMI,LD_Paniri_4727,CR0_817123511EDR_F1200082CCAM02727M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04727/,10
+4727,120,82,ChemCam RMI,Tambillo,CR0_817122568EDR_F1200082CCAM01727M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04727/,2
+4728,120,82,ChemCam RMI,LD_NS_ext_4728,CR0_817212283EDR_F1200082CCAM03727M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04728/,7
+4729,120,82,ChemCam LIBS,Tapacari,CL5_817299675EDR_F1200082CCAM04727M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04729/,10
+4729,120,82,ChemCam RMI,Tapacari,CR0_817299483EDR_F1200082CCAM04727M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04729/,2
+4730,120,82,ChemCam LIBS,Tapaquilcha,CL5_817387884EDR_F1200082CCAM05727M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04730/,10
+4730,120,82,ChemCam RMI,LD_MisheM_4730,CR0_817388642EDR_F1200082CCAM06727M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04730/,10
+4730,120,82,ChemCam RMI,Tapaquilcha,CR0_817387709EDR_F1200082CCAM05727M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04730/,2
+4731,120,82,ChemCam LIBS,Abanay,CL5_817477785EDR_F1200082CCAM01731M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04731/,10
+4731,120,82,ChemCam RMI,Abanay,CR0_817477567EDR_F1200082CCAM01731M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04731/,2
+4731,120,82,ChemCam RMI,LD_MisheM_4731,CR0_817478524EDR_F1200082CCAM02731M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04731/,10
+4732,120,82,ChemCam LIBS,Canchones,CL5_817565981EDR_F1200082CCAM03731M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04732/,10
+4732,120,82,ChemCam RMI,Canchones,CR0_817565805EDR_F1200082CCAM03731M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04732/,2
+4732,120,82,ChemCam RMI,LD_MisheM_4732,CR0_817566745EDR_F1200082CCAM04731M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04732/,10
+4734,120,82,ChemCam LIBS,Taruca,CL5_817744077EDR_F1200082CCAM05731M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04734/,10
+4734,120,82,ChemCam RMI,LD_Paniri_4734,CR0_817744751EDR_F1200082CCAM06731M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04734/,10
+4734,120,82,ChemCam RMI,Taruca,CR0_817743887EDR_F1200082CCAM05731M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04734/,2
+4735,120,82,ChemCam LIBS,Tetillas,CL5_817831770EDR_F1200082CCAM07731M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04735/,10
+4735,120,82,ChemCam RMI,Tetillas,CR0_817831593EDR_F1200082CCAM07731M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04735/,2
+4736,120,82,ChemCam LIBS,Tatsi,CL5_817922121EDR_F1200082CCAM01736M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04736/,10
+4736,120,82,ChemCam RMI,Tatsi,CR0_817921939EDR_F1200082CCAM01736M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04736/,2
+4736,120,82,ChemCam RMI,Ticaco_4736,CR0_817922792EDR_F1200082CCAM02736M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04736/,10
+4737,120,82,ChemCam LIBS,Tilomonte,CL5_818009308EDR_F1200082CCAM03736M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04737/,10
+4737,120,82,ChemCam RMI,Tilomonte,CR0_818009131EDR_F1200082CCAM03736M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04737/,2
+4738,120,82,APXS,,apb_818133183rwp47381200082_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04738/apb_818133183rwp47381200082_______p1.csv,1
+4738,120,82,ChemCam LIBS,Michilla_Cove,CL5_818099137EDR_F1200082CCAM01738M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04738/,10
+4738,120,82,ChemCam RMI,Michilla_Cove,CR0_818098962EDR_F1200082CCAM01738M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04738/,2
+4739,120,82,ChemCam LIBS,Porongo,CL5_818186850EDR_F1200082CCAM02738M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04739/,10
+4739,120,82,ChemCam RMI,LD_Cord_4738,CR0_818187523EDR_F1200082CCAM03738M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04739/,10
+4739,120,82,ChemCam RMI,LD_MisheM_4738,CR0_818188252EDR_F1200082CCAM04738M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04739/,10
+4739,120,82,ChemCam RMI,Porongo,CR0_818186673EDR_F1200082CCAM02738M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04739/,2
+4740,120,82,ChemCam LIBS,Caluyo,CL5_818276722EDR_F1200082CCAM01740M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04740/,10
+4740,120,82,ChemCam RMI,Caluyo,CR0_818276527EDR_F1200082CCAM01740M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04740/,2
+4740,120,82,ChemCam RMI,LD_Cord_4740,CR0_818277484EDR_F1200082CCAM02740M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04740/,10
+4741,120,82,ChemCam LIBS,Moxos,CL5_818363913EDR_F1200082CCAM03740M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04741/,10
+4741,120,82,ChemCam RMI,LD_Wall_4741,CR0_818364690EDR_F1200082CCAM04740M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04741/,9
+4741,120,82,ChemCam RMI,Moxos,CR0_818363736EDR_F1200082CCAM03740M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04741/,2
+4742,120,232,ChemCam LIBS,aegis_post_4742a,CL5_818453547EDR_F1200232CCAM06740M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04742/,10
+4742,120,232,ChemCam RMI,aegis_post_4742a,CR0_818453339EDR_F1200232CCAM06740M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04742/,2
+4743,120,232,ChemCam LIBS,aegis_post_4743a,CL5_818543646EDR_F1200232CCAM02743M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04743/,10
+4743,120,232,ChemCam RMI,aegis_post_4743a,CR0_818543438EDR_F1200232CCAM02743M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04743/,2
+4744,120,232,ChemCam LIBS,Cal Target 10,CL5_818631757EDR_F1200232CCAM03743M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04744/,2
+4744,120,232,ChemCam LIBS,Cal Target 2,CL5_818632518EDR_F1200232CCAM03743M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04744/,2
+4744,120,232,ChemCam LIBS,Cal Target 3,CL5_818632383EDR_F1200232CCAM03743M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04744/,2
+4744,120,232,ChemCam LIBS,Cal Target 4,CL5_818632236EDR_F1200232CCAM03743M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04744/,2
+4744,120,232,ChemCam LIBS,Cal Target 9,CL5_818632070EDR_F1200232CCAM03743M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04744/,2
+4744,120,232,ChemCam RMI,Cal Target 10,CR0_818632012EDR_F1200232CCAM03743M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04744/,1
+4744,120,232,ChemCam RMI,Cal Target 2,CR0_818632603EDR_F1200232CCAM03743M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04744/,1
+4744,120,232,ChemCam RMI,Cal Target 3,CR0_818632466EDR_F1200232CCAM03743M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04744/,1
+4744,120,232,ChemCam RMI,Cal Target 4,CR0_818632319EDR_F1200232CCAM03743M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04744/,1
+4744,120,232,ChemCam RMI,Cal Target 9,CR0_818632153EDR_F1200232CCAM03743M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04744/,1
+4745,120,232,APXS,,apb_818748304rwp47451200232_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04745/apb_818748304rwp47451200232_______p1.csv,1
+4745,120,232,APXS,,apb_818756528rwp47451200232_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04745/apb_818756528rwp47451200232_______p1.csv,1
+4745,120,232,ChemCam LIBS,Tata_Sabaya,CL5_818720915EDR_F1200232CCAM01745M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04745/,10
+4745,120,232,ChemCam RMI,LD_MisheM_4745a,CR0_818721581EDR_F1200232CCAM02745M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04745/,10
+4745,120,232,ChemCam RMI,Tata_Sabaya,CR0_818720738EDR_F1200232CCAM01745M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04745/,2
+4746,120,232,ChemCam LIBS,Tata_Phaqcha,CL5_818808269EDR_F1200232CCAM03745M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04746/,10
+4746,120,232,ChemCam RMI,LD_MonteG_4745b,CR0_818809037EDR_F1200232CCAM04745M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04746/,12
+4746,120,232,ChemCam RMI,Tata_Phaqcha,CR0_818808088EDR_F1200232CCAM03745M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04746/,2
+4747,120,232,APXS,,apb_818929534rwp47471200232_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04747/apb_818929534rwp47471200232_______p1.csv,1
+4747,120,232,ChemCam LIBS,Rio_Mauri,CL5_818898645EDR_F1200232CCAM01747M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04747/,10
+4747,120,232,ChemCam RMI,Rio_Mauri,CR0_818898472EDR_F1200232CCAM01747M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04747/,2
+4747,120,232,ChemCam RMI,Tajibo,CR0_818899315EDR_F1200232CCAM02747M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04747/,5
+4748,120,232,ChemCam LIBS,Warawara,CL5_818985645EDR_F1200232CCAM03747M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04748/,10
+4748,120,232,ChemCam RMI,LD_Yardangs_4747,CR0_818986444EDR_F1200232CCAM04747M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04748/,15
+4748,120,232,ChemCam RMI,Warawara,CR0_818985438EDR_F1200232CCAM03747M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04748/,2
+4749,120,346,ChemCam LIBS,aegis_post_4749a,CL5_819074640EDR_F1200346CCAM06747M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04749/,10
+4749,120,346,ChemCam RMI,aegis_post_4749a,CR0_819074430EDR_F1200346CCAM06747M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04749/,2
+4750,120,346,APXS,,apb_819191646rwp47501200346_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04750/apb_819191646rwp47501200346_______p1.csv,1
+4750,120,346,APXS,,apb_819199914rwp47501200346_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04750/apb_819199914rwp47501200346_______p1.csv,1
+4750,120,346,ChemCam LIBS,Quillaguasa,CL5_819164416EDR_F1200346CCAM01750M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04750/,10
+4750,120,346,ChemCam RMI,LD_MisheM_4750,CR0_819165071EDR_F1200346CCAM02750M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04750/,10
+4750,120,346,ChemCam RMI,Quillaguasa,CR0_819164256EDR_F1200346CCAM01750M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04750/,2
+4751,120,346,ChemCam LIBS,Yareta_ccam,CL5_819252343EDR_F1200346CCAM03750M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04751/,10
+4751,120,346,ChemCam RMI,LD_Aricota_4751,CR0_819253017EDR_F1200346CCAM04750M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04751/,10
+4751,120,346,ChemCam RMI,Yareta_ccam,CR0_819252171EDR_F1200346CCAM03750M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04751/,2
+4752,120,346,APXS,,apb_819343467rwp47521200346_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04752/apb_819343467rwp47521200346_______p1.csv,1
+4788,120,538,APXS,,apb_822564874rwp47881200538_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04788/apb_822564874rwp47881200538_______p1.csv,1
+4788,120,538,APXS,,apb_822570077rwp47881200538_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04788/apb_822570077rwp47881200538_______p1.csv,1
+4788,120,538,APXS,,apb_822575283rwp47881200538_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04788/apb_822575283rwp47881200538_______p1.csv,1
+4789,120,538,ChemCam LIBS,Parabano_ccam,CL5_822625083EDR_F1200538CCAM01788M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04789/,10
+4789,120,538,ChemCam RMI,Parabano_ccam,CR0_822624902EDR_F1200538CCAM01788M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04789/,2
+4791,120,574,APXS,,apb_822835002rwp47911200574_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04791/apb_822835002rwp47911200574_______p1.csv,1
+4791,120,574,APXS,,apb_822841460rwp47911200574_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04791/apb_822841460rwp47911200574_______p1.csv,1
+4799,120,574,ChemCam LIBS,NS2_ccam_4799,CL5_823512867EDR_F1200574CCAM01798M3.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04799/,10
+4799,120,574,ChemCam RMI,NS2_ccam_4799,CR0_823512657EDR_F1200574CCAM01798M3.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04799/,2
+4801,120,574,ChemCam LIBS,Tiquipaya,CL5_823690401EDR_F1200574CCAM02798M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04801/,10
+4801,120,574,ChemCam RMI,Tiquipaya,CR0_823690204EDR_F1200574CCAM02798M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04801/,2
+4802,120,574,ChemCam RMI,LD_MisheM_4802a,CR0_823780343EDR_F1200574CCAM01802M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04802/,11
+4803,120,574,APXS,,apb_823903257rwp48031200574_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04803/apb_823903257rwp48031200574_______p1.csv,1
+4803,120,574,ChemCam LIBS,NS2_ccam_4802,CL5_823867907EDR_F1200574CCAM02802M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04803/,10
+4803,120,574,ChemCam RMI,NS2_ccam_4802,CR0_823867744EDR_F1200574CCAM02802M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04803/,2
+4809,120,808,APXS,,apb_824430263rwp48091200808_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04809/apb_824430263rwp48091200808_______p1.csv,1
+4809,120,808,APXS,,apb_824438504rwp48091200808_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04809/apb_824438504rwp48091200808_______p1.csv,1
+4812,120,1042,APXS,,apb_824696695rwp48121201042_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04812/apb_824696695rwp48121201042_______p1.csv,1
+4812,120,1042,APXS,,apb_824705039rwp48121201042_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04812/apb_824705039rwp48121201042_______p1.csv,1
+4812,120,1042,ChemCam LIBS,Baquedano,CL5_824669157EDR_F1201042CCAM01812M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04812/,10
+4812,120,1042,ChemCam RMI,Baquedano,CR0_824668980EDR_F1201042CCAM01812M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04812/,2
+4812,120,1042,ChemCam RMI,Jucuma,CR0_824669833EDR_F1201042CCAM02812M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04812/,16
+4812,120,1042,ChemCam RMI,LD_Pocona_4812,CR0_824671289EDR_F1201042CCAM03812M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04812/,11
+4813,120,1042,APXS,,apb_824756988rwp48131201042_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04813/apb_824756988rwp48131201042_______p1.csv,1
+4813,120,1042,ChemCam LIBS,Alto_Hospicio,CL5_824759365EDR_F1201042CCAM01813M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04813/,10
+4813,120,1042,ChemCam RMI,Alto_Hospicio,CR0_824759198EDR_F1201042CCAM01813M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04813/,2
+4813,120,1042,ChemCam RMI,LD_Flamencos_4813,CR0_824760031EDR_F1201042CCAM02813M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04813/,12
+4814,120,1264,ChemCam LIBS,CCAM_CCCT_Pass_Quartet,CL9_824845026EDR_F1201264CCAM15120M3.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04814/,4
+4814,120,1264,ChemCam LIBS,aegis_post_4814a,CL5_824844094EDR_F1201264CCAM04813M3.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04814/,10
+4814,120,1264,ChemCam RMI,CCAM_CCCT_Pass_Quartet,CR0_824844894EDR_F1201264CCAM15120M3.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04814/,4
+4814,120,1264,ChemCam RMI,aegis_post_4814a,CR0_824843883EDR_F1201264CCAM04813M3.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04814/,2
+4815,120,1264,APXS,,apb_824962301rwp48151201264_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04815/apb_824962301rwp48151201264_______p1.csv,1
+4815,120,1264,APXS,,apb_824970544rwp48151201264_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04815/apb_824970544rwp48151201264_______p1.csv,1
+4815,120,1264,ChemCam LIBS,Huara,CL5_824936886EDR_F1201264CCAM01815M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04815/,10
+4815,120,1264,ChemCam RMI,Huara,CR0_824936694EDR_F1201264CCAM01815M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04815/,2
+4815,120,1264,ChemCam RMI,LD_Uru_Uru_4815,CR0_824937749EDR_F1201264CCAM02815M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04815/,12
+4816,120,1264,ChemCam LIBS,El_Bosque_ccam,CL5_825021990EDR_F1201264CCAM03815M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04816/,10
+4816,120,1264,ChemCam RMI,El_Bosque_ccam,CR0_825021820EDR_F1201264CCAM03815M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04816/,2
+4816,120,1264,ChemCam RMI,LD_MisheM_4816,CR0_825022657EDR_F1201264CCAM04815M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04816/,9
+4817,120,1546,ChemCam LIBS,aegis_post_4817a,CL5_825110834EDR_F1201546CCAM06815M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04817/,10
+4817,120,1546,ChemCam RMI,aegis_post_4817a,CR0_825110621EDR_F1201546CCAM06815M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04817/,2
+4818,120,1546,APXS,,apb_825201895rwp48181201546_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04818/apb_825201895rwp48181201546_______p1.csv,1
+4820,120,2030,APXS,,apb_825378800rwp48201202030_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04820/apb_825378800rwp48201202030_______p1.csv,1
+4822,120,2102,APXS,,apb_825584234rwp48221202102_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04822/apb_825584234rwp48221202102_______p1.csv,1
+4822,120,2102,APXS,,apb_825592577rwp48221202102_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04822/apb_825592577rwp48221202102_______p1.csv,1
+4825,120,2192,ChemCam LIBS,Tucuman,CL5_825822500EDR_F1202192CCAM01825M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04825/,10
+4825,120,2192,ChemCam RMI,LD_MisheM_4825a,CR0_825823232EDR_F1202192CCAM02825M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04825/,20
+4825,120,2192,ChemCam RMI,Tucuman,CR0_825822334EDR_F1202192CCAM01825M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04825/,2
+4826,120,2192,APXS,,apb_825939831rwp48261202192_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04826/apb_825939831rwp48261202192_______p1.csv,1
+4826,120,2192,APXS,,apb_825948236rwp48261202192_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04826/apb_825948236rwp48261202192_______p1.csv,1
+4826,120,2192,ChemCam LIBS,Humahuaca,CL5_825909740EDR_F1202192CCAM03825M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04826/,10
+4826,120,2192,ChemCam RMI,Cordillera_4825b,CR0_825910399EDR_F1202192CCAM04825M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04826/,12
+4826,120,2192,ChemCam RMI,Humahuaca,CR0_825909579EDR_F1202192CCAM03825M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04826/,2
+4826,120,2192,ChemCam RMI,LD_Cabaraya_4825c,CR0_825911231EDR_F1202192CCAM05825M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04826/,4
+4827,120,2192,ChemCam LIBS,Infiernillo_ccam,CL5_825998505EDR_F1202192CCAM06825M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04827/,10
+4827,120,2192,ChemCam RMI,Infiernillo_ccam,CR0_825998331EDR_F1202192CCAM06825M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04827/,2
+4827,120,2192,ChemCam RMI,Vilacaya,CR0_825999164EDR_F1202192CCAM07825M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04827/,10
+4828,120,2366,ChemCam LIBS,aegis_post_4828a,CL5_826087344EDR_F1202366CCAM09825M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04828/,10
+4828,120,2366,ChemCam RMI,aegis_post_4828a,CR0_826087143EDR_F1202366CCAM09825M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04828/,2
+4829,120,2366,APXS,,apb_826205920rwp48291202366_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04829/apb_826205920rwp48291202366_______p1.csv,1
+4829,120,2366,APXS,,apb_826214443rwp48291202366_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04829/apb_826214443rwp48291202366_______p1.csv,1
+4829,120,2366,ChemCam LIBS,Alto_Mairana,CL5_826177616EDR_F1202366CCAM01829M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04829/,10
+4829,120,2366,ChemCam LIBS,Thola_ccam,CL9_826178403EDR_F1202366CCAM02829M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04829/,5
+4829,120,2366,ChemCam RMI,Alto_Mairana,CR0_826177444EDR_F1202366CCAM01829M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04829/,2
+4829,120,2366,ChemCam RMI,LD_RMI_4829,CR0_826178931EDR_F1202366CCAM03829M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04829/,10
+4829,120,2366,ChemCam RMI,Thola_ccam,CR0_826178253EDR_F1202366CCAM02829M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04829/,2
+4830,120,2366,ChemCam LIBS,Collahuasi_ccam,CL5_826265733EDR_F1202366CCAM04829M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04830/,10
+4830,120,2366,ChemCam RMI,Collahuasi_ccam,CR0_826265558EDR_F1202366CCAM04829M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04830/,2
+4830,120,2366,ChemCam RMI,LD_LosFlamen_4830,CR0_826266493EDR_F1202366CCAM05829M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04830/,10
+4831,120,2726,ChemCam LIBS,aegis_post_4831a,CL5_826353679EDR_F1202726CCAM07829M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04831/,10
+4831,120,2726,ChemCam RMI,aegis_post_4831a,CR0_826353468EDR_F1202726CCAM07829M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04831/,2
+4832,120,2726,ChemCam LIBS,aegis_post_4832a,CL5_826432335EDR_F1202726CCAM10829M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04832/,10
+4832,120,2726,ChemCam RMI,aegis_post_4832a,CR0_826432129EDR_F1202726CCAM10829M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04832/,2
+4833,120,2726,APXS,,apb_826561541rwp48331202726_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04833/apb_826561541rwp48331202726_______p1.csv,1
+4833,120,2726,APXS,,apb_826569794rwp48331202726_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04833/apb_826569794rwp48331202726_______p1.csv,1
+4836,121,0,APXS,,apb_826827248rwp48361210000_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04836/apb_826827248rwp48361210000_______p1.csv,1
+4836,121,0,APXS,,apb_826836191rwp48361210000_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04836/apb_826836191rwp48361210000_______p1.csv,1
+4838,121,156,APXS,,apb_827005232rwp48381210156_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04838/apb_827005232rwp48381210156_______p1.csv,1
+4838,121,156,APXS,,apb_827013875rwp48381210156_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04838/apb_827013875rwp48381210156_______p1.csv,1
+4838,121,156,ChemCam LIBS,Tacitas,CL5_826976579EDR_F1210156CCAM01838M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04838/,10
+4838,121,156,ChemCam RMI,LD_Paniri_4838,CR0_826977314EDR_F1210156CCAM02838M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04838/,10
+4838,121,156,ChemCam RMI,Tacitas,CR0_826976407EDR_F1210156CCAM01838M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04838/,2
+4839,121,156,ChemCam LIBS,Toro_Wharku_ccam,CL5_827064525EDR_F1210156CCAM03838M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04839/,10
+4839,121,156,ChemCam RMI,Porvenir,CR0_827065269EDR_F1210156CCAM04838M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04839/,10
+4839,121,156,ChemCam RMI,Toro_Wharku_ccam,CR0_827064353EDR_F1210156CCAM03838M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04839/,2
+4840,121,396,APXS,,apb_827187812rwp48401210396_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04840/apb_827187812rwp48401210396_______p1.csv,1
+4840,121,396,ChemCam LIBS,Llisa,CL5_827154177EDR_F1210396CCAM01840M2.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04840/,10
+4840,121,396,ChemCam RMI,LD_MisheM_4840a,CR0_827154847EDR_F1210396CCAM02840M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04840/,8
+4840,121,396,ChemCam RMI,Llisa,CR0_827153996EDR_F1210396CCAM01840M2.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04840/,2
+4841,121,396,ChemCam LIBS,La_Troya,CL5_827241720EDR_F1210396CCAM03840M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04841/,10
+4841,121,396,ChemCam RMI,LD_MisheM_4840c,CR0_827243108EDR_F1210396CCAM05840M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04841/,10
+4841,121,396,ChemCam RMI,LD_Ridge_4840b,CR0_827242391EDR_F1210396CCAM04840M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04841/,10
+4841,121,396,ChemCam RMI,La_Troya,CR0_827241533EDR_F1210396CCAM03840M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04841/,2
+4842,121,762,APXS,,apb_827365543rwp48421210762_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04842/apb_827365543rwp48421210762_______p1.csv,1
+4842,121,762,ChemCam LIBS,San_Julian,CL5_827331727EDR_F1210762CCAM01842M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04842/,10
+4842,121,762,ChemCam RMI,San_Julian,CR0_827331529EDR_F1210762CCAM01842M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04842/,2
+4842,121,762,ChemCam RMI,Santa_Rita,CR0_827332570EDR_F1210762CCAM02842M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04842/,10
+4843,121,762,ChemCam LIBS,Santa_Laura,CL5_827419132EDR_F1210762CCAM03842M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04843/,10
+4843,121,762,ChemCam RMI,LD_Paniri_4843,CR0_827419955EDR_F1210762CCAM04842M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04843/,10
+4843,121,762,ChemCam RMI,Santa_Laura,CR0_827418946EDR_F1210762CCAM03842M1.IMG,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04843/,2

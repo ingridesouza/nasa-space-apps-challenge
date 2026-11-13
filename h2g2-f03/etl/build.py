@@ -29,7 +29,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from api.geo import R_MARS, haversine  # noqa: E402
-from etl.sources import make_sources  # noqa: E402
+from etl.science import SCHEMA_SCIENCE, build_science  # noqa: E402
+from etl.sources import make_science_sources, make_sources  # noqa: E402
 
 Image.MAX_IMAGE_PIXELS = None  # panoramas e o recorte HiRISE são grandes
 
@@ -320,7 +321,14 @@ def write_manifest(db, bundle, cfg, source, places_check, waypoints_file):
              "credito": "NASA/JPL/University of Arizona/USGS"},
         ],
     }
-    (bundle / "MANIFEST.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
+    old = bundle / "MANIFEST.json"
+    if old.exists():  # preserva o inventário do PDS (etl/science_index.py)
+        prev = json.loads(old.read_text(encoding="utf-8"))
+        if "inventario_pds" in prev:
+            manifest["inventario_pds"] = prev["inventario_pds"]
+    manifest["contagens"].update({"alvos": count("targets"), "medicoes": count("measurements")})
+    manifest["science_source"] = cfg["science_source"]
+    old.write_text(json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
     db.executemany("INSERT OR REPLACE INTO meta VALUES (?,?)",
                    [("fonte", source), ("gerado_em", manifest["gerado_em"])])
     return manifest
@@ -356,7 +364,7 @@ def main() -> int:
     tmp_path = bundle / "h2g2.db.part"
     tmp_path.unlink(missing_ok=True)
     db = sqlite3.connect(tmp_path)
-    db.executescript(SCHEMA)
+    db.executescript(SCHEMA + SCHEMA_SCIENCE)
 
     stops = build_waypoints(db, positions, cfg)
     win = compute_window(stops, cfg)
@@ -364,6 +372,9 @@ def main() -> int:
     build_panoramas(db, panos_src, positions, cfg, bundle)
     build_photos(db, photos_src, positions, stops, cfg, bundle)
     build_rtrees(db)
+    n_alvos, n_med = build_science(db, make_science_sources(cfg["science_source"], cfg, ROOT)[0],
+                                   stops, cfg)
+    log(f"F04: {n_alvos} alvos, {n_med} medições (science_source: {cfg['science_source']})")
     orbital = build_orbital(cfg, bundle, win) if source != "mock" else None
     write_track(db, bundle, win, orbital, cfg)
     wp_file = waypoints_file or cfg["public"]["waypoints_file"]

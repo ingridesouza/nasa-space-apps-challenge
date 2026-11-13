@@ -174,15 +174,34 @@
   function mostrarFotos(f) {
     $("c-fotos").hidden = !f.total;
     if (!f.total) return;
-    $("fotos").innerHTML = "";
-    for (const ft of f.fotos) {
+    fotosLista = f.fotos;
+    fotosPag = 0;
+    renderFotos(0);
+  }
+
+  const FOTOS_POR_PAG = 4;
+  let fotosLista = [], fotosPag = 0;
+  function renderFotos(dir) {
+    const total = Math.max(1, Math.ceil(fotosLista.length / FOTOS_POR_PAG));
+    fotosPag = Math.min(Math.max(fotosPag, 0), total - 1);
+    const box = $("fotos");
+    box.innerHTML = "";
+    for (const ft of fotosLista.slice(fotosPag * FOTOS_POR_PAG, (fotosPag + 1) * FOTOS_POR_PAG)) {
       const b = document.createElement("button");
       b.type = "button"; b.className = "foto"; b.title = ft.rotulo;
       b.innerHTML = `<img loading="lazy" src="${esc(ft.thumb)}" alt=""><p>${ft.distancia_m} m · ${esc(ft.instrument)}</p>`;
       b.onclick = () => abrirFoto(ft);
-      $("fotos").appendChild(b);
+      box.appendChild(b);
     }
+    box.classList.remove("slide-next", "slide-prev");
+    if (dir) { void box.offsetWidth; box.classList.add(dir > 0 ? "slide-next" : "slide-prev"); }
+    $("fotos-nav").hidden = total <= 1;
+    $("fotos-pag").textContent = `${fotosPag + 1} / ${total}`;
+    $("fotos-prev").disabled = fotosPag === 0;
+    $("fotos-next").disabled = fotosPag === total - 1;
   }
+  $("fotos-prev").addEventListener("click", () => { fotosPag--; renderFotos(-1); });
+  $("fotos-next").addEventListener("click", () => { fotosPag++; renderFotos(1); });
 
   function abrirFoto(ft) {
     if (noVisor) recolher();

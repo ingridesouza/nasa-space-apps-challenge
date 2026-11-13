@@ -73,3 +73,36 @@ def test_longitude_negativa_e_fora_da_janela():
     assert r["found"] and r["rmc"] == "118_2028"
     fora = c.get("/panoramas/nearest", params={"lat": 10, "lon": 10}).json()
     assert fora["found"] is False and fora["dentro_da_janela"] is False
+
+
+# --------------------------------------------------------------------------- #
+# F04 · ficha científica (tarefa 1: contrato + mock)
+# --------------------------------------------------------------------------- #
+
+DB = ROOT / "bundle" / "h2g2.db"
+
+
+@pytest.mark.skipif(not DB.exists(), reason="pacote não gerado")
+def test_ficha_do_mojo_na_parada_118_2028():
+    import sqlite3
+    from api.main import R_CARD, science_card
+
+    lat, lon = sqlite3.connect(DB).execute(
+        "SELECT lat, lon FROM waypoints WHERE rmc = '118_2028'").fetchone()
+    j = science_card(lat, lon, R_CARD)
+    assert j["alvo"]["nome"] == "Mojo"
+    assert j["alvo"]["distancia_m"] < 10
+    assert j["aviso_posicao"] == "posição aproximada pela parada do sol 4643"
+    assert any(l["secao"] == "quimica" for l in j["linhas"])
+    assert all(l["fonte_url"] or l["fonte_arquivo"] for l in j["linhas"] + j["contexto"])
+
+
+@pytest.mark.skipif(not DB.exists(), reason="pacote não gerado")
+def test_ficha_sem_alvo_perto_e_fora_da_janela():
+    from api.main import R_CARD, science_card
+
+    longe = science_card(-4.8100, 137.3770, R_CARD)
+    assert longe["alvo"] is None and "nenhum alvo estudado a menos de 150 m" in longe["mensagem"]
+    assert any(l["secao"] == "orbita" for l in longe["linhas"])
+    fora = science_card(-10.0, 137.38, R_CARD)
+    assert fora["alvo"] is None and fora["dentro_da_janela"] is False and fora["linhas"] == []

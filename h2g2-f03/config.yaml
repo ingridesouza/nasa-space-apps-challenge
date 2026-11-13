@@ -2,6 +2,13 @@
 # Trocar de fonte = mudar "source" e rodar `python etl/build.py` de novo.
 source: public            # mock | public | official
 
+# F04 · ficha científica. Trocar de fonte = mudar aqui e rodar `python etl/build.py`.
+science_source: mock      # mock | public | official
+card_radius_m: 150        # alvo mais longe que isto: "nenhum alvo estudado"
+science:
+  targets_csv: ../dados/m8_alvos.csv
+  index_csv: ../dados/science_index.csv
+
 sols:
   min: 4550
   max: 4845

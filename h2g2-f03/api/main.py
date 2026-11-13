@@ -29,6 +29,7 @@ R_PANO = CFG["radius_m"]["panorama"]
 R_PHOTO = CFG["radius_m"]["photos"]
 PHOTO_LIMIT = CFG["photos"]["limit"]
 CROP_M = CFG["orbital_crop_m"]
+R_CARD = CFG["card_radius_m"]
 
 Image.MAX_IMAGE_PIXELS = None
 app = FastAPI(title="H2G2 · Feature 03 · Panorama no ponto")
@@ -102,7 +103,7 @@ def candidates(table: str, tree: str, lat: float, lon: float, radius: float):
 def health():
     meta = dict(db().execute("SELECT key, value FROM meta").fetchall())
     counts = {t: db().execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-              for t in ("waypoints", "panoramas", "photos")}
+              for t in ("waypoints", "panoramas", "photos", "targets", "measurements")}
     return {"status": "ok", "fonte": meta.get("fonte"), "snapshot": meta.get("gerado_em"),
             "contagens": counts, "raios_m": {"panorama": R_PANO, "fotos": R_PHOTO}}
 
@@ -166,6 +167,89 @@ def photos_near(lat: float = Query(..., ge=-90, le=90), lon: float = Query(...),
         paradas.setdefault(rmc, []).append(r["id"])
     return {"dentro_da_janela": inside, "total": len(fotos), "fotos": fotos,
             "por_parada": [{"rmc": k, "fotos": v} for k, v in paradas.items()]}
+
+
+@lru_cache(maxsize=1)
+def orbital_source():
+    """OrbitalMineralSource da F04; None enquanto a fonte configurada não existe."""
+    from etl.sources import make_science_sources
+    try:
+        return make_science_sources(CFG["science_source"], CFG, ROOT)[1]
+    except NotImplementedError:
+        return None
+
+
+CONFIANCA = {"medido": "medido", "mock": "exemplo (dado de teste)",
+             "inferido de órbita": "inferido de órbita", "contexto": "contexto"}
+GAZETTEER = "https://planetarynames.wr.usgs.gov/"
+KIND_PT = {"furo": "furo de perfuração", "crista": "crista", "hollow": "hollow (depressão)",
+           "contato": "contato geológico", "feição": "feição"}
+
+
+def _linha(secao: str, texto: str, confianca: str, instrumento: str | None,
+           fonte_url: str, fonte_arquivo: str = "") -> dict | None:
+    """Regra de honestidade: linha sem fonte não existe."""
+    if not texto or not (fonte_url or fonte_arquivo):
+        return None
+    return {"secao": secao, "texto": texto, "instrumento": instrumento,
+            "confianca": confianca, "confianca_rotulo": CONFIANCA.get(confianca, confianca),
+            "fonte_url": fonte_url, "fonte_arquivo": fonte_arquivo}
+
+
+@app.get("/science/card")
+def science_card(lat: float = Query(..., ge=-90, le=90), lon: float = Query(...),
+                 radius: float = Query(R_CARD, gt=0, le=5000)):
+    lat, lon, inside = norm_point(lat, lon)
+    found = candidates("targets", "target_rtree", lat, lon, radius)
+    out = {"dentro_da_janela": inside, "raio_m": radius, "alvo": None, "linhas": [],
+           "contexto": [], "mastcam": None, "aviso_posicao": None, "mensagem": None}
+    linhas = []
+
+    if found:
+        d, t = found[0]
+        out["alvo"] = {
+            "id": t["id"], "nome": t["name"], "rotulo_nome": "nome do alvo (equipe Curiosity)",
+            "tipo": t["kind"], "tipo_rotulo": KIND_PT.get(t["kind"], t["kind"]),
+            "sol": t["sol"], "rmc": None if t["site"] is None else f"{t['site']}_{t['drive']}",
+            "lat": t["lat"], "lon": t["lon"], "distancia_m": round(d, 1),
+            "distancia_rotulo": f"{fmt_dist(d)} daqui", "pos_quality": t["pos_quality"],
+        }
+        if t["pos_quality"] != "exata":
+            out["aviso_posicao"] = f"posição aproximada pela parada do sol {t['sol']}"
+        meds = db().execute("SELECT * FROM measurements WHERE target_id = ? ORDER BY instrument",
+                            (t["id"],)).fetchall()
+        for m in meds:
+            sec = "mineralogia" if m["instrument"] == "CheMin" else "quimica"
+            linhas.append(_linha(sec, m["summary"], m["confidence"], m["instrument"],
+                                 m["source_url"], m["source_file"]))
+        if not meds:
+            linhas.append(_linha("sem_medicao", "sem medição publicada para este alvo",
+                                 "contexto", None, t["blog_url"]))
+        for sec, txt in (("por_que_importa", t["why_it_matters"]), ("seguranca", t["safety_note"])):
+            out["contexto"].append(_linha(sec, txt, "contexto", None, t["blog_url"]))
+        if t["terrain_class"]:
+            linhas.append(_linha("terreno", t["terrain_class"], "contexto", "classificação da equipe H2G2",
+                                 t["blog_url"]))
+        if t["mastcam_path"]:
+            out["mastcam"] = {"img": t["mastcam_path"], "credito": t["mastcam_credit"],
+                              "rotulo": f"foto Mastcam do sol {t['sol']}"}
+    else:
+        out["mensagem"] = f"nenhum alvo estudado a menos de {int(radius)} m"
+
+    orb = orbital_source().sample(lat, lon) if inside and orbital_source() else None
+    if orb:
+        linhas.append(_linha("orbita", f"{orb.label} ({orb.note})", orb.confidence,
+                             "CRISM", orb.source_url))
+    if inside:
+        linhas.append(_linha("nome", "Cratera Gale · Monte Sharp (Aeolis Mons)", "contexto", None,
+                             GAZETTEER))
+    elif out["mensagem"]:
+        out["mensagem"] += " e o ponto está fora da janela do boxwork"
+    out["linhas"] = [l for l in linhas if l]
+    out["contexto"] = [l for l in out["contexto"] if l]
+    out["fontes"] = [{"secao": l["secao"], "url": l["fonte_url"], "arquivo": l["fonte_arquivo"]}
+                     for l in out["linhas"] + out["contexto"]]
+    return out
 
 
 @lru_cache(maxsize=1)

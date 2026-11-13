@@ -57,6 +57,55 @@ class PhotoMeta:
     source: str = ""
 
 
+@dataclass
+class Target:
+    """Um alvo científico (linha da tabela `targets`). A posição é a da parada."""
+
+    id: str
+    name: str
+    kind: str               # furo | crista | hollow | contato | feição
+    sol: int
+    site: int | None
+    drive: int | None
+    lat: float
+    lon: float
+    pos_quality: str        # exata | por_sol | estimada
+    why_it_matters: str = ""
+    safety_note: str = ""
+    blog_url: str = ""
+    mastcam_path: str = ""
+    mastcam_credit: str = ""
+    terrain_class: str = ""
+
+
+@dataclass
+class Measurement:
+    """Uma medição do chão (linha da tabela `measurements`)."""
+
+    id: str
+    target_id: str
+    instrument: str         # APXS | ChemCam | CheMin
+    sol: int
+    site: int | None
+    drive: int | None
+    summary: str            # uma frase, gerada por regra fixa
+    values_json: str        # valores completos
+    confidence: str         # medido | mock
+    source_url: str = ""
+    source_file: str = ""
+
+
+@dataclass
+class OrbitalLabel:
+    """O que se vê de órbita num ponto (CRISM)."""
+
+    label: str              # ex.: "sulfato monoidratado", "sem sinal"
+    confidence: str         # "inferido de órbita" | "contexto" | "mock"
+    note: str               # ressalva de escala
+    source_url: str = ""
+    source_name: str = ""
+
+
 class PositionSource(Protocol):
     def locate(self, site: int, drive: int, sol: int | None) -> Position | None: ...
 
@@ -69,3 +118,13 @@ class PanoSource(Protocol):
 
 class PhotoSource(Protocol):
     def list_photos(self, sol_min: int, sol_max: int, stops: list[Position]) -> Iterable[PhotoMeta]: ...
+
+
+class ScienceSource(Protocol):
+    def list_targets(self, stops: list[Position]) -> Iterable[Target]: ...
+
+    def list_measurements(self, sol_min: int, sol_max: int) -> Iterable[Measurement]: ...
+
+
+class OrbitalMineralSource(Protocol):
+    def sample(self, lat: float, lon: float) -> OrbitalLabel | None: ...
