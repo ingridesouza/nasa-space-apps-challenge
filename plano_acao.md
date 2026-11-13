@@ -9,10 +9,10 @@ O astronauta seleciona um ponto do boxwork, informando latitude e longitude em d
 **Fluxo de uso:**
 
 1. Latitude e longitude digitadas em duas caixas, que simulam o clique no mapa (área de \~3 × 3 km do boxwork, Monte Sharp, Cratera Gale). São os únicos dados de entrada.
-2. Busca do panorama mais próximo num raio de 300 m.
+2. Busca do panorama mais próximo num raio de 500 m. Se houver mais de um, vence o da parada mais próxima do ponto clicado, nunca o primeiro da lista. As caixas de lat/lon aceitam só valores dentro da janela do mapa (lon 137,374117 a 137,388573; lat −4,815600 a −4,794270).
 3. O visualizador 360 abre com a câmera apontada na direção do ponto informado, vista a partir da parada do rover.
 4. Abaixo: faixa de até 20 fotos próximas (raio de 200 m), ordenadas por distância, e o recorte HiRISE de 100 × 100 m.
-5. Sem panorama no raio: só as fotos e a mensagem “nenhum panorama a menos de 300 m”.
+5. Sem panorama no raio: só as fotos e a mensagem “nenhum panorama a menos de 500 m”. Com a janela limitada nas caixas, esse caso só ocorre em pontos dentro da janela a mais de 500 m de qualquer parada (cerca de 2% da área).
 
 **Regras de honestidade da interface:**
 
@@ -197,7 +197,7 @@ São 10 tarefas em três dias. A ordem importa: as tarefas 2, 4 e 6 destravam to
 | Longitude (°E) | Leste positivo, decimal, de 0 a 360. Aceitar valor negativo e converter somando 360. |
 | Pontos de exemplo | Botões opcionais que preenchem as caixas com coordenadas de paradas reais da tabela `waypoints` (por exemplo, a parada com panorama do sol 4643). Servem para a demo sem digitar. |
 
-Não entram como campo: sol, câmera e raio. O sol e a câmera vêm do banco, e o raio fica fixo no `config.yaml` (300 m para panorama, 200 m para fotos).
+Não entram como campo: sol, câmera e raio. O sol e a câmera vêm do banco, e o raio fica fixo no `config.yaml` (500 m para panorama, 200 m para fotos).
 
 **Pronto quando:** digitar a latitude e a longitude de uma parada conhecida abre o panorama dela, e o marcador aparece no lugar certo do mapa.
 
@@ -208,6 +208,21 @@ Não entram como campo: sol, câmera e raio. O sol e a câmera vêm do banco, e 
 **Meio:** rodar `build.py --source public` do zero e gerar o `MANIFEST.json` com fontes, URLs, datas do snapshot e créditos. Copiar Leaflet e Pannellum para `web/lib/`. Desligar o Wi-Fi e fazer o roteiro da demo: digitar as coordenadas de um vale entre cristas → panorama → fotos → recorte HiRISE. Copiar o pacote para um pendrive.
 
 **Pronto quando:** o roteiro funciona do início ao fim com o Wi-Fi desligado.
+
+### Resultado das tarefas de código 1–10 (12/11/2026)
+
+Código em `h2g2-f03/`. Montar: `../.venv/bin/python etl/build.py --source public`. Rodar: `../.venv/bin/uvicorn api.main:app --port 8000` e abrir http://localhost:8000/. Testes: `../.venv/bin/python -m pytest -q` (5 passam).
+
+- Pacote: 72 paradas, 72 panoramas, 211 fotos Navcam, base HiRISE; `bundle/` = 237 MB, com `MANIFEST.json`.
+- Endpoints `/health`, `/map`, `/panoramas/nearest`, `/photos/near`, `/orbital/crop` respondem 200; parada 118_2028 devolve o próprio panorama a 0,7 m.
+- Front sem nenhuma URL externa (Leaflet e Pannellum 2.5.6 em `web/lib/`) → roda offline. Falta o teste físico com Wi-Fi desligado e o pendrive (M10).
+- vOffset por panorama: horizonte distante lido visualmente em cada mosaico (`etl/horizons.csv`, fração da altura), `vOffset = −(0,5 − fração) × vaov`. Detecção automática não foi confiável.
+
+Desvios do plano:
+- Base orbital como um JPEG único (`imageOverlay`) em vez de tiles gdal2tiles; suficiente para a janela, a confirmar com a Ingride (M9).
+- 211 fotos / 95 MB (previsto ~200 / 60 MB).
+- `PositionSource` ganhou `list_stops`; fonte `official` é stub até os Resources (M11).
+- Python 3.14 no `.venv`, não 3.11.
 
 ## Tarefas manuais (sem código)
 
@@ -228,7 +243,7 @@ Doze tarefas se fazem no navegador, numa planilha, no QGIS ou no pendrive, sem a
 | M11 | Receber e classificar os Resources | Sexta | Sexta 13/11 |
 | M12 | Perguntas para os mentores | Sábado | Sábado 14/11, antes das 13h30 |
 
-**Andamento em 11/11/2026:** M4, M5, M6, M7 e M8 concluídas, com os resultados registrados em cada seção. M1, M2 e M3 não foram tocadas nesta sessão; M9 a M12 seguem em aberto.
+**Andamento em 11/11/2026:** M1 a M8 concluídas, com os resultados registrados em cada seção. Tarefas de código 1–10 concluídas em 12/11 (ver resultado acima). M9 a M12 seguem em aberto.
 
 **Pendências abertas:**
 
@@ -236,7 +251,7 @@ Doze tarefas se fazem no navegador, numa planilha, no QGIS ou no pendrive, sem a
 2. **Alvos da M7:** conferir os 4 alvos na prévia e acrescentar um rastro do rover.
 3. **Tarefa 6:** somar o yaw ao `mast_az` ao posicionar as fotos Navcam no panorama (resultado da M6).
 4. **Conferência da M6:** a segunda das 3 fotos foi a menos conclusiva; a hipótese B é bem sustentada, mas não é medição exata.
-5. **Tamanho real da área e cobertura de 300 m:** as 72 paradas ocupam só 264 m (L-O) × 672 m (N-S), e a janela do mapa tem ~0,86 × 1,26 km, bem menos que os "~3 × 3 km" do plano. Dentro da janela, 73% da área tem um panorama a até 300 m, 44% a até 200 m, 20% a até 100 m e 10% a até 50 m. Os outros 27% mostrariam "nenhum panorama a menos de 300 m". Decidir se o raio fica em 300 m e se as caixas de lat/lon são limitadas à janela.
+5. **Tamanho real da área e cobertura de 300 m:** as 72 paradas ocupam só 264 m (L-O) × 672 m (N-S), e a janela do mapa tem ~0,86 × 1,26 km, bem menos que os "~3 × 3 km" do plano. Dentro da janela, 73% da área tem um panorama a até 300 m, 44% a até 200 m, 20% a até 100 m e 10% a até 50 m. Os outros 27% mostrariam "nenhum panorama a menos de 300 m". **Decidido em 12/11:** raio de 500 m (98% da janela tem panorama) e caixas de lat/lon limitadas à janela. Com 300 m, a cobertura seria 74%.
 
 ### M1. Testar o feed de imagens no navegador
 
@@ -250,6 +265,20 @@ Doze tarefas se fazem no navegador, numa planilha, no QGIS ou no pendrive, sem a
 
 **Deu certo quando:** você anotou, para cada sol testado, se a Mastcam traz site/drive. Isso confirma que a Mastcam fica fora do painel de fotos próximas.
 
+**Resultado (12/11/2026), feito pelo time e conferido na API:**
+
+| Sol | Câmera | `site` | `drive` | `mast_az` | `mast_el` |
+|---|---|---|---|---|---|
+| 4643 | Navcam esquerda | 118 | 2028 | 350,03° | −47,08° |
+| 4600 | Navcam esquerda | 117 | 2370 | 350,04° | −46,91° |
+| 4643 | Mastcam esquerda e direita | null | null | null | null |
+| 4600 | Mastcam esquerda e direita | null | null | null | null |
+| 4700 | Navcam esquerda | sem itens | | | |
+| 4700 | Mastcam direita | null | null | null | null |
+
+- **Conclusão:** Navcam traz site, drive e `mast_az`/`mast_el`; Mastcam não traz nenhum deles. Confirma que a Mastcam fica fora do painel de fotos próximas.
+- **Ressalva:** o sol 4700 não tem Navcam esquerda no feed. Não testamos a Navcam direita nesse sol.
+
 ### M2. Baixar waypoints e PLACES
 
 **Objetivo:** ter as duas fontes de posição guardadas no computador, com a data do download.
@@ -261,6 +290,11 @@ Doze tarefas se fazem no navegador, numa planilha, no QGIS ou no pendrive, sem a
 5. Anote quantas linhas cada arquivo tem.
 
 **Deu certo quando:** os dois arquivos abrem e a parada 118\_2028 existe nos dois.
+
+**Resultado (12/11/2026):**
+- **MMGIS:** `dados/MSL_waypoints.json` (baixado em 10/11, sem data no nome, diferente do `waypoints_2026-11-10.json` que o passo 1 pede). Parada `118_2028`: sol 4643, lat −4,80679651, lon 137,3794121.
+- **PLACES:** `dados/localized_interp.csv`, 49.315 linhas. A parada 118_2028 aparece uma vez, no frame `ROVER`, sol 4643.
+- **Conclusão:** os dois arquivos abrem e a parada existe nos dois. Não há múltiplas linhas para 118_2028, então a coluna `frame` não precisa de anotação extra.
 
 ### M3. Cruzar MMGIS × PLACES na planilha
 
@@ -274,6 +308,13 @@ Doze tarefas se fazem no navegador, numa planilha, no QGIS ou no pendrive, sem a
 6. Teste de contraprova: refaça a conta com `planetodetic_latitude`. A diferença deve estourar para milhares de metros, o que confirma que a planetocêntrica é a coluna certa.
 
 **Deu certo quando:** a diferença com a planetocêntrica é de poucos metros nas 10 paradas. Anote a maior diferença.
+
+**Resultado (12/11/2026)**, em `dados/m3_10_paradas.csv` (10 paradas) e `dados/m3_todas_paradas_janela.csv` (72 paradas):
+- **Planetocêntrica (`planetocentric_latitude`):** diferença de 0,0 grau em todas as paradas, e no máximo 0,000296 m. Coincide com o MMGIS.
+- **Planetodetic (`planetodetic_latitude`), contraprova:** diferença de 3.362 a 3.371 m em todas as paradas.
+- **Conclusão:** a coluna certa é `planetocentric_latitude`. A planetodetic deslocaria cada parada em ~3,4 km, então a contraprova confirma a escolha.
+- **Maior diferença** (critério do passo 4): 0,000296 m (0,3 mm), nas paradas 118_198 e 118_1752 do arquivo de 10. No arquivo de 72, o mesmo valor aparece em outras 6 paradas.
+- **Longitude:** a maior diferença é 0,0027 no arquivo de 10 e 0,0031 no de 72 (coluna `dif_lon_m`).
 
 ### M4. Inventariar os panoramas
 

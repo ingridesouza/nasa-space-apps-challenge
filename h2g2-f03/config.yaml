@@ -1,0 +1,43 @@
+# H2G2 · Feature 03 · Panorama no ponto
+# Trocar de fonte = mudar "source" e rodar `python etl/build.py` de novo.
+source: public            # mock | public | official
+
+sols:
+  min: 4550
+  max: 4845
+
+# Janela do mapa (tarefa 2): retângulo das paradas + margem de ~300 m.
+# Preenchida pelo build a partir dos waypoints; estes valores vêm da M7.
+window:
+  lon_min: 137.374117
+  lon_max: 137.388573
+  lat_min: -4.815600
+  lat_max: -4.794270
+  margin_deg: 0.005
+
+radius_m:
+  panorama: 500           # decidido em 12/11 (98% da janela coberta)
+  photos: 200
+
+photos:
+  per_stop: 3             # fotos por parada, com azimutes diferentes
+  limit: 20               # máximo devolvido pela API
+  el_min: -30             # elevação aceita (graus): evita fotos do chão
+  el_max: 15
+  min_az_sep: 40          # separação mínima entre azimutes na mesma parada
+
+pano_max_width: 8000
+orbital_crop_m: 100
+mars_radius_m: 3396190
+
+# Entradas da fonte "public" (caminhos relativos a este arquivo)
+public:
+  waypoints_url: https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json
+  waypoints_file: ../dados/MSL_waypoints.json
+  places_file: ../dados/localized_interp.csv
+  panoramas_csv: ../dados_panoramas/panoramas.csv
+  panoramas_root: ..
+  hirise_tif: ../dados/boxwork.tif
+  raw_images_api: https://mars.nasa.gov/api/v1/raw_image_items/
+  hirise_cog: https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/MSL/MSL_Gale_HiRISE-LRGB_78quads_sharp_cog.tif
+  request_delay_s: 0.5
