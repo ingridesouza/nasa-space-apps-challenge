@@ -1,6 +1,6 @@
 PY := $(CURDIR)/.venv/bin/python
 
-.PHONY: build run front
+.PHONY: build run front test
 
 build:
 	test -x $(PY) || python3 -m venv .venv
@@ -24,3 +24,6 @@ run:
 
 front:
 	cd frontend && npm run dev
+
+test:
+	cd api && $(PY) test_alertas.py
