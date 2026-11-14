@@ -37,15 +37,15 @@
     $("hud-pos").textContent = `${lat.toFixed(6)}° · ${lon.toFixed(6)}°E`;
 
     carregando();
+    mostrarFicha("carregando");
     const q = `lat=${lat}&lon=${lon}`;
+    const pega = (u) => fetch(u).then((r) => (r.ok ? r.json() : Promise.reject(r.status)));
     const [pano, fotos, ficha] = await Promise.allSettled([
-      fetch(`/panoramas/nearest?${q}`).then((r) => (r.ok ? r.json() : Promise.reject(r.status))),
-      fetch(`/photos/near?${q}`).then((r) => (r.ok ? r.json() : Promise.reject(r.status))),
-      fetch(`/science/card?${q}`).then((r) => (r.ok ? r.json() : Promise.reject(r.status))),
+      pega(`/panoramas/nearest?${q}`), pega(`/photos/near?${q}`), pega(`/science/card?${q}`),
     ]);
-    mostrarFicha(ficha.status === "fulfilled" ? ficha.value : null);
     if (pano.status === "fulfilled") { mostrarStatus(pano.value); mostrarPano(pano.value); }
     else { erro("c-status", "Falha ao consultar a API."); limparPano(); }
+    mostrarFicha(ficha.status === "fulfilled" ? ficha.value : "erro");
     if (fotos.status === "fulfilled") mostrarFotos(fotos.value);
     else $("c-fotos").hidden = true;
   }
@@ -224,35 +224,16 @@
   $("visor-fechar").addEventListener("click", fecharVisor);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") fecharVisor(); });
 
-  // ---------------- Ficha científica (F04, /science/card) ----------------
-  function linhaFicha(l) {
-    const fonte = l.fonte_arquivo ? esc(l.fonte_arquivo)
-      : `<a href="${esc(l.fonte_url)}" target="_blank" rel="noopener">fonte</a>`;
-    const meta = [l.instrumento, l.confianca_rotulo].filter(Boolean).map(esc).join(" · ");
-    return `<p class="ficha-txt">${esc(l.texto)}</p><p class="rotulo mono">${meta} · ${fonte}</p>`;
-  }
-
-  function mostrarFicha(c) {
-    $("c-ficha").open = false;
-    const vazia = !c || (!c.alvo && !c.linhas.length);
-    $("c-ficha").hidden = vazia;
-    if (vazia) return;
-    const a = c.alvo;
-    $("ficha-nome").textContent = a ? a.nome : "Sem alvo estudado";
-    $("ficha-tipo").textContent = a ? a.tipo_rotulo : "";
-    $("ficha-tipo").hidden = !a;
+  // ---------------- Ficha científica (F04, web/card.js) ----------------
+  function mostrarFicha(d) {
+    const aberta = $("c-ficha").open;
+    $("c-ficha").hidden = false;
+    $("c-ficha").open = d !== "carregando" && aberta;
+    const [nome, tipo] = H2G2Card.titulo(d);
+    $("ficha-nome").textContent = nome;
+    $("ficha-tipo").textContent = tipo;
+    $("ficha").innerHTML = H2G2Card.html(d);
     $("flutuante").hidden = false;
     requestAnimationFrame(posicionarFichas);
-    const topo = a ? `
-      <div class="ficha">
-        ${c.mastcam ? `<img class="ficha-img" src="${esc(c.mastcam.img)}" alt="${esc(c.mastcam.rotulo)}">` : "<span></span>"}
-        <div class="tags"><span class="tag">sol ${a.sol}</span>${a.rmc ? `<span class="tag">${esc(a.rmc)}</span>` : ""}
-          <span class="tag">${esc(a.distancia_rotulo)}</span></div>
-      </div>
-      ${c.mastcam ? `<p class="rotulo mono">${esc(c.mastcam.rotulo)} · ${esc(c.mastcam.credito)}</p>` : ""}
-      ${c.aviso_posicao ? `<p class="rotulo">${esc(c.aviso_posicao)}</p>` : ""}` : "";
-    $("ficha").innerHTML = topo
-      + (c.mensagem ? `<p class="vazio">${esc(c.mensagem)}</p>` : "")
-      + [...c.linhas, ...c.contexto].map(linhaFicha).join("");
   }
 })();

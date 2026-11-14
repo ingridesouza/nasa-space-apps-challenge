@@ -1,12 +1,14 @@
 """F04: grava `targets`, `measurements` e `target_rtree` no h2g2.db.
 
-Hoje (tarefa 1) os dados vêm do MockScience. As tarefas 3 e 4 trocam a fonte
-(public) sem mexer aqui: esta etapa só grava o que a ScienceSource devolve.
+Esta etapa só grava o que a ScienceSource devolve (mock ou public) e copia para
+o bundle os arquivos locais que o card usa: fotos Mastcam, recorte CRISM e
+`terrain.geojson` (M6), quando existem.
 """
 
 from __future__ import annotations
 
 import argparse
+import shutil
 import sqlite3
 import sys
 from dataclasses import asdict
@@ -21,7 +23,8 @@ SCHEMA_SCIENCE = """
 CREATE TABLE targets(id TEXT PRIMARY KEY, name TEXT, kind TEXT, sol INT,
   site INT, drive INT, lat REAL, lon REAL, pos_quality TEXT,
   why_it_matters TEXT, safety_note TEXT, blog_url TEXT,
-  mastcam_path TEXT, mastcam_credit TEXT, terrain_class TEXT);
+  mastcam_path TEXT, mastcam_credit TEXT, terrain_class TEXT,
+  what_was_done TEXT, what_was_done_url TEXT);
 CREATE TABLE measurements(id TEXT PRIMARY KEY, target_id TEXT, instrument TEXT,
   sol INT, site INT, drive INT, summary TEXT, values_json TEXT,
   confidence TEXT, source_url TEXT, source_file TEXT);
@@ -49,6 +52,26 @@ def build_science(db, science, stops, cfg) -> tuple[int, int]:
     return len(targets), n_med
 
 
+def copy_science_files(cfg, base_dir: Path, bundle: Path) -> list[str]:
+    """Copia para o bundle o que a API serve: Mastcam, CRISM, terreno."""
+    sc, copied = cfg["science"], []
+    mast = (base_dir / sc["mastcam_dir"]).resolve()
+    if mast.exists():
+        (bundle / "mastcam").mkdir(parents=True, exist_ok=True)
+        for f in mast.glob("*.jpg"):
+            shutil.copy2(f, bundle / "mastcam" / f.name)
+            copied.append(f"mastcam/{f.name}")
+    for src, name in ((cfg.get("crism", {}).get("crop_json"), "crism_boxwork.json"),
+                      (sc.get("terrain_geojson"), "terrain.geojson")):
+        p = (base_dir / src).resolve() if src else None
+        if p and p.exists():
+            shutil.copy2(p, bundle / name)
+            copied.append(name)
+        else:
+            (bundle / name).unlink(missing_ok=True)
+    return copied
+
+
 def main() -> int:
     """Refaz só as tabelas da F04 num h2g2.db existente (sem rodar o ETL todo)."""
     from etl.sources import make_science_sources
@@ -67,8 +90,7 @@ def main() -> int:
         "SELECT rmc, site, drive, sol, lat, lon, elev, yaw, source FROM waypoints")]
     science, _ = make_science_sources(cfg["science_source"], cfg, ROOT)
     n_t, n_m = build_science(db, science, stops, cfg)
-    from etl.build import localize_mastcam  # alvos voltam com URL da Mastcam: trazer pro pacote
-    localize_mastcam(db, Path(args.bundle))
+    copy_science_files(cfg, ROOT, Path(args.bundle))
     db.commit()
     db.close()
     print(f"F04: {n_t} alvos, {n_m} medições (science_source: {cfg['science_source']})")

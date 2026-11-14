@@ -76,6 +76,8 @@ class Target:
     mastcam_path: str = ""
     mastcam_credit: str = ""
     terrain_class: str = ""
+    what_was_done: str = ""     # "o que foi feito" (blog, M8)
+    what_was_done_url: str = ""
 
 
 @dataclass

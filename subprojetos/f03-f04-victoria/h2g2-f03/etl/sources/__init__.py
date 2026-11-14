@@ -33,13 +33,13 @@ def make_science_sources(name: str, cfg: dict, base_dir: Path):
         from .mock import MockOrbital, MockScience
         return MockScience(base_dir / cfg["science"]["targets_csv"]), MockOrbital()
     if name == "public":
-        # CRISM (tarefa 5) ainda não existe: sem órbita em vez de órbita de exemplo
-        from .science_public import PublicScience
-        sci = cfg["science"]
-        return (PublicScience(base_dir / sci["targets_csv"], base_dir / sci["index_csv"],
-                              base_dir / ".cache" / "pds" / "rdr"), None)
+        from .science_public import PublicOrbital, PublicScience
+        sc = cfg["science"]
+        return (PublicScience(base_dir / sc["targets_csv"], base_dir / sc["index_csv"],
+                              base_dir / sc["pds_dir"], base_dir / sc["mastcam_dir"]),
+                PublicOrbital(base_dir / cfg["crism"]["crop_json"]))
     if name == "official":
         raise NotImplementedError(
-            f"science_source '{name}' ainda não implementada (tarefas 3 a 5 da F04). "
-            "Use science_source: mock no config.yaml.")
+            f"science_source '{name}' ainda não implementada (depende da aba Resources, M1). "
+            "Use science_source: public no config.yaml.")
     raise ValueError(f"science_source desconhecida: {name!r} (use mock | public | official)")

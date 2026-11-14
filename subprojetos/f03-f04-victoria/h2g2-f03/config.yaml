@@ -3,11 +3,22 @@
 source: public            # mock | public | official
 
 # F04 · ficha científica. Trocar de fonte = mudar aqui e rodar `python etl/build.py`.
-science_source: public    # mock | public (APXS/CheMin/ChemCam do PDS) | official
+science_source: public    # mock | public | official
 card_radius_m: 150        # alvo mais longe que isto: "nenhum alvo estudado"
 science:
   targets_csv: ../dados/m8_alvos.csv
   index_csv: ../dados/science_index.csv
+  pds_dir: ../dados/pds            # arquivos APXS/ChemCam/CheMin baixados (offline)
+  mastcam_dir: ../dados/mastcam    # fotos Mastcam dos alvos (copiadas para bundle/mastcam/)
+  terrain_geojson: ../dados/terrain.geojson   # M6 (QGIS); sem arquivo, a linha não aparece
+
+# CRISM (tarefa 5): produto MTRDR achado no Orbital Data Explorer em 13/11.
+# Cobre toda a janela; ~18 m/px. `python etl/crism.py` gera o recorte.
+crism:
+  produto: FRT000058A3
+  su_url: https://pds-geosciences.wustl.edu/mro/mro-m-crism-5-rdr-mptargeted-v1/mrocr_4001/mtrdr/2007/2007_112/frt000058a3/frt000058a3_07_su165j_mtr3.img
+  page_url: https://pds-geosciences.wustl.edu/mro/mro-m-crism-5-rdr-mptargeted-v1/mrocr_4001/mtrdr/2007/2007_112/frt000058a3/
+  crop_json: ../dados/crism_boxwork.json
 
 sols:
   min: 4550
@@ -45,7 +56,7 @@ color_panos:
     sol: 4718                  # sol de referência do furo (Nevado Sajama)
     site: 120
     drive: 82                  # parada 120_82 (sol 4711), a mais próxima de 4718
-    image: ../dados_panoramas/panos/colored_images.png
+    image: ../dados_panoramas/panos/colored_image.jpg
     max_width: 8192
     center_az: 135.0
     horizon_frac: 0.27

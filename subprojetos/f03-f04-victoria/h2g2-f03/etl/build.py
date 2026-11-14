@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from api.geo import R_MARS, haversine  # noqa: E402
-from etl.science import SCHEMA_SCIENCE, build_science  # noqa: E402
+from etl.science import SCHEMA_SCIENCE, build_science, copy_science_files  # noqa: E402
 from etl.sources import make_science_sources, make_sources  # noqa: E402
 
 Image.MAX_IMAGE_PIXELS = None  # panoramas e o recorte HiRISE são grandes
@@ -341,6 +341,26 @@ def write_manifest(db, bundle, cfg, source, places_check, waypoints_file):
             manifest["inventario_pds"] = prev["inventario_pds"]
     manifest["contagens"].update({"alvos": count("targets"), "medicoes": count("measurements")})
     manifest["science_source"] = cfg["science_source"]
+    if cfg["science_source"] == "public":
+        sc, cr = cfg["science"], cfg["crism"]
+        manifest["fontes_f04"] = [
+            {"nome": "Alvos curados (M8)", "arquivo": sc["targets_csv"], "credito": "blog Curiosity, NASA"},
+            {"nome": "Inventário PDS (tarefa 2)", "arquivo": sc["index_csv"], "credito": "PDS Geosciences"},
+            {"nome": "APXS RDR (RWP)", "arquivo": f"{sc['pds_dir']}/apxs/",
+             "url": "https://pds-geosciences.wustl.edu/missions/msl/apxs.htm",
+             "credito": "PDS Geosciences / Agência Espacial Canadense"},
+            {"nome": "ChemCam LIBS RDR (MOC)", "arquivo": f"{sc['pds_dir']}/chemcam/",
+             "url": "https://pds-geosciences.wustl.edu/missions/msl/chemcam.htm",
+             "credito": "PDS Geosciences / LANL / CNES"},
+            {"nome": "CheMin RDR (abundância mineral)", "arquivo": f"{sc['pds_dir']}/chemin/",
+             "url": "https://pds-geosciences.wustl.edu/missions/msl/chemin.htm",
+             "credito": "PDS Geosciences / NASA Ames"},
+            {"nome": f"CRISM MTRDR {cr['produto']} (parâmetros SU)", "arquivo": cr["crop_json"],
+             "url": cr["page_url"], "credito": "NASA/JPL/JHUAPL, PDS Geosciences"},
+            {"nome": "Fotos Mastcam dos alvos", "arquivo": sc["mastcam_dir"], "credito": "NASA/JPL-Caltech/MSSS"},
+            {"nome": "Polígonos de terreno (M6)", "arquivo": sc["terrain_geojson"],
+             "credito": "equipe H2G2", "presente": (bundle / "terrain.geojson").exists()},
+        ]
     old.write_text(json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
     db.executemany("INSERT OR REPLACE INTO meta VALUES (?,?)",
                    [("fonte", source), ("gerado_em", manifest["gerado_em"])])
@@ -388,7 +408,7 @@ def main() -> int:
     n_alvos, n_med = build_science(db, make_science_sources(cfg["science_source"], cfg, ROOT)[0],
                                    stops, cfg)
     log(f"F04: {n_alvos} alvos, {n_med} medições (science_source: {cfg['science_source']})")
-    log(f"F04: {localize_mastcam(db, bundle)} fotos Mastcam no pacote")
+    log(f"F04: arquivos no bundle: {len(copy_science_files(cfg, ROOT, bundle))}")
     orbital = build_orbital(cfg, bundle, win) if source != "mock" else None
     write_track(db, bundle, win, orbital, cfg)
     wp_file = waypoints_file or cfg["public"]["waypoints_file"]

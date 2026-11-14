@@ -115,15 +115,12 @@ def test_ficha_sem_alvo_perto_e_fora_da_janela():
 # --------------------------------------------------------------------------- #
 
 
-def test_vinculo_so_na_parada_exata_e_frase_por_regra():
-    from etl.sources.science_public import _parada_exata, frase_apxs, frase_chemin
+def test_resumo_por_regra_do_pds():
+    from etl.sources.science_public import summary_apxs, summary_chemin
 
-    assert _parada_exata("116_1944 (sol 4564)") == (116, 1944)
-    assert _parada_exata("120_232 (sol 4744, a 1 sol(s) de distância)") is None
-    assert _parada_exata("") is None
-    assert frase_chemin(4566, {"Plagioclase": 51, "Quartz": 1.6}) == \
-        "CheMin (sol 4566): plagioclásio 51,0%, quartzo 1,6% (% da fração cristalina)"
-    assert frase_apxs(4568, {"SiO2": 43.17, "Br": 0.0088}).startswith("APXS (sol 4568): SiO2 43,2%, Br 0,0%")
+    assert summary_chemin([("Plagioclase", 51, 0), ("Quartz", 1.6, 0)]) == \
+        "Fração cristalina: plagioclásio 51,0% · quartzo 1,6%."
+    assert summary_apxs({"SiO2": (43.17, 0.1), "Br": (0.0088, 0)}) == "Óxidos principais: SiO2 43,2%."
 
 
 @pytest.mark.skipif(not DB.exists(), reason="pacote não gerado")

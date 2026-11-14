@@ -111,6 +111,12 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .ficha{display:grid;grid-template-columns:88px 1fr;gap:12px;align-items:start}
 .ficha-img{width:88px;height:88px;object-fit:cover;background:#000;border:1px solid var(--line)}
 .ficha .tags{display:flex;flex-wrap:wrap;gap:6px}
+.fls{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:10px}
+.fl{border-top:1px solid var(--line);padding-top:8px}
+.fl-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.fl-sec{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.fl-txt{margin:4px 0;font-size:13px;line-height:1.45;color:var(--tx)}
+.aviso{color:var(--amber)}
 .ficha-txt{margin:10px 0;font-size:13px;line-height:1.5;color:var(--mut)}
 
 @media (max-width:900px){
