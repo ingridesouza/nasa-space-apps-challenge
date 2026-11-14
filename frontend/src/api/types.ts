@@ -88,6 +88,47 @@ export interface NomenclatureFeature {
   fonte_url: string
 }
 
+/** Espelha `GET /api/photos` -- todas as ~200 fotos reais com posição,
+ * usadas na camada "rastro do rover" (pins no mapa), diferente de
+ * NearbyPhoto que é por raio ao redor de um clique. */
+export interface RoverPhotoPin {
+  lat: number
+  lon: number
+  sol: number
+  camera: string
+  url: string
+}
+
+/** Espelha `GET /api/route` -- feature 02, A* real sobre o DTM. Custo
+ * usa só inclinação real (não AI4Mars -- sem cobertura pro boxwork,
+ * ver api/route_planning.py); `avisos` carrega o aviso textual de
+ * areia nas depressões, não um fator de custo por pixel. */
+export interface RouteSegment {
+  de: [number, number]
+  para: [number, number]
+  slope_status: SlopeStatus
+}
+
+export interface ElevationProfilePoint {
+  distancia_acumulada_m: number
+  elevacao_m: number
+}
+
+export interface RouteOption {
+  tipo: 'mais_segura' | 'mais_rapida'
+  pontos: [number, number][]
+  distancia_m: number
+  tempo_estimado_min: number
+  o2_estimado_l: number
+  perfil_elevacao: ElevationProfilePoint[]
+  trechos_risco: RouteSegment[]
+}
+
+export interface RouteResponse {
+  rotas: RouteOption[]
+  avisos: string[]
+}
+
 /** Espelha uma linha de `raster_registry`, devolvida por `GET /layers`. */
 export interface LayerMeta {
   layer_name: string

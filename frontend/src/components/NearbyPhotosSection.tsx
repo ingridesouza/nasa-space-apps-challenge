@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import type { NearbyPhoto } from '../api/types'
+import { PhotoLightbox } from './PhotoLightbox'
 
 interface Props {
   photos: NearbyPhoto[]
@@ -12,7 +13,7 @@ interface Props {
  * "grid/lightbox de fotos estáticas, ordenadas por distância e
  * direção", não só uma lista de texto. */
 export function NearbyPhotosSection({ photos }: Props) {
-  const [lightbox, setLightbox] = useState<NearbyPhoto | null>(null)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   return (
     <div style={{ marginTop: 'var(--s-4)' }}>
@@ -31,7 +32,7 @@ export function NearbyPhotosSection({ photos }: Props) {
             <button
               key={i}
               type="button"
-              onClick={() => setLightbox(p)}
+              onClick={() => setLightboxIndex(i)}
               style={{
                 padding: 0,
                 border: '1px solid var(--glass-rim)',
@@ -56,31 +57,13 @@ export function NearbyPhotosSection({ photos }: Props) {
         </div>
       )}
 
-      {lightbox && (
-        <div
-          onClick={() => setLightbox(null)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(10, 10, 11, 0.88)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: 'var(--s-5)',
-            cursor: 'zoom-out',
-          }}
-        >
-          <img
-            src={lightbox.url}
-            alt={`${lightbox.camera} · sol ${lightbox.sol}`}
-            style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: 'var(--r-2)' }}
-          />
-          <div className="h2g2-mono" style={{ color: 'var(--ink-2)', fontSize: 'var(--t-small)', marginTop: 'var(--s-3)' }}>
-            {lightbox.distance_m}m · {lightbox.bearing} · sol {lightbox.sol} · {lightbox.camera}
-          </div>
-        </div>
+      {lightboxIndex !== null && (
+        <PhotoLightbox
+          photos={photos.map((p) => ({ url: p.url, sol: p.sol, camera: p.camera, caption: `${p.distance_m}m · ${p.bearing}` }))}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onIndexChange={setLightboxIndex}
+        />
       )}
     </div>
   )

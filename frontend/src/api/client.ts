@@ -1,4 +1,11 @@
-import type { ConditionsResponse, LayerMeta, NomenclatureFeature, PointResponse } from './types'
+import type {
+  ConditionsResponse,
+  LayerMeta,
+  NomenclatureFeature,
+  PointResponse,
+  RoverPhotoPin,
+  RouteResponse,
+} from './types'
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
@@ -32,6 +39,31 @@ export async function getLayers(): Promise<LayerMeta[]> {
   const resp = await fetch(`${API_BASE_URL}/layers`)
   if (!resp.ok) {
     throw new Error(`/layers falhou: ${resp.status}`)
+  }
+  return resp.json()
+}
+
+export async function getRoverPhotos(): Promise<RoverPhotoPin[]> {
+  const resp = await fetch(`${API_BASE_URL}/api/photos`)
+  if (!resp.ok) {
+    throw new Error(`/api/photos falhou: ${resp.status}`)
+  }
+  return resp.json()
+}
+
+export async function getRoute(
+  originLat: number,
+  originLon: number,
+  destLat: number,
+  destLon: number,
+): Promise<RouteResponse> {
+  const url =
+    `${API_BASE_URL}/api/route?origin_lat=${originLat}&origin_lon=${originLon}` +
+    `&dest_lat=${destLat}&dest_lon=${destLon}`
+  const resp = await fetch(url)
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => null)
+    throw new Error(body?.detail ?? `/api/route falhou: ${resp.status}`)
   }
   return resp.json()
 }

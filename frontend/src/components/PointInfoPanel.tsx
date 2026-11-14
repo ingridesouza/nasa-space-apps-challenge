@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 
 import { getPoint } from '../api/client'
-import type { NomenclatureFeature } from '../api/types'
+import type { NomenclatureFeature, PointResponse } from '../api/types'
 import { nearestNomenclature } from '../map/nomenclature'
-import { SLOPE_VERDICT } from '../theme/verdict'
 import { NearbyPhotosSection } from './NearbyPhotosSection'
 import { ScienceTargetSection } from './ScienceTargetSection'
+import { VerdictBadge } from './VerdictBadge'
 
 interface PointInfoPanelProps {
   point: { lat: number; lon: number } | null
@@ -114,44 +114,25 @@ export function PointInfoPanel({ point, onClose, nomenclature }: PointInfoPanelP
           ) : (
             (() => {
               const rv = data.raster_values
-              const veredito = rv.slope_status ? SLOPE_VERDICT[rv.slope_status] : null
               const categoria = layerName ? rv.fontes[layerName]?.categoria : undefined
               return (
-                <div
-                  style={{
-                    border: `1px solid ${veredito ? veredito.color : 'var(--glass-rim)'}`,
-                    borderRadius: 'var(--r-2)',
-                    padding: 'var(--s-3)',
-                    marginBottom: 'var(--s-4)',
-                    background: veredito ? `color-mix(in srgb, ${veredito.color} 10%, transparent)` : 'transparent',
-                  }}
-                >
-                  {veredito && (
-                    <div
-                      className="h2g2-mono"
-                      style={{
-                        color: veredito.color,
-                        fontSize: 'var(--t-small)',
-                        fontWeight: 600,
-                        marginBottom: 'var(--s-2)',
-                      }}
-                    >
-                      ● {veredito.label}
+                <div style={{ marginBottom: 'var(--s-4)' }}>
+                  {rv.slope_status && <VerdictBadge status={rv.slope_status} />}
+                  <div className="h2g2-card" style={{ marginTop: 'var(--s-2)' }}>
+                    <div className="h2g2-display" style={{ fontSize: 'var(--t-3)', color: 'var(--ink)', lineHeight: 1.1 }}>
+                      {rv.elevacao_m!.toFixed(1)}
+                      <span className="h2g2-mono" style={{ fontSize: 'var(--t-small)', color: 'var(--ink-3)' }}>
+                        {' '}m
+                      </span>
                     </div>
-                  )}
-                  <div className="h2g2-display" style={{ fontSize: 'var(--t-3)', color: 'var(--ink)', lineHeight: 1.1 }}>
-                    {rv.elevacao_m!.toFixed(1)}
-                    <span className="h2g2-mono" style={{ fontSize: 'var(--t-small)', color: 'var(--ink-3)' }}>
-                      {' '}m
-                    </span>
-                  </div>
-                  {rv.slope_deg !== null && (
-                    <div className="h2g2-dim h2g2-mono" style={{ fontSize: 'var(--t-small)' }}>
-                      slope {rv.slope_deg!.toFixed(2)}°
+                    {rv.slope_deg !== null && (
+                      <div className="h2g2-dim h2g2-mono" style={{ fontSize: 'var(--t-small)' }}>
+                        slope {rv.slope_deg!.toFixed(2)}°
+                      </div>
+                    )}
+                    <div className="h2g2-dim" style={{ fontSize: 'var(--t-micro)', marginTop: 'var(--s-1)' }}>
+                      {categoria ? (CATEGORIA_LABEL[categoria] ?? categoria) : ''} · {layerName}
                     </div>
-                  )}
-                  <div className="h2g2-dim" style={{ fontSize: 'var(--t-micro)', marginTop: 'var(--s-1)' }}>
-                    {categoria ? (CATEGORIA_LABEL[categoria] ?? categoria) : ''} · {layerName}
                   </div>
                 </div>
               )

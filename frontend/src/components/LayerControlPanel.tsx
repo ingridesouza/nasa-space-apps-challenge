@@ -1,13 +1,19 @@
 import type { Map } from 'maplibre-gl'
 import { useState } from 'react'
 
+import { mosaicUrl } from '../api/client'
 import { PLANNED_LAYERS, TOGGLEABLE_LAYERS } from '../map/layers'
+
+const THUMB_SIZE = 32
 
 interface LayerControlPanelProps {
   map: Map | null
+  photosVisible: boolean
+  onTogglePhotos: () => void
+  photoCount: number
 }
 
-export function LayerControlPanel({ map }: LayerControlPanelProps) {
+export function LayerControlPanel({ map, photosVisible, onTogglePhotos, photoCount }: LayerControlPanelProps) {
   const [layerState, setLayerState] = useState(() =>
     Object.fromEntries(TOGGLEABLE_LAYERS.map((l) => [l.id, { visible: l.defaultVisible, opacity: l.defaultOpacity }])),
   )
@@ -30,7 +36,23 @@ export function LayerControlPanel({ map }: LayerControlPanelProps) {
     return (
       <div key={layer.id} className={`h2g2-layer-row ${state.visible ? 'on' : ''}`} style={{ marginBottom: 'var(--s-2)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-2)' }}>
-          <span style={{ fontSize: 'var(--t-small)', color: 'var(--ink)' }}>{layer.label}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minWidth: 0 }}>
+            <img
+              src={mosaicUrl(layer.id)}
+              alt=""
+              loading="lazy"
+              style={{
+                width: THUMB_SIZE,
+                height: THUMB_SIZE,
+                objectFit: 'cover',
+                borderRadius: 'var(--r-1)',
+                border: '1px solid var(--glass-rim)',
+                flex: 'none',
+                background: 'var(--n900)',
+              }}
+            />
+            <span style={{ fontSize: 'var(--t-small)', color: 'var(--ink)' }}>{layer.label}</span>
+          </div>
           <button
             type="button"
             role="switch"
@@ -62,10 +84,18 @@ export function LayerControlPanel({ map }: LayerControlPanelProps) {
     <div
       className="h2g2-panel"
       style={{
-        position: 'absolute',
-        top: 88,
-        left: 'var(--s-4)',
-        width: 240,
+        // Parte de um grupo flex-column em App.tsx (junto com
+        // ConditionsPanel) -- antes era `position: absolute` solto, e
+        // como não tinha limite de altura/scroll próprio, o conteúdo
+        // (que cresceu com as miniaturas de camada) ficava coberto pelo
+        // painel de condições ancorado embaixo na mesma coluna (bug
+        // real reportado pelo usuário, não um elemento "escondido" por
+        // design). Flex + overflow próprio resolve isso de vez, sem
+        // número mágico de altura que quebra de novo no futuro.
+        flex: '1 1 auto',
+        minHeight: 0,
+        overflowY: 'auto',
+        width: '100%',
         padding: 'var(--s-3) var(--s-4)',
       }}
     >
@@ -75,6 +105,39 @@ export function LayerControlPanel({ map }: LayerControlPanelProps) {
 
       <div style={{ borderTop: '1px solid var(--glass-rim)', paddingTop: 'var(--s-2)', marginTop: 'var(--s-1)' }}>
         {overlayLayers.map(renderLayerRow)}
+
+        <div className={`h2g2-layer-row ${photosVisible ? 'on' : ''}`}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minWidth: 0 }}>
+              <div
+                style={{
+                  width: THUMB_SIZE,
+                  height: THUMB_SIZE,
+                  borderRadius: 'var(--r-1)',
+                  border: '1px solid var(--glass-rim)',
+                  background: 'var(--n900)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  flex: 'none',
+                  color: '#f2b33d',
+                  fontSize: 16,
+                }}
+              >
+                📷
+              </div>
+              <span style={{ fontSize: 'var(--t-small)', color: 'var(--ink)' }}>Rastro do rover ({photoCount})</span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={photosVisible}
+              onClick={onTogglePhotos}
+              className={`h2g2-switch ${photosVisible ? 'on' : ''}`}
+            >
+              <span />
+            </button>
+          </div>
+        </div>
       </div>
 
       <div style={{ borderTop: '1px solid var(--glass-rim)', paddingTop: 'var(--s-3)', marginTop: 'var(--s-1)' }}>

@@ -14,10 +14,11 @@ export function ConditionsPanel({ conditions, error }: Props) {
     <div
       className="h2g2-panel"
       style={{
-        position: 'absolute',
-        bottom: 'var(--s-4)',
-        left: 'var(--s-4)',
-        width: 240,
+        // Parte do grupo flex-column em App.tsx (junto com
+        // LayerControlPanel) -- não fica mais ancorado sozinho no
+        // bottom, senão volta a cobrir o painel de cima se ele crescer.
+        flex: 'none',
+        width: '100%',
         padding: 'var(--s-3) var(--s-4)',
       }}
     >
@@ -36,26 +37,30 @@ export function ConditionsPanel({ conditions, error }: Props) {
       )}
 
       {conditions && (
-        <div className="h2g2-mono" style={{ fontSize: 'var(--t-small)', display: 'grid', gap: 'var(--s-1)' }}>
+        <div className="h2g2-card h2g2-stat-grid">
           <div>
-            <span className="h2g2-dim">temp </span>
-            {conditions.rems.temp_min_c}° a {conditions.rems.temp_max_c}°C
+            <span className="h2g2-stat-label">Temp</span>
+            <span className="h2g2-stat-value" style={{ fontSize: 'var(--t-small)' }}>
+              {conditions.rems.temp_min_c}° a {conditions.rems.temp_max_c}°C
+            </span>
           </div>
           <div>
-            <span className="h2g2-dim">pressão </span>
-            {conditions.rems.pressao_pa} Pa
+            <span className="h2g2-stat-label">Pressão</span>
+            <span className="h2g2-stat-value" style={{ fontSize: 'var(--t-small)' }}>{conditions.rems.pressao_pa} Pa</span>
           </div>
           <div>
-            <span className="h2g2-dim">UV pico </span>
-            {conditions.rems.uv_pico} W/m²
+            <span className="h2g2-stat-label">UV pico</span>
+            <span className="h2g2-stat-value" style={{ fontSize: 'var(--t-small)' }}>{conditions.rems.uv_pico} W/m²</span>
           </div>
           <div>
-            <span className="h2g2-dim">umidade </span>
-            {conditions.rems.umidade_pct}%
+            <span className="h2g2-stat-label">Umidade</span>
+            <span className="h2g2-stat-value" style={{ fontSize: 'var(--t-small)' }}>{conditions.rems.umidade_pct}%</span>
           </div>
-          <div style={{ borderTop: '1px solid var(--glass-rim)', paddingTop: 'var(--s-1)', marginTop: 'var(--s-1)' }}>
-            <span className="h2g2-dim">dose RAD </span>
-            <span style={{ color: 'var(--ember)' }}>{conditions.rad.dose_estimada_ugy_por_dia} µGy/dia</span>
+          <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--glass-rim)', paddingTop: 'var(--s-2)' }}>
+            <span className="h2g2-stat-label">Dose RAD</span>
+            <span className="h2g2-stat-value" style={{ color: 'var(--ember)' }}>
+              {conditions.rad.dose_estimada_ugy_por_dia} µGy/dia
+            </span>
           </div>
         </div>
       )}

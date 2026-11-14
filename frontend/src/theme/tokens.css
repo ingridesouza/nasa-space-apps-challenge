@@ -195,6 +195,19 @@ body {
   padding: var(--s-2) var(--s-3);
 }
 
+/* Tingimento "poeira marciana" sobre as camadas óticas (CTX/HiRISE),
+ * que só existem em preto-e-branco no Mars Trek pra essa região --
+ * `mix-blend-mode: color` troca só o matiz, preserva toda a luminância
+ * (crateras, sombras, textura) do dado real por baixo. */
+.h2g2-mars-tint {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: #a8613a;
+  mix-blend-mode: color;
+  opacity: 0.6;
+}
+
 /* Vinheta sutil -- reforça a sensação de "visor", não some o mapa */
 .h2g2-vignette {
   position: absolute;
@@ -346,6 +359,83 @@ button {
 .h2g2-switch.on span {
   left: 19px;
   background: #fff;
+}
+
+/* Marcadores de origem/destino da rota (feature 02) -- pontos sólidos
+ * simples, cor distinta do crosshair de clique (azul) pra não confundir
+ * os dois modos de interação no mapa. */
+.h2g2-route-marker {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--n950);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+  animation: h2g2-route-marker-in 320ms var(--ease);
+}
+.h2g2-route-marker--origin {
+  background: var(--verdict-seguro);
+  box-shadow: 0 0 10px var(--verdict-seguro);
+}
+.h2g2-route-marker--destination {
+  background: var(--mars2);
+  box-shadow: 0 0 10px var(--mars2);
+}
+@keyframes h2g2-route-marker-in {
+  from {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Cards de estatística -- agrupa pares label/valor com fundo
+ * diferenciado, em vez de texto monoespaçado solto empilhado. */
+.h2g2-card {
+  background: var(--n900);
+  border: 1px solid var(--glass-rim);
+  border-radius: var(--r-2);
+  padding: var(--s-2) var(--s-3);
+}
+
+.h2g2-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-2) var(--s-3);
+}
+.h2g2-stat-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.h2g2-stat-label {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.h2g2-stat-value {
+  font-family: var(--font-display);
+  font-size: var(--t-4);
+  color: var(--ink);
+}
+
+/* Barra de progresso simples -- fill controlado via style inline
+ * (largura%) pelo componente, sem JS extra de animação. */
+.h2g2-progress {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--n700);
+  overflow: hidden;
+}
+.h2g2-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 300ms var(--ease);
 }
 
 /* Linha de camada -- adaptado do componente `.layer` da landing
