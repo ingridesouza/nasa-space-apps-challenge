@@ -182,20 +182,26 @@ def alertas_da_rota(pontos: list[tuple[float, float]], waypoints_path: str = WAY
     Curiosity já mediu perto da rota e trechos que saem do raio de
     volta da base. A inclinação em si já está em trechos_risco (mesmo
     limite do DTM que o A*); aqui só entra o que o agente sabe e o A*
-    não usa pra escolher caminho."""
-    amostra = pontos[::PASSO_AMOSTRA_ROTA]
-    if pontos and amostra[-1] != pontos[-1]:
-        amostra.append(pontos[-1])
+    não usa pra escolher caminho.
+
+    Cada alerta carrega `indice_ponto` (índice em `pontos`) -- quem
+    chama (api/main.py) converte pra distância acumulada real usando o
+    mesmo `perfil_elevacao` que já devolve pro gráfico, pra dizer EM
+    QUE TRECHO da caminhada o alerta vale, não só que ele existe."""
+    amostra_idx = list(range(0, len(pontos), PASSO_AMOSTRA_ROTA))
+    if pontos and amostra_idx[-1] != len(pontos) - 1:
+        amostra_idx.append(len(pontos) - 1)
 
     vistos = set()
     alertas = []
-    for lat, lon in amostra:
+    for i in amostra_idx:
+        lat, lon = pontos[i]
         for a in _regra_terreno_historico(lat, lon, waypoints_path) + _regra_volta_base(lat, lon):
             chave = (a["tipo"], a["mensagem"])
             if chave not in vistos:
                 vistos.add(chave)
-                alertas.append(a)
-    return sorted(alertas, key=lambda a: _ORDEM[a["nivel"]])
+                alertas.append({**a, "indice_ponto": i})
+    return alertas
 
 
 def paradas_no_bbox(min_lon: float, min_lat: float, max_lon: float, max_lat: float) -> list[dict] | None:

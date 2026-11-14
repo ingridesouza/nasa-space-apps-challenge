@@ -239,8 +239,16 @@ def get_route(origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: f
     # feature 08: acréscimo ao contrato, nenhuma chave acima muda --
     # cruza o histórico do rover e o limite de volta à base (mesmas
     # regras do /api/point) com os pontos de cada variante calculada.
+    # distancia_m (acima do início, não do destino) vem do mesmo
+    # perfil_elevacao do gráfico -- é o "em que trecho" que faltava:
+    # sem isso, o alerta valia pra rota inteira, não pra um ponto dela.
     for rota in resultado["rotas"]:
-        rota["alertas"] = alertas_da_rota([tuple(p) for p in rota["pontos"]])
+        alertas = alertas_da_rota([tuple(p) for p in rota["pontos"]])
+        perfil = rota["perfil_elevacao"]
+        for alerta in alertas:
+            alerta["distancia_m"] = perfil[alerta.pop("indice_ponto")]["distancia_acumulada_m"]
+        alertas.sort(key=lambda a: a["distancia_m"])
+        rota["alertas"] = alertas
 
     return resultado
 

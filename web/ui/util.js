@@ -25,8 +25,11 @@ export function veredito(status, checklist = [], rotulo = null) {
 /** Alertas da feature 08 (api/alertas.py): mesmas cores do veredito. */
 const ALERTA_COR = { perigo: 'var(--verdict-perigo)', atencao: 'var(--verdict-atencao)', info: 'var(--ink-3)' }
 
+/** a.distancia_m (só nos alertas de /api/route, não nos de /api/point):
+ * posição real ao longo da caminhada, não a rota inteira. */
 export const alertasHtml = (alertas) => alertas
-  .map((a) => `<div class="h2g2-mono h2g2-alerta" title="fonte: ${esc(a.fonte)}" style="color:${ALERTA_COR[a.nivel]}">● ${esc(a.mensagem)}</div>`)
+  .map((a) => `<div class="h2g2-mono h2g2-alerta" title="fonte: ${esc(a.fonte)}" style="color:${ALERTA_COR[a.nivel]}">
+    ● ${a.distancia_m !== undefined ? `<span class="h2g2-dim">a ${num(a.distancia_m)}m do início:</span> ` : ''}${esc(a.mensagem)}</div>`)
   .join('')
 
 const MARS_RADIUS_M = 3_396_190
