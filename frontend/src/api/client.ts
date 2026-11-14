@@ -5,6 +5,7 @@ import type {
   PointResponse,
   RoverPhotoPin,
   RouteResponse,
+  RoverStop,
 } from './types'
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
@@ -31,6 +32,14 @@ export async function getNomenclature(): Promise<NomenclatureFeature[]> {
   const resp = await fetch(`${API_BASE_URL}/api/nomenclature`)
   if (!resp.ok) {
     throw new Error(`/api/nomenclature falhou: ${resp.status}`)
+  }
+  return resp.json()
+}
+
+export async function getRoverTrack(): Promise<RoverStop[]> {
+  const resp = await fetch(`${API_BASE_URL}/api/rover-track`)
+  if (!resp.ok) {
+    throw new Error(`/api/rover-track falhou: ${resp.status}`)
   }
   return resp.json()
 }
