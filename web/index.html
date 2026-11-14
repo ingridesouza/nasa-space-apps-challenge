@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- Front H2G2 em HTML/CSS/JS puro, servido pela API (api/main.py).
+     Única lib: MapLibre GL 6.17.0 vendorizada em lib/maplibre/ (BSD-3). Nada carrega de fora. -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <title>H2G2 · Mapa hiperlocal do boxwork</title>
+    <link rel="stylesheet" href="lib/maplibre/maplibre-gl.css" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="mapa"></div>
+    <!-- CTX/HiRISE em Gale só existem em P&B; mix-blend-mode: color troca só o
+         matiz (poeira marciana), nenhum dado científico passa por aqui -->
+    <div class="h2g2-mars-tint" id="tint" hidden></div>
+    <div class="h2g2-mono h2g2-dim h2g2-centro" id="status">carregando camadas da API...</div>
+
+    <div class="h2g2-vignette"></div>
+    <div class="h2g2-corner h2g2-corner--tl"></div>
+    <div class="h2g2-corner h2g2-corner--tr"></div>
+    <div class="h2g2-corner h2g2-corner--bl"></div>
+    <div class="h2g2-corner h2g2-corner--br"></div>
+
+    <div class="h2g2-panel h2g2-hud" id="hud"></div>
+
+    <div class="h2g2-coluna-esq">
+      <div class="h2g2-panel" id="camadas"></div>
+      <div class="h2g2-panel" id="condicoes"></div>
+    </div>
+
+    <button class="h2g2-panel h2g2-mono h2g2-btn-rota" id="btn-rota">◇ planejar rota</button>
+    <div class="h2g2-panel h2g2-mono h2g2-instrucao" id="instrucao" hidden></div>
+
+    <div class="h2g2-panel h2g2-painel-dir" id="ponto" hidden></div>
+    <div class="h2g2-panel h2g2-painel-dir" id="rota" hidden></div>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
