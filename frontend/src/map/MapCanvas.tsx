@@ -10,11 +10,20 @@ import { baseLayersBounds, buildStyle, dataBounds, minZoomToCover, TEST_BBOX_CEN
 
 export type PickMode = 'point' | 'pick-origin' | 'pick-destination'
 
+export const ROVER_TRACK_LINE_ID = 'rover_track_line'
+export const ROVER_TRACK_STOPS_ID = 'rover_track_stops'
+
 /** Trilha do Curiosity (feature 08, memória do terreno): uma linha
  * ligando as paradas em ordem de sol + um círculo por parada colorido
  * pela inclinação que o rover mediu no chão (mesmos limites 15°/20° do
- * DTM). Mostra onde o mapa de relevo erra. */
-function addRoverTrack(map: Map, stops: RoverStop[]) {
+ * DTM). Mostra onde o mapa de relevo erra.
+ *
+ * Começa invisível (`visibility: 'none'`) -- antes aparecia sempre
+ * ligada, sem nome nem toggle em lugar nenhum da UI, parecendo um bug
+ * ("que linha é essa?", reportado pelo usuário). Agora segue o mesmo
+ * padrão de toda outra camada: entra desligada por padrão (como
+ * Relevo/THEMIS) e liga pelo LayerControlPanel. */
+function addRoverTrack(map: Map, stops: RoverStop[], visivel: boolean) {
   map.addSource('rover_track', {
     type: 'geojson',
     data: {
@@ -33,18 +42,21 @@ function addRoverTrack(map: Map, stops: RoverStop[]) {
       ],
     },
   })
+  const visibility = visivel ? 'visible' : 'none'
   map.addLayer({
-    id: 'rover_track_line',
+    id: ROVER_TRACK_LINE_ID,
     type: 'line',
     source: 'rover_track',
     filter: ['==', ['geometry-type'], 'LineString'],
+    layout: { visibility },
     paint: { 'line-color': '#ffffff', 'line-opacity': 0.35, 'line-width': 1 },
   })
   map.addLayer({
-    id: 'rover_track_stops',
+    id: ROVER_TRACK_STOPS_ID,
     type: 'circle',
     source: 'rover_track',
     filter: ['==', ['geometry-type'], 'Point'],
+    layout: { visibility },
     paint: {
       'circle-radius': ['match', ['get', 'status'], 'seguro', 3, 6],
       'circle-color': [
@@ -74,6 +86,7 @@ interface MapCanvasProps {
   photosVisible: boolean
   onPhotoClick: (photo: RoverPhotoPin) => void
   onZoomChange: (zoom: number) => void
+  roverTrackVisible: boolean
 }
 
 const ROUTE_SOURCE_ID = 'h2g2-route-line'
@@ -103,6 +116,7 @@ export function MapCanvas({
   photosVisible,
   onPhotoClick,
   onZoomChange,
+  roverTrackVisible,
 }: MapCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<Map | null>(null)
@@ -114,6 +128,11 @@ export function MapCanvas({
   const onMapClickRef = useRef(onMapClick)
   const onPhotoClickRef = useRef(onPhotoClick)
   const onZoomChangeRef = useRef(onZoomChange)
+  const roverTrackVisibleRef = useRef(roverTrackVisible)
+
+  useEffect(() => {
+    roverTrackVisibleRef.current = roverTrackVisible
+  }, [roverTrackVisible])
 
   useEffect(() => {
     onMapClickRef.current = onMapClick
@@ -268,7 +287,7 @@ export function MapCanvas({
       // trilha do Curiosity (feature 08) -- falha silenciosa: sem ela o
       // mapa continua útil (mesmo padrão da nomenclatura em App.tsx).
       getRoverTrack()
-        .then((stops) => addRoverTrack(map, stops))
+        .then((stops) => addRoverTrack(map, stops, roverTrackVisibleRef.current))
         .catch(() => {})
     })
 
@@ -350,6 +369,14 @@ export function MapCanvas({
     if (!map || !loadedRef.current) return
     map.setLayoutProperty(PHOTOS_LAYER_ID, 'visibility', photosVisible ? 'visible' : 'none')
   }, [photosVisible])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !loadedRef.current || !map.getLayer(ROVER_TRACK_LINE_ID)) return
+    const visibility = roverTrackVisible ? 'visible' : 'none'
+    map.setLayoutProperty(ROVER_TRACK_LINE_ID, 'visibility', visibility)
+    map.setLayoutProperty(ROVER_TRACK_STOPS_ID, 'visibility', visibility)
+  }, [roverTrackVisible])
 
   return <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
 }
