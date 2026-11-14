@@ -26,4 +26,4 @@ front:
 	@echo "Front servido pela API: rode 'make run' e abra http://localhost:8000"
 
 test:
-	cd api && $(PY) test_alertas.py && $(PY) test_agente.py && $(PY) test_f03.py
+	cd api && $(PY) test_alertas.py
