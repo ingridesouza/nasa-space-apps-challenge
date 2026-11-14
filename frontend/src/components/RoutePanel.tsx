@@ -16,6 +16,7 @@ interface RoutePanelProps {
 const TIPO_LABEL: Record<RouteOption['tipo'], string> = {
   mais_segura: 'Mais segura',
   mais_rapida: 'Mais rápida',
+  mais_ciencia: 'Mais ciência',
 }
 
 /** Capacidade de O2 de referência pra virar a barra de progresso --
@@ -222,6 +223,20 @@ export function RoutePanel({ origin, destination, onClose, onReset, onActiveRout
                         <span className="h2g2-stat-label">Perfil de elevação</span>
                         <ElevationProfile perfil={rotaAtiva.perfil_elevacao} />
                       </div>
+
+                      {rotaAtiva.alvo_cientifico && (
+                        <div className="h2g2-card" style={{ marginTop: 'var(--s-2)' }}>
+                          <span className="h2g2-stat-label">Passa perto de</span>
+                          <div className="h2g2-display" style={{ fontSize: 'var(--t-small)', color: 'var(--ink)', marginBottom: 4 }}>
+                            {rotaAtiva.alvo_cientifico.nome}
+                          </div>
+                          {rotaAtiva.alvo_cientifico.medicao_curiosity && (
+                            <div className="h2g2-dim" style={{ fontSize: 'var(--t-micro)', lineHeight: 1.4 }}>
+                              {rotaAtiva.alvo_cientifico.medicao_curiosity}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )
                 })()}

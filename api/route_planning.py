@@ -29,7 +29,7 @@ import sqlite3
 import numpy as np
 import rasterio
 
-from geo import MARS_METERS_PER_DEGREE
+from geo import MARS_METERS_PER_DEGREE, haversine_m
 
 # Mesmos limites da feature 01 (raster_sampling.py) -- um único "limite
 # Artemis" em todo o sistema, não dois valores que podem divergir.
@@ -40,6 +40,13 @@ LIMITE_SLOPE_PERIGO_DEG = 20.0
 #: segura" -- penaliza mais forte que na variante "mais rápida", que só
 #: evita o que é realmente impassável (>=20°).
 PESO_ATENCAO = {"mais_segura": 6.0, "mais_rapida": 1.8}
+
+#: desvio máximo (em metros) que vale a pena pra passar por um alvo
+#: científico -- bbox inteiro tem ~5.6km de lado, então 600m é um
+#: desvio real mas não absurdo. Se nenhum dos alvos cabe nisso, a
+#: variante "mais_ciencia" nem aparece na resposta (nunca força passar
+#: por algo longe demais só pra "ter ciência").
+MAIS_CIENCIA_DESVIO_MAX_M = 600.0
 
 #: aviso fixo, citando a fonte real (não é cálculo por pixel -- ver
 #: docstring do módulo). Texto é pra exibição direta ao usuário final,
@@ -260,6 +267,28 @@ def _monta_rota(tipo: str, caminho_rc, elevacao, slope_deg, transform, pixel_siz
     }
 
 
+def _todos_alvos_cientificos(conn: sqlite3.Connection) -> list[dict]:
+    rows = conn.execute("SELECT nome, lat, lon, medicao_curiosity, fonte_url FROM science_targets").fetchall()
+    return [dict(r) for r in rows]
+
+
+def _melhor_alvo_cientifico(origin_lat, origin_lon, dest_lat, dest_lon, alvos: list[dict]) -> dict | None:
+    """Alvo científico com menor desvio real (em metros) em relação à
+    linha reta origem-destino, entre os que cabem em
+    MAIS_CIENCIA_DESVIO_MAX_M. None se nenhum coube -- nunca força
+    passar por um alvo longe demais só pra existir uma 3a opção."""
+    direta = haversine_m(origin_lat, origin_lon, dest_lat, dest_lon)
+    melhor, menor_desvio = None, None
+    for alvo in alvos:
+        via_alvo = haversine_m(origin_lat, origin_lon, alvo["lat"], alvo["lon"]) + haversine_m(
+            alvo["lat"], alvo["lon"], dest_lat, dest_lon
+        )
+        desvio = via_alvo - direta
+        if desvio <= MAIS_CIENCIA_DESVIO_MAX_M and (menor_desvio is None or desvio < menor_desvio):
+            melhor, menor_desvio = alvo, desvio
+    return melhor
+
+
 def plan_route(conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_lon, dose_rad_ugy_por_hora=None) -> dict:
     path = _dtm_path(conn)
     elevacao, transform, bounds, nodata = _load_dtm(path)
@@ -281,5 +310,29 @@ def plan_route(conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_
     for tipo in ("mais_segura", "mais_rapida"):
         caminho = _astar(elevacao, slope_deg, transform, pixel_size_m, origem_rc, destino_rc, tipo)
         rotas.append(_monta_rota(tipo, caminho, elevacao, slope_deg, transform, pixel_size_m, dose_rad_ugy_por_hora))
+
+    # "mais_ciencia": passa pelo alvo científico real mais próximo do
+    # caminho, só se o desvio for razoável (ver MAIS_CIENCIA_DESVIO_MAX_M)
+    # -- com só 3 alvos cadastrados (feature 4), nem sempre vai existir
+    # um perto o bastante, e aí essa variante simplesmente não aparece
+    # (melhor que forçar um desvio absurdo só pra "ter ciência").
+    alvo = _melhor_alvo_cientifico(origin_lat, origin_lon, dest_lat, dest_lon, _todos_alvos_cientificos(conn))
+    if alvo is not None:
+        alvo_rc = _latlon_to_rc(transform, alvo["lat"], alvo["lon"])
+        try:
+            perna1 = _astar(elevacao, slope_deg, transform, pixel_size_m, origem_rc, alvo_rc, "mais_segura")
+            perna2 = _astar(elevacao, slope_deg, transform, pixel_size_m, alvo_rc, destino_rc, "mais_segura")
+            caminho_completo = perna1 + perna2[1:]  # sem duplicar o pixel do alvo
+            rota_ciencia = _monta_rota(
+                "mais_ciencia", caminho_completo, elevacao, slope_deg, transform, pixel_size_m, dose_rad_ugy_por_hora
+            )
+            rota_ciencia["alvo_cientifico"] = {
+                "nome": alvo["nome"],
+                "medicao_curiosity": alvo["medicao_curiosity"],
+                "fonte_url": alvo["fonte_url"],
+            }
+            rotas.append(rota_ciencia)
+        except (SemCaminhoError, ForaDoGridError):
+            pass  # alvo existe mas não tem caminho caminhável até ele -- sem essa variante, sem quebrar as outras duas
 
     return {"rotas": rotas, "avisos": [AVISO_AREIA]}
