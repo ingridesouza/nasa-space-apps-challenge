@@ -9,13 +9,15 @@ Testar:
     http://127.0.0.1:8000/api/point?lat=-4.59&lon=137.44
 """
 
+import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from alertas import alertas_do_ponto, paradas_no_bbox
 from conditions import get_cached_conditions
@@ -26,6 +28,13 @@ from raster_sampling import sample_all_rasters
 from route_planning import ForaDoGridError, SemCaminhoError, plan_route
 from tile_server import render_tile
 from vector_queries import all_photos, nearby_photos, nearest_science_target
+
+# Arquivo real das fotos, baixado por
+# data-pipeline/scripts/download_rover_photos.py -- ANTES rover_images
+# guardava a URL remota de mars.nasa.gov direto (apesar do nome da
+# coluna ser "local_path"), o que quebrava toda foto sem internet no
+# evento. Servido aqui como arquivo estático de verdade, offline.
+ROVER_PHOTOS_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "local", "rover_photos")
 
 # Sol de referência da missão -- dado real cacheado (não é "hoje",
 # é o mesmo sol usado nos testes de REMS/RAD, ver PROXIMOS-PASSOS.md).
@@ -45,15 +54,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+if os.path.isdir(ROVER_PHOTOS_DIR):
+    app.mount("/rover-photos", StaticFiles(directory=ROVER_PHOTOS_DIR), name="rover-photos")
+
 
 @app.get("/api/point")
-def get_point(lat: float, lon: float):
+def get_point(lat: float, lon: float, request: Request):
     """Combina busca vetorial (fotos próximas, alvo científico) e
     sampling de raster (elevação/slope) num único ponto -- contrato
     reaproveitado pela feature 02 (rota/A*) e feature 08 (voz)."""
     conn = get_connection()
     try:
-        fotos = nearby_photos(conn, lat, lon)
+        fotos = nearby_photos(conn, lat, lon, base_url=str(request.base_url).rstrip("/"))
         alvo = nearest_science_target(conn, lat, lon)
         rasters = sample_all_rasters(conn, lat, lon)
     finally:
@@ -148,13 +160,13 @@ def get_nomenclature():
 
 
 @app.get("/api/photos")
-def get_photos():
+def get_photos(request: Request):
     """Todas as ~200 fotos reais do Curiosity com posição -- camada
     "rastro do rover" no mapa (pins nas posições reais, não escondidas
     atrás de um raio de busca). Ver vector_queries.all_photos."""
     conn = get_connection()
     try:
-        fotos = all_photos(conn)
+        fotos = all_photos(conn, base_url=str(request.base_url).rstrip("/"))
     finally:
         conn.close()
     return fotos
