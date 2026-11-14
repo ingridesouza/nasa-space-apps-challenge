@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from agente import AgenteIndisponivel, fontes_do_contexto, montar_contexto, perguntar
-from alertas import BASE_LAT_LON, alertas_do_ponto, paradas_no_bbox, tempo_e_alertas_do_sol
+from alertas import BASE_LAT_LON, alertas_da_rota, alertas_do_ponto, paradas_no_bbox, tempo_e_alertas_do_sol
 from conditions import get_cached_conditions
 from db import get_connection
 from mosaics import build_hillshade_png, build_mosaic_png
@@ -255,6 +255,21 @@ def get_route(origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: f
             t["chance_pct"] = risco["chance_pct"] if risco else None
             t["status_previsto"] = status_previsto(t["slope_status"], risco)
         rota["trechos_risco_previsto"] = sum(t["status_previsto"] != t["slope_status"] for t in rota["trechos_risco"])
+
+    # feature 08: acréscimo ao contrato, nenhuma chave acima muda --
+    # cruza o histórico do rover e o limite de volta à base (mesmas
+    # regras do /api/point) com os pontos de cada variante calculada.
+    # distancia_m (acima do início, não do destino) vem do mesmo
+    # perfil_elevacao do gráfico -- é o "em que trecho" que faltava:
+    # sem isso, o alerta valia pra rota inteira, não pra um ponto dela.
+    for rota in resultado["rotas"]:
+        alertas = alertas_da_rota([tuple(p) for p in rota["pontos"]])
+        perfil = rota["perfil_elevacao"]
+        for alerta in alertas:
+            alerta["distancia_m"] = perfil[alerta.pop("indice_ponto")]["distancia_acumulada_m"]
+        alertas.sort(key=lambda a: a["distancia_m"])
+        rota["alertas"] = alertas
+
     return resultado
 
 

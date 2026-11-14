@@ -1,7 +1,7 @@
 // Feature 02: painel de rota (antes RoutePanel.tsx). Mesmo A* real sobre o DTM,
 // pesos diferentes por tipo (ver api/route_planning.py).
 import { getPrevisao, getRoute } from '../api.js'
-import { coord, esc, num, veredito } from './util.js'
+import { alertasHtml, coord, esc, num, veredito } from './util.js'
 
 const TIPO_LABEL = { mais_segura: 'Mais segura', mais_rapida: 'Mais rápida', mais_ciencia: 'Mais ciência' }
 
@@ -35,24 +35,52 @@ function detalheRota(r) {
   const o2Pct = (r.o2_estimado_l / CAPACIDADE_O2_L_SIMULADA) * 100
   const o2Ok = o2Pct <= (1 - RESERVA_MINIMA_PCT) * 100
   const alvo = r.alvo_cientifico
+
+  // Ida e volta: nosso modelo de velocidade só depende da magnitude da
+  // inclinação do trecho (ver api/route_planning.py, custo_aresta), não
+  // da direção -- subida e descida custam o mesmo no modelo. Então o
+  // caminho de volta (mesma rota, sentido invertido) tem o MESMO custo
+  // da ida, não é uma suposição otimista, é consequência direta do
+  // modelo já existente. Dobrar é honesto aqui -- ver aviso na UI.
+  const o2VoltaL = r.o2_estimado_l * 2
+  const o2VoltaPct = (o2VoltaL / CAPACIDADE_O2_L_SIMULADA) * 100
+  const voltaOk = o2VoltaPct <= (1 - RESERVA_MINIMA_PCT) * 100
+  const doseVolta = r.dose_rad_estimada_ugy !== null ? r.dose_rad_estimada_ugy * 2 : null
+
   return `<div style="margin-bottom:var(--s-3)">
     ${veredito(status, [
       { ok: status !== 'perigo', label: 'Nenhum trecho acima do limite de 20°' },
-      { ok: o2Ok, label: 'O₂ dentro da reserva simulada (20%)' },
+      { ok: o2Ok, label: 'O₂ dentro da reserva simulada (20%) só pra ida' },
+      { ok: voltaOk, label: 'O₂ também alcança pra voltar (ida + volta)' },
     ])}
+    ${r.alertas?.length > 0 ? `<div class="h2g2-bloco" style="margin-top:var(--s-2)">
+      <span class="h2g2-stat-label">Alertas do agente nesse trecho (feature 08)</span>
+      ${alertasHtml(r.alertas)}
+    </div>` : ''}
     <div class="h2g2-card h2g2-stat-grid" style="margin-top:var(--s-2)">
-      <div><span class="h2g2-stat-label">Distância</span><span class="h2g2-stat-value">${num(r.distancia_m)}m</span></div>
-      <div><span class="h2g2-stat-label">Tempo</span><span class="h2g2-stat-value">~${num(r.tempo_estimado_min)} min</span></div>
+      <div><span class="h2g2-stat-label">Distância (ida)</span><span class="h2g2-stat-value">${num(r.distancia_m)}m</span></div>
+      <div><span class="h2g2-stat-label">Tempo (ida)</span><span class="h2g2-stat-value">~${num(r.tempo_estimado_min)} min</span></div>
       <div class="h2g2-full">
-        <span class="h2g2-stat-label">O₂ estimado (simulado)</span>
+        <span class="h2g2-stat-label">O₂ estimado (simulado, só ida)</span>
         <span class="h2g2-stat-value">${num(r.o2_estimado_l, 1)}L de ${CAPACIDADE_O2_L_SIMULADA}L</span>
         <div class="h2g2-progress" style="margin-top:4px">
           <div class="h2g2-progress-fill" style="width:${Math.min(o2Pct, 100)}%;background:${o2Ok ? 'var(--verdict-seguro)' : 'var(--verdict-perigo)'}"></div>
         </div>
       </div>
       <div class="h2g2-full">
-        <span class="h2g2-stat-label">Dose de radiação (RAD, real)</span>
+        <span class="h2g2-stat-label">Dose de radiação (RAD, real, só ida)</span>
         <span class="h2g2-stat-value">${r.dose_rad_estimada_ugy !== null ? `${r.dose_rad_estimada_ugy.toFixed(2)} µGy` : '—'}</span>
+      </div>
+    </div>
+    <div class="h2g2-card" style="margin-top:var(--s-2)">
+      <span class="h2g2-stat-label">Ida + volta (mesma rota, sentido inverso)</span>
+      <span class="h2g2-stat-value">${num(r.o2_estimado_l * 2, 1)}L de ${CAPACIDADE_O2_L_SIMULADA}L</span>
+      <div class="h2g2-progress" style="margin-top:4px">
+        <div class="h2g2-progress-fill" style="width:${Math.min(o2VoltaPct, 100)}%;background:${voltaOk ? 'var(--verdict-seguro)' : 'var(--verdict-perigo)'}"></div>
+      </div>
+      <div class="h2g2-dim h2g2-micro" style="margin-top:4px;line-height:1.4">
+        ~${num(r.tempo_estimado_min * 2)} min · ${doseVolta !== null ? `${doseVolta.toFixed(2)} µGy` : '—'} de radiação no total.
+        Assume o mesmo custo da ida (nosso modelo de velocidade não diferencia subida de descida).
       </div>
     </div>
     <div class="h2g2-card" style="margin-top:var(--s-2)"><span class="h2g2-stat-label">Perfil de elevação</span>${perfilSvg(r.perfil_elevacao)}</div>
