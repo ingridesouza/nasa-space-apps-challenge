@@ -9,6 +9,7 @@ export const TOGGLEABLE_LAYERS = [
   { id: 'hirise_optica', label: 'HiRISE (detalhe, 25cm)', grupo: 'base', defaultVisible: true, defaultOpacity: 1 },
   { id: 'relevo_hillshade', label: 'Relevo (hillshade do DTM)', grupo: 'overlay', defaultVisible: false, defaultOpacity: 0.7 },
   { id: 'themis_termica', label: 'Térmica (THEMIS)', grupo: 'overlay', defaultVisible: false, defaultOpacity: 0.6 },
+  { id: 'risco_previsto', label: 'Risco de inclinação (previsto)', grupo: 'overlay', defaultVisible: false, defaultOpacity: 0.85 },
 ]
 
 /** Camadas sem pirâmide visual ainda, ou deliberadamente fora do escopo --
@@ -30,6 +31,7 @@ export const LAYER_MAXZOOM = {
   relevo_hillshade: 14, // ~5.88m/px real do DTM
   ctx_optica: 14, // ~6m/px declarado
   themis_termica: 10, // ~100m/px declarado
+  risco_previsto: 17, // mesmo DTM; cor por faixa (nearest), não borra
 }
 
 /** Limite de 20° (Artemis) -- ver api/raster_sampling.py. */

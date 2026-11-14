@@ -38,6 +38,8 @@ CAMPOS_RELEVANTES = {
     "UV_C": "W/m2",
     "UV_ABC": "W/m2",
     "HUMIDITY_CHANNEL_A": "%",
+    "BRIGHTNESS_TEMP_B": "kelvin",  # sensor de solo (GTS), canal B: temperatura do chão
+    "GTS_CONFIDENCE_LEVEL": None,   # 6 bytes "0/1"; vem como número (zeros à esquerda somem)
 }
 
 

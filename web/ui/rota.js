@@ -11,8 +11,9 @@ const CAPACIDADE_O2_L_SIMULADA = 400
 const RESERVA_MINIMA_PCT = 0.2
 
 function piorStatus(rota) {
-  if (rota.trechos_risco.some((t) => t.slope_status === 'perigo')) return 'perigo'
-  if (rota.trechos_risco.some((t) => t.slope_status === 'atencao')) return 'atencao'
+  const st = (t) => t.status_previsto ?? t.slope_status // feature 06: inclui a previsão
+  if (rota.trechos_risco.some((t) => st(t) === 'perigo')) return 'perigo'
+  if (rota.trechos_risco.some((t) => st(t) === 'atencao')) return 'atencao'
   return 'seguro'
 }
 
@@ -101,28 +102,39 @@ let carregando = false
 let pedido = 0
 let el, cb
 let ultimo = { origem: null, destino: null }
-const janelas = new Map() // tempo_estimado_min -> janela_eva (F06); undefined = calculando
+const janelas = new Map() // "sol|minutos" -> janela_eva (F06); undefined = calculando
+let solEva = null // null = hoje (a API decide)
+
+/** Sol escolhido no painel de condições: a janela de EVA passa a ser desse sol. */
+export function setSolEva(sol) {
+  solEva = sol
+  render(ultimo.origem, ultimo.destino)
+}
 
 /** F06 no PDF: "acoplar a previsão à rota, sugerindo a melhor janela para a EVA". */
 function secaoJanela(r) {
-  const chave = r.tempo_estimado_min
+  const minutos = r.tempo_estimado_min
+  const chave = `${solEva}|${minutos}`
   if (!janelas.has(chave)) {
     janelas.set(chave, undefined)
-    getPrevisao({ duracao_min: chave })
-      .then((p) => p.janela_eva, () => null)
+    getPrevisao({ duracao_min: minutos, ...(solEva && { sol: solEva }) })
+      .then((p) => p, () => null)
       .then((j) => {
         janelas.set(chave, j)
         render(ultimo.origem, ultimo.destino)
       })
   }
-  const j = janelas.get(chave)
+  const prev = janelas.get(chave)
+  const j = prev === undefined ? undefined : (prev?.janela_eva ?? null)
+  const dose = prev?.dose_ugy_dia ? (prev.dose_ugy_dia.valor / 24) * (minutos / 60) : null
   const corpo = j === undefined
     ? '<span class="h2g2-dim">calculando pela previsão local...</span>'
     : j === null
       ? '<span class="h2g2-dim">sem curva horária para prever a janela</span>'
       : `<strong>${esc(j.inicio_lmst)}–${esc(j.fim_lmst)}</strong> hora solar local · hora mais fria prevista ${num(j.temp_mais_fria_na_janela_c, 0)} °C
-         <div class="h2g2-dim h2g2-micro" title="${esc(j.criterio)}">estimado (não medido) · climatologia REMS por hora</div>`
-  return `<div class="h2g2-small h2g2-sep" style="margin-bottom:var(--s-3)"><span class="h2g2-stat-label">Melhor janela p/ esta EVA (${esc(Math.ceil(chave / 60))}h)</span><div>${corpo}</div></div>`
+         ${dose !== null ? `<div style="color:var(--ember)">dose prevista nesta EVA: ~${num(dose, 1)} µGy</div>` : ''}
+         <div class="h2g2-dim h2g2-micro" title="${esc(j.criterio)}">estimado (não medido) · REMS por hora${dose !== null ? ' · RAD por estação' : ''}</div>`
+  return `<div class="h2g2-small h2g2-sep" style="margin-bottom:var(--s-3)"><span class="h2g2-stat-label">Melhor janela p/ esta EVA (${esc(Math.ceil(minutos / 60))}h${solEva ? ` · sol ${esc(solEva)}` : ''})</span><div>${corpo}</div></div>`
 }
 
 const rotaAtiva = () => data?.rotas.find((r) => r.tipo === tipo) ?? null
