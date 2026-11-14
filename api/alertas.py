@@ -7,10 +7,12 @@ Lista vazia significa "nenhum alerta", nunca "seguro"."""
 
 import json
 import os
+from datetime import datetime, timezone
 from functools import lru_cache
 
 from geo import haversine_m
 from raster_sampling import classify_slope
+from tempo_marte import data_do_sol, ls, sol_msl
 
 WAYPOINTS_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "local", "rover_waypoints.json")
 
@@ -25,6 +27,9 @@ BASE_LAT_LON = (-4.8068928, 137.3798418)
 # (Artemis).
 RAIO_HISTORICO_M = 25
 LIMITE_VOLTA_BASE_M = 2000
+# Escolha nossa: sem parada do rover nesse raio, o veredito depende só do DTM
+# de órbita (~6 m/px), que pegou 4 de 25 paradas íngremes medidas pelo rover.
+RAIO_SEM_HISTORICO_M = 100
 
 _ORDEM = {"perigo": 0, "atencao": 1, "info": 2}
 
@@ -94,14 +99,26 @@ def _regra_terreno_historico(lat: float, lon: float, waypoints_path: str) -> lis
         if status == "seguro":
             continue
         dist = haversine_m(lat, lon, p["lat"], p["lon"])
-        if dist <= RAIO_HISTORICO_M and (pior is None or p["tilt"] > pior[0]["tilt"]):
-            pior = (p, dist, status)
+        # até 25 m vale o nível medido; de 25 a 100 m (onde "sem histórico" não dispara) vira atenção
+        if dist <= RAIO_SEM_HISTORICO_M and (pior is None or p["tilt"] > pior[0]["tilt"]):
+            pior = (p, dist, status if dist <= RAIO_HISTORICO_M else "atencao")
 
     if pior is None:
         return []
     p, dist, status = pior
     msg = f"O Curiosity mediu {_num(p['tilt'])}° de inclinação a {dist:.0f} m daqui (sol {p['sol']})."
     return [_alerta(status, "terreno_historico", msg, "MMGIS MSL_waypoints")]
+
+
+def _regra_sem_historico(lat: float, lon: float, raster_values: dict, waypoints_path: str) -> list[dict]:
+    paradas = carregar_paradas(waypoints_path)
+    if paradas is None or raster_values.get("slope_deg") is None:
+        return []  # já avisado por outra regra (sem histórico / sem inclinação)
+    if any(haversine_m(lat, lon, p["lat"], p["lon"]) <= RAIO_SEM_HISTORICO_M for p in paradas):
+        return []
+    msg = (f"Nenhuma parada do Curiosity a menos de {RAIO_SEM_HISTORICO_M} m: a inclinação vem só do mapa de órbita "
+           "(cerca de 6 m por pixel), que não enxerga cristas de 1 a 2 m.")
+    return [_alerta("atencao", "sem_historico", msg, "MMGIS MSL_waypoints + DTM HiRISE (Mars Trek)")]
 
 
 def _regra_volta_base(lat: float, lon: float) -> list[dict]:
@@ -119,10 +136,37 @@ def alertas_do_ponto(lat: float, lon: float, raster_values: dict, waypoints_path
     alertas = (
         _regras_inclinacao(raster_values)
         + _regra_terreno_historico(lat, lon, waypoints_path)
+        + _regra_sem_historico(lat, lon, raster_values, waypoints_path)
         + _regra_volta_base(lat, lon)
         + _regra_areia(raster_values)
     )
     return sorted(alertas, key=lambda a: _ORDEM[a["nivel"]])
+
+
+# Tempestades regionais e globais se concentram na metade do ano com o periélio
+# (primavera e verão do sul): Ls 180° a 360° (Mars24 / climatologia MCD).
+LS_POEIRA = (180.0, 360.0)
+
+
+def tempo_e_alertas_do_sol(sol_dado: int, agora: datetime | None = None) -> tuple[dict, list[dict]]:
+    """Modo sem Terra (fase 3): estação de agora e idade do dado REMS/RAD.
+    Vale pro planeta, não pro ponto: entra em /api/conditions."""
+    agora = agora or datetime.now(timezone.utc)
+    sol_agora, ls_agora = sol_msl(agora), ls(agora)
+    idade = sol_agora - sol_dado
+    tempo = {"sol_agora": sol_agora, "ls_agora": round(ls_agora, 1), "sol_do_dado": sol_dado,
+             "data_do_dado": data_do_sol(sol_dado).date().isoformat(), "idade_do_dado_sols": idade,
+             "fonte": "algoritmo Mars24 (NASA GISS) sobre o relógio local"}
+    alertas = []
+    if idade >= 1:
+        alertas.append(_alerta("atencao", "dado_antigo",
+                               f"Condições do sol {sol_dado}, de {idade} sols atrás: não é leitura de agora.",
+                               f"REMS/RAD sol {sol_dado}"))
+    if LS_POEIRA[0] <= ls_agora < LS_POEIRA[1]:
+        alertas.append(_alerta("atencao", "temporada_poeira",
+                               f"Temporada de tempestades de poeira (Ls {_num(ls_agora)}°, risco maior entre 180° e 360°).",
+                               "Mars24 (Ls) + climatologia de poeira"))
+    return tempo, alertas
 
 
 def paradas_no_bbox(min_lon: float, min_lat: float, max_lon: float, max_lat: float) -> list[dict] | None:
