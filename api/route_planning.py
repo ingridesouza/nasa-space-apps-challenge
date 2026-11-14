@@ -13,7 +13,13 @@ usuário, não gerar dado por pixel que não existe.
 Grade de custo é o DTM de verdade (512x512px, ~5.88m/px -- não é 1m
 apesar do nome da camada), carregado inteiro uma vez e cacheado em
 memória: amostragem ponto-a-ponto (raster_sampling.py) não serve pra
-A*, que precisa do array completo como grafo."""
+A*, que precisa do array completo como grafo.
+
+Radiação (RAD, PDS) entra como dose acumulada real na duração da
+caminhada (ver `_monta_rota`), não como custo espacial: é uma leitura
+por sol do instrumento no rover, não varia por pixel no nosso dado,
+então não influencia qual caminho o A* escolhe -- só o quanto essa
+caminhada específica expõe o astronauta, de verdade."""
 
 import functools
 import heapq
@@ -195,7 +201,7 @@ def _astar(elevacao, slope_deg, transform, pixel_size_m, origem_rc, destino_rc, 
     raise SemCaminhoError("Nenhum caminho possível sem cruzar inclinação >= 20°")
 
 
-def _monta_rota(tipo: str, caminho_rc, elevacao, slope_deg, transform, pixel_size_m) -> dict:
+def _monta_rota(tipo: str, caminho_rc, elevacao, slope_deg, transform, pixel_size_m, dose_rad_ugy_por_hora) -> dict:
     pontos = [_rc_to_latlon(transform, r, c) for r, c in caminho_rc]
 
     distancia_m = 0.0
@@ -234,18 +240,27 @@ def _monta_rota(tipo: str, caminho_rc, elevacao, slope_deg, transform, pixel_siz
     tempo_min = tempo_s / 60.0
     o2_l = TAXA_O2_L_POR_MIN * tempo_min
 
+    # Radiação (RAD) real por sol -- não varia por posição no nosso
+    # dado (é uma leitura do instrumento no rover, não um raster
+    # espacial), então não muda QUAL caminho o A* escolhe, mas é uma
+    # dose real acumulada de verdade pelo tempo que a caminhada leva.
+    # None (não 0) quando o sol de referência não está cacheado -- ver
+    # api/main.py REFERENCE_SOL -- pra não fingir "zero radiação".
+    dose_rad_ugy = round(dose_rad_ugy_por_hora * (tempo_min / 60.0), 2) if dose_rad_ugy_por_hora is not None else None
+
     return {
         "tipo": tipo,
         "pontos": [[lat, lon] for lat, lon in pontos],
         "distancia_m": round(distancia_m, 1),
         "tempo_estimado_min": round(tempo_min, 1),
         "o2_estimado_l": round(o2_l, 2),
+        "dose_rad_estimada_ugy": dose_rad_ugy,
         "perfil_elevacao": perfil,
         "trechos_risco": trechos_risco,
     }
 
 
-def plan_route(conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_lon) -> dict:
+def plan_route(conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_lon, dose_rad_ugy_por_hora=None) -> dict:
     path = _dtm_path(conn)
     elevacao, transform, bounds, nodata = _load_dtm(path)
 
@@ -265,6 +280,6 @@ def plan_route(conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_
     rotas = []
     for tipo in ("mais_segura", "mais_rapida"):
         caminho = _astar(elevacao, slope_deg, transform, pixel_size_m, origem_rc, destino_rc, tipo)
-        rotas.append(_monta_rota(tipo, caminho, elevacao, slope_deg, transform, pixel_size_m))
+        rotas.append(_monta_rota(tipo, caminho, elevacao, slope_deg, transform, pixel_size_m, dose_rad_ugy_por_hora))
 
     return {"rotas": rotas, "avisos": [AVISO_AREIA]}
