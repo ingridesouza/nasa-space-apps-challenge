@@ -9,6 +9,18 @@ import sqlite3
 from geo import bbox_radius_degrees, bearing_cardinal, haversine_m
 
 
+def all_photos(conn: sqlite3.Connection) -> list[dict]:
+    """Todas as fotos com posição real -- usado pela camada "rastro do
+    rover" no mapa (pins clicáveis nas posições reais onde cada foto
+    foi tirada), diferente de nearby_photos que é por raio ao redor de
+    um clique. Mesmas ~200 fotos, outra forma de descobrir."""
+    rows = conn.execute("SELECT lat, lon, sol, camera, local_path FROM rover_images ORDER BY sol, id").fetchall()
+    return [
+        {"lat": r["lat"], "lon": r["lon"], "sol": r["sol"], "camera": r["camera"], "url": r["local_path"]}
+        for r in rows
+    ]
+
+
 def nearby_photos(conn: sqlite3.Connection, lat: float, lon: float, radius_m: float = 200) -> list[dict]:
     dlat, dlon = bbox_radius_degrees(lat, radius_m)
 

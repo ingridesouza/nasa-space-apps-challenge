@@ -41,7 +41,11 @@ def _list_tiles(folder: str) -> list[tuple[int, int, int, str]]:
     return tiles
 
 
-def build_mosaic_png(local_tile_path: str) -> bytes | None:
+def build_mosaic_image(local_tile_path: str) -> Image.Image | None:
+    """Stitch em memória (devolve a imagem, não PNG já codificado) --
+    reaproveitado tanto pelo endpoint de thumbnail (`build_mosaic_png`)
+    quanto pelo tile server (`tile_server.py`), que precisa do array de
+    pixel pra recortar janelas, não de bytes PNG prontos."""
     tiles = _list_tiles(local_tile_path)
     if not tiles:
         return None
@@ -58,12 +62,20 @@ def build_mosaic_png(local_tile_path: str) -> bytes | None:
         with Image.open(caminho) as tile_img:
             mosaico.paste(tile_img.convert("RGB"), ((col - col_min) * tile_w, (row - row_min) * tile_h))
 
+    return mosaico
+
+
+def build_mosaic_png(local_tile_path: str) -> bytes | None:
+    mosaico = build_mosaic_image(local_tile_path)
+    if mosaico is None:
+        return None
+
     buf = io.BytesIO()
     mosaico.save(buf, format="PNG")
     return buf.getvalue()
 
 
-def build_hillshade_png(dtm_path: str, azimuth_deg: float = 315.0, altitude_deg: float = 45.0) -> bytes | None:
+def build_hillshade_array(dtm_path: str, azimuth_deg: float = 315.0, altitude_deg: float = 45.0) -> np.ndarray | None:
     """Gera um hillshade real a partir de um GeoTIFF de elevação (DTM
     HiRISE 1m ou MOLA) -- fórmula clássica de Horn/ESRI, luz vindo de
     noroeste (315°) a 45° de altura (convenção padrão de cartografia,
@@ -72,7 +84,9 @@ def build_hillshade_png(dtm_path: str, azimuth_deg: float = 315.0, altitude_deg:
 
     Não é um algoritmo "oficial" calibrado (ex. GDAL `gdaldem
     hillshade`), mas usa dado de elevação real, mesma filosofia de
-    aproximação já documentada em `_slope_degrees`."""
+    aproximação já documentada em `_slope_degrees`. Devolve o array
+    8-bit (não PNG já codificado) -- reaproveitado pelo tile server, que
+    precisa recortar janelas do array, não de bytes PNG prontos."""
     with rasterio.open(dtm_path) as ds:
         elevacao = ds.read(1).astype("float64")
         nodata = ds.nodata
@@ -93,7 +107,13 @@ def build_hillshade_png(dtm_path: str, azimuth_deg: float = 315.0, altitude_deg:
         azimuth_rad - aspect_rad
     )
     shade = np.nan_to_num(shade, nan=0.5)
-    shade_8bit = np.clip(shade * 255, 0, 255).astype("uint8")
+    return np.clip(shade * 255, 0, 255).astype("uint8")
+
+
+def build_hillshade_png(dtm_path: str, azimuth_deg: float = 315.0, altitude_deg: float = 45.0) -> bytes | None:
+    shade_8bit = build_hillshade_array(dtm_path, azimuth_deg, altitude_deg)
+    if shade_8bit is None:
+        return None
 
     img = Image.fromarray(shade_8bit, mode="L").convert("RGB")
     buf = io.BytesIO()

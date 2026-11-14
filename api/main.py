@@ -22,7 +22,9 @@ from db import get_connection
 from mosaics import build_hillshade_png, build_mosaic_png
 from nomenclature import get_cached_nomenclature
 from raster_sampling import sample_all_rasters
-from vector_queries import nearby_photos, nearest_science_target
+from route_planning import ForaDoGridError, SemCaminhoError, plan_route
+from tile_server import render_tile
+from vector_queries import all_photos, nearby_photos, nearest_science_target
 
 # Sol de referência da missão -- dado real cacheado (não é "hoje",
 # é o mesmo sol usado nos testes de REMS/RAD, ver PROXIMOS-PASSOS.md).
@@ -140,6 +142,63 @@ def get_nomenclature():
             detail="Nomenclatura não cacheada -- rodar data-pipeline/scripts/fetch_nomenclature.py",
         )
     return dados
+
+
+@app.get("/api/photos")
+def get_photos():
+    """Todas as ~200 fotos reais do Curiosity com posição -- camada
+    "rastro do rover" no mapa (pins nas posições reais, não escondidas
+    atrás de um raio de busca). Ver vector_queries.all_photos."""
+    conn = get_connection()
+    try:
+        fotos = all_photos(conn)
+    finally:
+        conn.close()
+    return fotos
+
+
+@app.get("/tiles/{layer_name}/{z}/{x}/{y}.png")
+def get_tile(layer_name: str, z: int, x: int, y: int):
+    """Tile XYZ padrão de verdade -- substitui o ImageSource de imagem
+    única (ver /mosaics/{layer}.png e mosaics.py) pra zoom/pan contínuo
+    de mapa real. Ver tile_server.py pra entender por que isso não
+    precisa de reprojeção cartográfica de verdade."""
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT local_tile_path, tipo_acesso, min_lon, min_lat, max_lon, max_lat FROM raster_registry WHERE layer_name = ?",
+            (layer_name,),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Camada não encontrada")
+
+    bbox = (row["min_lon"], row["min_lat"], row["max_lon"], row["max_lat"])
+    png_bytes = render_tile(layer_name, z, x, y, row["local_tile_path"], row["tipo_acesso"], bbox)
+    if png_bytes is None:
+        raise HTTPException(status_code=404, detail="Tile fora da cobertura real desta camada")
+
+    return Response(content=png_bytes, media_type="image/png")
+
+
+@app.get("/api/route")
+def get_route(origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float):
+    """Feature 02 -- A* real sobre o DTM, duas variantes (mais_segura/
+    mais_rapida). Ver route_planning.py pro desvio consciente do AI4Mars
+    (não cobre o boxwork -- custo usa só inclinação real, areia vira
+    aviso textual)."""
+    conn = get_connection()
+    try:
+        resultado = plan_route(conn, origin_lat, origin_lon, dest_lat, dest_lon)
+    except ForaDoGridError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except SemCaminhoError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    finally:
+        conn.close()
+    return resultado
 
 
 @app.get("/health")

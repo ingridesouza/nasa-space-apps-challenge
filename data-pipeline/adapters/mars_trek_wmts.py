@@ -175,6 +175,38 @@ class MarsTrekWMTSAdapter(LayerAdapter):
         col_min, col_max = sorted((col_a, col_b))
         return row_min, row_max, col_min, col_max
 
+    def tile_range_to_bbox(self, row_min: int, row_max: int, col_min: int, col_max: int, matrix: TileMatrix) -> BBox:
+        """Inverso de `bbox_to_tile_range`: bbox geográfico REAL coberto
+        pelo conjunto de tiles baixado (quantizado à grade própria do
+        TileMatrix -- quase sempre MAIOR que o bbox originalmente
+        pedido, já que um tile não pode ser baixado "pela metade").
+
+        É este bbox, não o pedido, que precisa ir pro raster_registry:
+        usar o bbox pedido como coordenada de canto do ImageSource no
+        frontend estica/desloca a imagem (cada produto quantiza
+        diferente, então CTX e HiRISE acabavam desalinhados entre si --
+        bug real encontrado em 2026-11-14, não só estético)."""
+        degree_based = self._is_degree_based(matrix)
+        pixel_span = self._pixel_span(matrix.scale_denominator, degree_based)
+        top_left_x, top_left_y = matrix.top_left_corner
+        tile_span_x = pixel_span * matrix.tile_width
+        tile_span_y = pixel_span * matrix.tile_height
+
+        x_min = top_left_x + col_min * tile_span_x
+        x_max = top_left_x + (col_max + 1) * tile_span_x
+        y_max = top_left_y - row_min * tile_span_y
+        y_min = top_left_y - (row_max + 1) * tile_span_y
+
+        if degree_based:
+            return BBox(min_lon=x_min, min_lat=y_min, max_lon=x_max, max_lat=y_max)
+
+        return BBox(
+            min_lon=math.degrees(x_min / MARS_RADIUS_M),
+            min_lat=math.degrees(y_min / MARS_RADIUS_M),
+            max_lon=math.degrees(x_max / MARS_RADIUS_M),
+            max_lat=math.degrees(y_max / MARS_RADIUS_M),
+        )
+
     # ------------------------------------------------------------------
     # Download
     # ------------------------------------------------------------------
@@ -188,6 +220,11 @@ class MarsTrekWMTSAdapter(LayerAdapter):
 
         row_min, row_max, col_min, col_max = self.bbox_to_tile_range(bbox, matrix)
         os.makedirs(out_dir, exist_ok=True)
+
+        # bbox REAL coberto pelo lote de tiles (não o bbox pedido acima --
+        # ver docstring de tile_range_to_bbox) -- é isto que deve virar a
+        # coordenada de canto do mosaico no raster_registry/frontend.
+        cobertura_real = self.tile_range_to_bbox(row_min, row_max, col_min, col_max, matrix)
 
         results: list[TileResult] = []
         for row in range(row_min, row_max + 1):
@@ -206,6 +243,8 @@ class MarsTrekWMTSAdapter(LayerAdapter):
                     continue  # tile fora da cobertura do produto; normal nas bordas
                 with open(local_path, "wb") as f:
                     f.write(resp.content)
-                results.append(TileResult(row=row, col=col, tile_matrix=tile_matrix, local_path=local_path, bbox=bbox))
+                results.append(
+                    TileResult(row=row, col=col, tile_matrix=tile_matrix, local_path=local_path, bbox=cobertura_real)
+                )
 
         return results
