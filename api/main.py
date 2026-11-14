@@ -124,7 +124,7 @@ def get_mosaic(layer_name: str):
     if row["tipo_acesso"] == "hillshade_derivado":
         png_bytes = build_hillshade_png(row["local_tile_path"])
     elif row["tipo_acesso"] == "tiles_wmts":
-        png_bytes = build_mosaic_png(row["local_tile_path"])
+        png_bytes = build_mosaic_png(row["local_tile_path"], paleta_termica=(layer_name == "themis_termica"))
     else:
         raise HTTPException(status_code=404, detail=f"tipo_acesso {row['tipo_acesso']!r} não vira mosaico")
 

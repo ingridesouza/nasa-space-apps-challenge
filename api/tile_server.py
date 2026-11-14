@@ -30,7 +30,15 @@ from PIL import Image
 from rasterio.warp import Resampling, reproject
 
 from geo import MARS_RADIUS_M
-from mosaics import build_hillshade_array, build_mosaic_image
+from mosaics import aplicar_paleta_termica, build_hillshade_array, build_mosaic_image
+
+#: layers 'tiles_wmts' cujo mosaico real é cinza puro (sem banda de
+#: cor) -- aplicar paleta sequencial em vez de exibir cinza, que fica
+#: indistinguível da camada óptica por baixo (ver mosaics.py). Lista
+#: fixa e pequena (hoje só THEMIS) em vez de inferir "é cinza" pixel a
+#: pixel, que arriscaria colorir uma camada óptica real que por acaso
+#: tenha pouca saturação numa área específica.
+LAYERS_PALETA_TERMICA = {"themis_termica"}
 
 TILE_SIZE = 256
 
@@ -184,6 +192,9 @@ def render_tile(
         img = Image.fromarray(destino).convert("L").convert("RGB")
     elif array.shape[0] == 4:
         img = Image.fromarray(np.moveaxis(destino, 0, -1), mode="RGBA")
+    elif layer_name in LAYERS_PALETA_TERMICA:
+        colorido = aplicar_paleta_termica(np.moveaxis(destino, 0, -1))
+        img = Image.fromarray(colorido, mode="RGB")
     else:
         img = Image.fromarray(np.moveaxis(destino, 0, -1)).convert("RGB")
 

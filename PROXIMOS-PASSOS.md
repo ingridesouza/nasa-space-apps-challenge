@@ -10,6 +10,32 @@
 | 4 | Térmica — THEMIS | ✅ confirmado (só visual) | `THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018` (WMTS) |
 | 5 | Mineralogia — CRISM | ⚠️ bloqueado | só 3 observações em toda Gale, nenhuma no bbox (ver abaixo) |
 | 6 | Topografia local 1m — DTM HiRISE | ✅ confirmado | `Gale_DEM_SMG_1m` (ArcGIS) + hillshade visual |
+
+### Correção (2026-11-14): relevo e térmica praticamente invisíveis no mapa
+
+Reportado pelo usuário: mesmo com as camadas "Relevo" e "Térmica" ligadas
+e no zoom certo, nenhuma diferença visual aparecia. Investigado e
+confirmado que **não era bug de dado, registro, nome de camada nem
+cache** — os dois problemas eram de apresentação visual:
+
+- **Relevo (hillshade):** o boxwork é relativamente plano, então o
+  sombreamento calculado ficava espremido numa faixa estreita de cinza
+  (baixíssimo contraste). Corrigido em `api/mosaics.py`
+  (`build_hillshade_array`): alongamento de contraste por percentil
+  (2-98) antes de converter pra 8-bit — mesmos valores reais de
+  sombreamento, só usando a faixa de exibição toda.
+- **Térmica (THEMIS):** o mosaico baixado é cinza puro (sem banda de
+  cor), então ficava indistinguível da imagem óptica por baixo.
+  Corrigido com uma paleta sequencial (`aplicar_paleta_termica` em
+  `api/mosaics.py`, aplicada em `api/tile_server.py` e no endpoint de
+  miniatura `/mosaics/{layer}.png` em `api/main.py`) — traduz o mesmo
+  brilho real em cor (preto/roxo → vermelho/laranja → amarelo claro).
+  **Importante:** é só uma tradução visual do brilho relativo, não
+  calibra temperatura real em °C (não baixamos esse metadado
+  radiométrico) — por isso o nome evita a palavra "temperatura".
+
+Nenhum dado foi inventado nem baixado de novo; as duas correções só
+mudam como o mesmo pixel real já existente é desenhado na tela.
 | 7 | Clima — REMS | ✅ confirmado | PDS Atmospheres Node, produto RNV por sol |
 | 8 | Radiação — RAD | ✅ confirmado | PDS-PPI (UCLA), dose do detector E |
 | 9 | Fotos do rover — MSL | ✅ confirmado | 200 fotos reais, posição via MMGIS |
@@ -146,6 +172,11 @@ vs. limite de 20° da Artemis) em `raster_sampling.classify_slope`.
 
 ## Frontend ✅
 
+*(Nota 2026-11-14: esta seção descreve o front original em React —
+substituído de ponta a ponta pelo HTML/JS puro em `web/`, ver README e
+`docs/migracao-front-html-puro.md`. Mantida como registro histórico de
+quando cada peça foi construída, não como descrição do front atual.)*
+
 `frontend/` (React + Vite + TS + MapLibre GL), tema HUD. Mapa com
 CTX/HiRISE/Relevo/THEMIS (toggle+opacidade cada), clique no ponto →
 briefing de segurança + fotos próximas reais + ficha científica + nome
@@ -197,9 +228,11 @@ documentado foram encontrados e **corrigidos**:
    detalhe por camada, usado pelo painel "outras fontes de elevação"
    do frontend. **Testado ao vivo**: reiniciei a API e confirmei via
    `curl /api/point?lat=-4.80689&lon=137.37984` que o shape bate
-   exatamente com a spec. `frontend/src/api/types.ts` e
-   `PointInfoPanel.tsx` foram atualizados pro novo formato;
-   `npx tsc --noEmit` limpo.
+   exatamente com a spec. *(Nota 2026-11-14: isto foi feito antes da
+   migração pro front HTML/JS puro — na época o front ainda era
+   `frontend/src/api/types.ts` e `PointInfoPanel.tsx` em React/TS,
+   removido desde então; ver `docs/migracao-front-html-puro.md`. O
+   equivalente atual do consumo desse contrato é `web/ui/paineis.js`.)*
 2. **Grid de fotos faltando.** `NearbyPhotosSection.tsx` renderizava
    só uma lista de texto (distância/direção/sol/câmera), nunca a
    imagem — a spec (seção 4) pede explicitamente "grid/lightbox de
@@ -260,6 +293,33 @@ JetBrains Mono) carregam via CDN do Google em `frontend/index.html`.
 Sem internet, degrada pra fonte padrão do sistema -- não quebra nada,
 só perde a tipografia escolhida. Auto-hospedar resolveria por completo;
 não fiz ainda por não ser bloqueante pra demo.
+
+## Feature 02 (rota) — status das fontes do cálculo de O₂/tempo
+
+Mesmo padrão de tabela da feature 01, mas pros valores humanos usados
+em `api/route_planning.py` (tempo de caminhada → consumo de O₂ →
+comparação com capacidade do traje). Diferente das 12 fontes da
+feature 01 (orbitais/rover, todas reais), **estes são valores de
+fisiologia humana em EVA — nenhum vem de telemetria real do nosso
+traje (não existe um traje físico neste projeto), e a maioria não
+tinha fonte verificável até esta revisão.**
+
+| # | Valor | Usado em | Status | Fonte / observação |
+|---|---|---|---|---|
+| 1 | Consumo de O₂ (L/min) | `TAXA_O2_L_POR_MIN` (`route_planning.py`) | ⚠️ sem fonte real confirmada | Valor atual (0,84) tinha só um comentário vago ("EVA Apollo") sem link. Melhor referência real encontrada: estudo NASA do traje p/ Marte (ICES 2026 Mars Schematic Study, NTRS 20260002884) — 350W médios numa EVA de 8h, que convertido pela relação fisiológica padrão (~5 kcal/L O₂) dá **~1,0 L/min**. Ainda não aplicado no código — decisão pendente. |
+| 2 | Velocidade de caminhada (m/s) | `VELOCIDADE_BASE_M_S` (`route_planning.py`) | ⚠️ sem fonte real confirmada pra Marte | Valor atual (0,8) também sem fonte verificável. Dado real mais próximo achado: caminhada Apollo em terreno plano ~0,6 m/s — mas é dado **lunar**, gravidade bem menor que a de Marte, então não é diretamente aplicável. Não achada referência de caminhada em gravidade marciana com número publicado. |
+| 3 | Capacidade de O₂ do traje (L) | `CAPACIDADE_O2_L_PADRAO` (`web/ui/rota.js`) | ⚠️ sem fonte oficial de projeto de traje | Valor atual (400L, editável no painel) é da mesma ordem de grandeza de uma EVA de 8h a ~1,0 L/min (~480L), mas não é o número oficial de nenhum projeto de traje NASA (o projeto real de 2025 cita ~8,6kg de O₂ por EVA de 8h, que já inclui margem/vazamento/pressurização, não só respiração). |
+| 4 | Posição da base (ponto de partida/retorno) | modo traje (`docs/raio-x-implementacao.md`) | ⚠️ provisória | Ainda não definida com coordenada real — afeta diretamente o cálculo de O₂ de ida+volta e o alerta de "voltar à base". |
+
+**Diferença importante em relação à feature 01:** lá, "sem fonte" quase
+sempre significa "o instrumento real não cobre essa área/época"
+(CRISM, AI4Mars) — é uma ausência de dado documentada e definitiva.
+Aqui, em vez disso, os números existem e rodam, mas foram escritos
+como se fossem citação de um dado real sem essa citação existir de
+fato — é um risco de credibilidade diferente (parece dado real, não é
+ainda), não uma limitação de cobertura orbital. Ver discussão completa
+na sessão de 2026-11-14 (não há doc de feature 02 equivalente ao
+`feature-08-agente-local.md` hoje — considerar criar um).
 
 ## Notas técnicas
 
