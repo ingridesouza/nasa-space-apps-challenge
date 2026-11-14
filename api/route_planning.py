@@ -1,0 +1,270 @@
+"""A* real sobre a grade do DTM, para a feature 02 (rota inteligente +
+indicadores de risco). Ver docs/H2G2_Proposta_Projeto_Planejamento.md,
+seção "02", item 2.
+
+Desvio consciente da spec original: ela pede AI4Mars para custo de
+areia/rugosidade por pixel, mas a auditoria da feature 01 confirmou que
+o AI4Mars não cobre a época/região do boxwork (dataset para em ~sol
+2579, campanha do boxwork é sol 4564+). Custo aqui usa só inclinação
+real (DTM); o risco de areia nas depressões é um aviso textual fixo
+(ver AVISO_AREIA), não um fator numérico -- decisão tomada com o
+usuário, não gerar dado por pixel que não existe.
+
+Grade de custo é o DTM de verdade (512x512px, ~5.88m/px -- não é 1m
+apesar do nome da camada), carregado inteiro uma vez e cacheado em
+memória: amostragem ponto-a-ponto (raster_sampling.py) não serve pra
+A*, que precisa do array completo como grafo."""
+
+import functools
+import heapq
+import math
+import sqlite3
+
+import numpy as np
+import rasterio
+
+from geo import MARS_METERS_PER_DEGREE
+
+# Mesmos limites da feature 01 (raster_sampling.py) -- um único "limite
+# Artemis" em todo o sistema, não dois valores que podem divergir.
+LIMITE_SLOPE_ATENCAO_DEG = 15.0
+LIMITE_SLOPE_PERIGO_DEG = 20.0
+
+#: peso extra aplicado à faixa "atenção" (15-20°) na variante "mais
+#: segura" -- penaliza mais forte que na variante "mais rápida", que só
+#: evita o que é realmente impassável (>=20°).
+PESO_ATENCAO = {"mais_segura": 6.0, "mais_rapida": 1.8}
+
+#: aviso fixo, citando a fonte real (não é cálculo por pixel -- ver
+#: docstring do módulo). Texto é pra exibição direta ao usuário final,
+#: por isso não cita caminho de arquivo interno do repositório --
+#: isso vai só no comentário do código, não no texto do aviso.
+AVISO_AREIA = (
+    "Risco de areia fofa nas depressões entre as cristas do boxwork, "
+    "relatado pelos operadores do Curiosity (rodas do rover patinaram "
+    "nessas áreas). Sem dado de textura por pixel pra essa região "
+    "(AI4Mars não cobre a época da campanha) -- trate como aviso "
+    "qualitativo do terreno, não como um custo já calculado na rota."
+)
+
+# Modelo de O2/tempo: estimativa simples e declarada como tal (a própria
+# spec diz "na demo, o nível do traje é simulado", não há telemetria
+# real de traje). Velocidade base em terreno plano ~0.8 m/s é a faixa
+# citada em estudos de EVA lunar/Apollo pra caminhada cautelosa com
+# traje pressurizado; cai conforme a inclinação sobe.
+VELOCIDADE_BASE_M_S = 0.8
+TAXA_O2_L_POR_MIN = 0.84  # consumo documentado de EVA Apollo em repouso/caminhada leve
+
+
+class SemCaminhoError(Exception):
+    pass
+
+
+class ForaDoGridError(Exception):
+    pass
+
+
+@functools.lru_cache(maxsize=1)
+def _load_dtm(local_tile_path: str):
+    """Carrega o DTM inteiro uma vez (array + transform), cacheado em
+    memória -- diferente de raster_sampling.sample_point, que abre o
+    arquivo a cada chamada (ok pra ponto único, ruim pra grid inteiro)."""
+    with rasterio.open(local_tile_path) as dataset:
+        elevacao = dataset.read(1).astype(np.float64)
+        transform = dataset.transform
+        bounds = dataset.bounds
+        nodata = dataset.nodata
+    return elevacao, transform, bounds, nodata
+
+
+def _dtm_path(conn: sqlite3.Connection) -> str:
+    row = conn.execute(
+        "SELECT local_tile_path FROM raster_registry WHERE layer_name = 'dtm_hirise_1m'"
+    ).fetchone()
+    if row is None:
+        raise RuntimeError("Camada dtm_hirise_1m não registrada em raster_registry")
+    return row["local_tile_path"]
+
+
+def _slope_grid_deg(elevacao: np.ndarray, pixel_size_m: float) -> np.ndarray:
+    """Inclinação por pixel pra grade inteira (np.gradient vetorizado) --
+    mesma física da janela 3x3 usada em raster_sampling.sample_point,
+    só que calculada de uma vez pra todos os pixels em vez de ponto a
+    ponto."""
+    dz_dy, dz_dx = np.gradient(elevacao, pixel_size_m)
+    slope_rad = np.arctan(np.hypot(dz_dx, dz_dy))
+    return np.degrees(slope_rad)
+
+
+def _latlon_to_rc(transform, lat: float, lon: float) -> tuple[int, int]:
+    col, row = ~transform * (lon, lat)
+    return int(round(row)), int(round(col))
+
+
+def _rc_to_latlon(transform, row: int, col: int) -> tuple[float, float]:
+    lon, lat = transform * (col + 0.5, row + 0.5)
+    return lat, lon
+
+
+_VIZINHOS_8 = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+
+#: raio de tolerância (em pixels) pra "encostar" o clique no pixel
+#: caminhável mais próximo -- um só pixel de inclinação ruidosa (ex.
+#: borda de uma crista do boxwork) não deveria travar um clique que
+#: visualmente parece estar em terreno razoável. ~3 pixels * 5.88m/px
+#: ~= 17m de tolerância, pequeno o bastante pra não mudar o sentido do
+#: clique do usuário.
+RAIO_SNAP_PX = 3
+
+
+def _snap_para_passavel(r, c, n_rows, n_cols, passavel):
+    """Procura em espiral o pixel caminhável mais próximo de (r, c)
+    dentro de RAIO_SNAP_PX. Devolve None se não achar nenhum."""
+    if passavel(r, c):
+        return r, c
+    for raio in range(1, RAIO_SNAP_PX + 1):
+        candidatos = []
+        for dr in range(-raio, raio + 1):
+            for dc in range(-raio, raio + 1):
+                if max(abs(dr), abs(dc)) != raio:
+                    continue
+                rr, cc = r + dr, c + dc
+                if 0 <= rr < n_rows and 0 <= cc < n_cols and passavel(rr, cc):
+                    candidatos.append((rr, cc))
+        if candidatos:
+            return min(candidatos, key=lambda p: math.hypot(p[0] - r, p[1] - c))
+    return None
+
+
+def _astar(elevacao, slope_deg, transform, pixel_size_m, origem_rc, destino_rc, tipo: str):
+    n_rows, n_cols = elevacao.shape
+    peso_atencao = PESO_ATENCAO[tipo]
+
+    def passavel(r, c):
+        return 0 <= r < n_rows and 0 <= c < n_cols and slope_deg[r, c] < LIMITE_SLOPE_PERIGO_DEG
+
+    def custo_aresta(r1, c1, r2, c2):
+        dist = pixel_size_m * math.hypot(r2 - r1, c2 - c1)
+        s = max(slope_deg[r1, c1], slope_deg[r2, c2])
+        if s >= LIMITE_SLOPE_ATENCAO_DEG:
+            return dist * peso_atencao
+        return dist
+
+    def heuristica(r, c):
+        dr, dc = destino_rc[0] - r, destino_rc[1] - c
+        return pixel_size_m * math.hypot(dr, dc)
+
+    origem_ok = _snap_para_passavel(*origem_rc, n_rows, n_cols, passavel)
+    destino_ok = _snap_para_passavel(*destino_rc, n_rows, n_cols, passavel)
+    if origem_ok is None and destino_ok is None:
+        raise ForaDoGridError("Origem e destino caem em terreno acima do limite de 20° (mesmo no pixel mais próximo caminhável)")
+    if origem_ok is None:
+        raise ForaDoGridError("Origem cai em terreno acima do limite de 20° -- clique num ponto um pouco diferente")
+    if destino_ok is None:
+        raise ForaDoGridError("Destino cai em terreno acima do limite de 20° -- clique num ponto um pouco diferente")
+    origem_rc, destino_rc = origem_ok, destino_ok
+
+    aberto = [(heuristica(*origem_rc), origem_rc)]
+    veio_de: dict = {}
+    g_score = {origem_rc: 0.0}
+    visitado = set()
+
+    while aberto:
+        _, atual = heapq.heappop(aberto)
+        if atual in visitado:
+            continue
+        if atual == destino_rc:
+            caminho = [atual]
+            while atual in veio_de:
+                atual = veio_de[atual]
+                caminho.append(atual)
+            caminho.reverse()
+            return caminho
+        visitado.add(atual)
+
+        for dr, dc in _VIZINHOS_8:
+            viz = (atual[0] + dr, atual[1] + dc)
+            if viz in visitado or not passavel(*viz):
+                continue
+            novo_g = g_score[atual] + custo_aresta(atual[0], atual[1], viz[0], viz[1])
+            if novo_g < g_score.get(viz, math.inf):
+                g_score[viz] = novo_g
+                veio_de[viz] = atual
+                heapq.heappush(aberto, (novo_g + heuristica(*viz), viz))
+
+    raise SemCaminhoError("Nenhum caminho possível sem cruzar inclinação >= 20°")
+
+
+def _monta_rota(tipo: str, caminho_rc, elevacao, slope_deg, transform, pixel_size_m) -> dict:
+    pontos = [_rc_to_latlon(transform, r, c) for r, c in caminho_rc]
+
+    distancia_m = 0.0
+    perfil = [{"distancia_acumulada_m": 0.0, "elevacao_m": float(elevacao[caminho_rc[0]])}]
+    trechos_risco = []
+    tempo_s = 0.0
+    for i in range(1, len(caminho_rc)):
+        r1, c1 = caminho_rc[i - 1]
+        r2, c2 = caminho_rc[i]
+        d = pixel_size_m * math.hypot(r2 - r1, c2 - c1)
+        distancia_m += d
+
+        s = max(slope_deg[r1, c1], slope_deg[r2, c2])
+        if s >= LIMITE_SLOPE_PERIGO_DEG:
+            status = "perigo"
+        elif s >= LIMITE_SLOPE_ATENCAO_DEG:
+            status = "atencao"
+        else:
+            status = "seguro"
+
+        # velocidade decresce com a inclinação -- modelo simples e
+        # declarado (ver VELOCIDADE_BASE_M_S acima), não sensor real.
+        velocidade = VELOCIDADE_BASE_M_S * max(1 - (s / LIMITE_SLOPE_PERIGO_DEG) * 0.6, 0.25)
+        tempo_s += d / velocidade
+
+        perfil.append({
+            "distancia_acumulada_m": round(distancia_m, 1),
+            "elevacao_m": float(elevacao[r2, c2]),
+        })
+        trechos_risco.append({
+            "de": [pontos[i - 1][0], pontos[i - 1][1]],
+            "para": [pontos[i][0], pontos[i][1]],
+            "slope_status": status,
+        })
+
+    tempo_min = tempo_s / 60.0
+    o2_l = TAXA_O2_L_POR_MIN * tempo_min
+
+    return {
+        "tipo": tipo,
+        "pontos": [[lat, lon] for lat, lon in pontos],
+        "distancia_m": round(distancia_m, 1),
+        "tempo_estimado_min": round(tempo_min, 1),
+        "o2_estimado_l": round(o2_l, 2),
+        "perfil_elevacao": perfil,
+        "trechos_risco": trechos_risco,
+    }
+
+
+def plan_route(conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_lon) -> dict:
+    path = _dtm_path(conn)
+    elevacao, transform, bounds, nodata = _load_dtm(path)
+
+    pixel_size_deg = abs(transform.a)
+    pixel_size_m = pixel_size_deg * MARS_METERS_PER_DEGREE
+    slope_deg = _slope_grid_deg(elevacao, pixel_size_m)
+
+    def dentro_bbox(lat, lon):
+        return bounds.left <= lon <= bounds.right and bounds.bottom <= lat <= bounds.top
+
+    if not dentro_bbox(origin_lat, origin_lon) or not dentro_bbox(dest_lat, dest_lon):
+        raise ForaDoGridError("Origem ou destino fora da área com dado DTM baixado")
+
+    origem_rc = _latlon_to_rc(transform, origin_lat, origin_lon)
+    destino_rc = _latlon_to_rc(transform, dest_lat, dest_lon)
+
+    rotas = []
+    for tipo in ("mais_segura", "mais_rapida"):
+        caminho = _astar(elevacao, slope_deg, transform, pixel_size_m, origem_rc, destino_rc, tipo)
+        rotas.append(_monta_rota(tipo, caminho, elevacao, slope_deg, transform, pixel_size_m))
+
+    return {"rotas": rotas, "avisos": [AVISO_AREIA]}
