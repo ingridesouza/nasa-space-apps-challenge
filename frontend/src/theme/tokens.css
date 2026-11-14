@@ -1,0 +1,455 @@
+/* Sistema de design H2G2 -- adaptado da landing page oficial do projeto
+   (m2g2.netlify.app, time DETON8): paleta vermelho-marte + azul,
+   tipografia Chakra Petch/JetBrains Mono/IBM Plex Sans, painéis com
+   cantos cortados (clip-path) em vez de arredondados, fundo com campo
+   de estrelas sutil. Paleta extraída de verdade do CSS publicado
+   (css/style.css), não aproximada.
+*/
+
+:root {
+  /* escala de neutros (nomes batem com os da landing oficial) */
+  --n950: #0a0a0b;
+  --n900: #121214;
+  --n850: #17171a;
+  --n800: #1c1c20;
+  --n700: #2a2a30;
+  --line: #3a3a42;
+  --b400: #a6a6b0;
+  --b300: #c8c8d0;
+  --b200: #e2e2e6;
+
+  /* cor de marca -- vermelho-marte é o acento primário de ação,
+     âmbar pra destaque de dado/título, azul pra estado selecionado/ativo */
+  --mars: #c4401f;
+  --mars2: #e8643f;
+  --dust: #e8a07a;
+  --amber: #f2b33d;
+  --blue1: #8fb4e8;
+  --blue2: #4f7fc4;
+  --blue3: #35598f;
+  --blue-ink: #06101f;
+
+  --tx: #ececf0;
+  --mut: #a8a8b0;
+  --dim: #8a8a93;
+
+  --void: var(--n950);
+  --ink: var(--tx);
+  --ink-2: var(--b300);
+  --ink-3: var(--dim);
+
+  --ember: var(--amber);
+  --ember-900: #4a3300;
+  --ember-dim: rgba(242, 179, 61, 0.32);
+
+  --hud-cyan: var(--blue1);
+  --hud-cyan-dim: rgba(143, 180, 232, 0.35);
+
+  --danger: var(--mars2);
+
+  /* veredito de segurança -- verde/âmbar/vermelho-marte (não têm
+     equivalente na landing, que não tem essa feature; mantemos verde
+     pra "seguro" por ser universalmente reconhecível) */
+  --verdict-seguro: #7fe0a8;
+  --verdict-atencao: var(--amber);
+  --verdict-perigo: var(--mars2);
+
+  /* painel -- gradiente azul escuro, igual à landing oficial */
+  --glass-tint: linear-gradient(160deg, rgba(32, 56, 98, 0.55), rgba(18, 18, 20, 0.86) 58%);
+  --glass-film: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 45%);
+  --glass-blur: blur(14px) saturate(1.15);
+  --glass-rim: var(--line);
+  --glass-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.05), 0 20px 50px rgba(0, 0, 0, 0.55);
+
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-display: 'Chakra Petch', 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --t-micro: 11px;
+  --t-small: 13px;
+  --t-body: 15px;
+  --t-4: clamp(18px, 1.4vw, 20px);
+  --t-3: clamp(22px, 1.8vw, 26px);
+  --t-2: clamp(28px, 2.4vw, 34px);
+
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+
+  /* cantos quase retos, igual à landing -- NÃO arredondados */
+  --r-1: 2px;
+  --r-2: 2px;
+  --r-3: 3px;
+
+  --ease: cubic-bezier(0.22, 0.7, 0.2, 1);
+  --d-ui: 200ms;
+
+  /* aliases antigos, mantidos pra não quebrar componentes já escritos */
+  --h2g2-bg: var(--void);
+  --h2g2-surface: var(--glass-tint);
+  --h2g2-surface-border: var(--glass-rim);
+  --h2g2-text: var(--ink);
+  --h2g2-text-dim: var(--ink-3);
+  --h2g2-accent: var(--ember);
+  --h2g2-accent-dim: var(--ember-dim);
+  --h2g2-active: var(--hud-cyan);
+  --h2g2-danger: var(--danger);
+  --h2g2-font-mono: var(--font-mono);
+  --h2g2-font-sans: var(--font-sans);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--t-body);
+}
+
+/* campo de estrelas sutil -- mesmo truque da landing oficial (pontos
+ * radiais pequenos em posições/tamanhos variados), aplicado atrás do
+ * mapa pra reforçar a ambientação sem competir com os dados */
+body {
+  background-color: var(--void);
+  background-image: radial-gradient(1px 1px at 12% 18%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1px 1px at 63% 42%, rgba(226, 226, 230, 0.32) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 82% 77%, rgba(255, 255, 255, 0.36) 50%, transparent 51%),
+    radial-gradient(1px 1px at 33% 88%, rgba(255, 230, 210, 0.3) 50%, transparent 51%),
+    radial-gradient(1px 1px at 91% 9%, rgba(255, 255, 255, 0.3) 50%, transparent 51%);
+  background-size: 420px 420px, 530px 530px, 710px 710px, 380px 380px, 610px 610px;
+}
+
+.h2g2-panel {
+  background: var(--glass-film), var(--glass-tint);
+  border: 1px solid var(--glass-rim);
+  border-radius: var(--r-3);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+  transition: box-shadow var(--d-ui) var(--ease);
+  animation: h2g2-panel-in var(--d-ui) var(--ease);
+}
+
+@keyframes h2g2-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* título estilo "eyebrow" da landing oficial: mono, maiúsculo,
+ * espaçado, com um tracinho antes */
+.h2g2-panel-title {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin: 0 0 var(--s-2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.h2g2-panel-title::before {
+  content: '';
+  width: 18px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--blue1), var(--ink-2));
+  flex: none;
+}
+
+.h2g2-mono {
+  font-family: var(--font-mono);
+}
+
+.h2g2-display {
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+.h2g2-dim {
+  color: var(--ink-3);
+}
+
+.h2g2-empty-state {
+  font-family: var(--font-mono);
+  font-size: var(--t-small);
+  color: var(--ink-3);
+  border: 1px dashed var(--glass-rim);
+  border-radius: var(--r-2);
+  padding: var(--s-2) var(--s-3);
+}
+
+/* Tingimento "poeira marciana" sobre as camadas óticas (CTX/HiRISE),
+ * que só existem em preto-e-branco no Mars Trek pra essa região --
+ * `mix-blend-mode: color` troca só o matiz, preserva toda a luminância
+ * (crateras, sombras, textura) do dado real por baixo. */
+.h2g2-mars-tint {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: #a8613a;
+  mix-blend-mode: color;
+  opacity: 0.6;
+}
+
+/* Vinheta sutil -- reforça a sensação de "visor", não some o mapa */
+.h2g2-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.5) 100%);
+}
+
+/* Cantos estilo HUD -- dois colchetes (topo-esquerda/baixo-direita),
+ * mesmo padrão `.frame` da landing oficial, em vez dos 4 cantos
+ * anteriores */
+.h2g2-corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+.h2g2-corner--tl {
+  top: var(--s-4);
+  left: var(--s-4);
+  border-top: 2px solid var(--mars2);
+  border-left: 2px solid var(--mars2);
+}
+.h2g2-corner--tr {
+  top: var(--s-4);
+  right: var(--s-4);
+  border-top: 2px solid var(--b400);
+  border-right: 2px solid var(--b400);
+}
+.h2g2-corner--bl {
+  bottom: var(--s-4);
+  left: var(--s-4);
+  border-bottom: 2px solid var(--b400);
+  border-left: 2px solid var(--b400);
+}
+.h2g2-corner--br {
+  bottom: var(--s-4);
+  right: var(--s-4);
+  border-bottom: 2px solid var(--mars2);
+  border-right: 2px solid var(--mars2);
+}
+
+/* Marcador do ponto clicado -- pulso suave em azul (cor de "estado
+ * ativo/selecionado" da landing oficial) */
+.h2g2-crosshair {
+  width: 22px;
+  height: 22px;
+  position: relative;
+}
+.h2g2-crosshair::before,
+.h2g2-crosshair::after {
+  content: '';
+  position: absolute;
+  background: var(--hud-cyan);
+}
+.h2g2-crosshair::before {
+  left: 50%;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+.h2g2-crosshair::after {
+  top: 50%;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  transform: translateY(-50%);
+}
+.h2g2-crosshair-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--hud-cyan);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 8px var(--hud-cyan);
+  animation: h2g2-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes h2g2-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 6px var(--hud-cyan);
+  }
+  50% {
+    box-shadow: 0 0 16px var(--hud-cyan);
+  }
+}
+
+/* Controles (checkbox, range, botões) -- acento azul, igual ao estado
+ * "on" dos chips/toggles da landing oficial */
+input[type='checkbox'] {
+  accent-color: var(--blue2);
+}
+input[type='range'] {
+  accent-color: var(--blue2);
+}
+
+button {
+  font-family: var(--font-sans);
+}
+
+.h2g2-close-btn {
+  background: none;
+  border: none;
+  color: var(--ink-3);
+  cursor: pointer;
+  font-size: var(--t-4);
+  line-height: 1;
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-1);
+  transition: color var(--d-ui) var(--ease), background var(--d-ui) var(--ease);
+}
+.h2g2-close-btn:hover {
+  color: var(--mars2);
+  background: rgba(232, 100, 63, 0.1);
+}
+
+/* Toggle tipo "pill" -- mesmo componente `.sw` da landing oficial,
+ * usado no lugar do checkbox nativo no painel de camadas */
+.h2g2-switch {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  border: 0;
+  background: var(--n700);
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--d-ui) var(--ease);
+}
+.h2g2-switch span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #6b6b73;
+  transition: all var(--d-ui) var(--ease);
+}
+.h2g2-switch.on {
+  background: linear-gradient(135deg, var(--blue1), var(--blue2));
+}
+.h2g2-switch.on span {
+  left: 19px;
+  background: #fff;
+}
+
+/* Marcadores de origem/destino da rota (feature 02) -- pontos sólidos
+ * simples, cor distinta do crosshair de clique (azul) pra não confundir
+ * os dois modos de interação no mapa. */
+.h2g2-route-marker {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--n950);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+  animation: h2g2-route-marker-in 320ms var(--ease);
+}
+.h2g2-route-marker--origin {
+  background: var(--verdict-seguro);
+  box-shadow: 0 0 10px var(--verdict-seguro);
+}
+.h2g2-route-marker--destination {
+  background: var(--mars2);
+  box-shadow: 0 0 10px var(--mars2);
+}
+@keyframes h2g2-route-marker-in {
+  from {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Cards de estatística -- agrupa pares label/valor com fundo
+ * diferenciado, em vez de texto monoespaçado solto empilhado. */
+.h2g2-card {
+  background: var(--n900);
+  border: 1px solid var(--glass-rim);
+  border-radius: var(--r-2);
+  padding: var(--s-2) var(--s-3);
+}
+
+.h2g2-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-2) var(--s-3);
+}
+.h2g2-stat-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.h2g2-stat-label {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.h2g2-stat-value {
+  font-family: var(--font-display);
+  font-size: var(--t-4);
+  color: var(--ink);
+}
+
+/* Barra de progresso simples -- fill controlado via style inline
+ * (largura%) pelo componente, sem JS extra de animação. */
+.h2g2-progress {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--n700);
+  overflow: hidden;
+}
+.h2g2-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 300ms var(--ease);
+}
+
+/* Linha de camada -- adaptado do componente `.layer` da landing
+ * oficial (feito exatamente pra esse caso de uso) */
+.h2g2-layer-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--s-2) var(--s-2);
+  border: 1px solid rgba(58, 58, 66, 0.45);
+  border-left: 2px solid rgba(58, 58, 66, 0.7);
+  transition: background var(--d-ui), border-color var(--d-ui);
+}
+.h2g2-layer-row.on {
+  background: rgba(255, 255, 255, 0.03);
+  border-left-color: var(--blue1);
+}

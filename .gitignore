@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Dados baixados (grandes, não versionar — reproduzíveis pelo pipeline)
+data/local/
+
+# Node (frontend, quando existir)
+node_modules/
+dist/
+
+# Editor/OS
+.DS_Store
+.vscode/
+
+# Documentos de contexto pessoal (não versionar)
+feature-01-mapa-hiperlocal-boxwork.md
