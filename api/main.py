@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from alertas import alertas_do_ponto, paradas_no_bbox
 from conditions import get_cached_conditions
 from db import get_connection
 from mosaics import build_hillshade_png, build_mosaic_png
@@ -63,6 +64,8 @@ def get_point(lat: float, lon: float):
         "nearby_photos": fotos,
         "science_target": alvo,
         "raster_values": rasters,
+        # feature 08: acréscimo ao contrato, nenhuma chave acima mudou
+        "alertas": alertas_do_ponto(lat, lon, rasters),
     }
 
 
@@ -155,6 +158,28 @@ def get_photos():
     finally:
         conn.close()
     return fotos
+
+
+@app.get("/api/rover-track")
+def get_rover_track():
+    """Paradas do Curiosity dentro do bbox das camadas, com a inclinação
+    medida pelo rover já classificada (feature 08, memória do terreno).
+    O bbox vem do raster_registry, mesma fonte única do /layers."""
+    conn = get_connection()
+    try:
+        bbox = conn.execute(
+            "SELECT MIN(min_lon), MIN(min_lat), MAX(max_lon), MAX(max_lat) FROM raster_registry"
+        ).fetchone()
+    finally:
+        conn.close()
+
+    paradas = paradas_no_bbox(*bbox) if bbox[0] is not None else None
+    if paradas is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Trilha não disponível -- rodar data-pipeline/scripts/fetch_rover_waypoints.py e populate_raster_registry.py",
+        )
+    return paradas
 
 
 @app.get("/tiles/{layer_name}/{z}/{x}/{y}.png")

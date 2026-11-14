@@ -10,8 +10,9 @@ export const SLOPE_VERDICT: Record<SlopeStatus, { color: string; label: string }
 }
 
 /** Mesmas cores de SLOPE_VERDICT, em hex -- MapLibre pinta via WebGL,
- * não resolve var() de CSS custom properties, então o trecho da rota
- * no mapa precisa do valor literal (tem que bater com tokens.css
+ * não resolve var() de CSS custom properties, então qualquer camada
+ * desenhada no mapa (linha da rota, trilha do Curiosity) precisa do
+ * valor literal (tem que bater com tokens.css
  * --verdict-seguro/--verdict-atencao/--verdict-perigo se eles mudarem). */
 export const SLOPE_COLOR_HEX: Record<SlopeStatus, string> = {
   seguro: '#7fe0a8',

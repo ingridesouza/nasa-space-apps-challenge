@@ -3,11 +3,64 @@ import { Map, Marker, NavigationControl } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
 
-import type { LayerMeta, RouteOption, RoverPhotoPin } from '../api/types'
+import { getRoverTrack } from '../api/client'
+import type { LayerMeta, RouteOption, RoverPhotoPin, RoverStop } from '../api/types'
 import { SLOPE_COLOR_HEX } from '../theme/verdict'
 import { baseLayersBounds, buildStyle, dataBounds, minZoomToCover, TEST_BBOX_CENTER, TEST_BBOX_INITIAL_ZOOM } from './style'
 
 export type PickMode = 'point' | 'pick-origin' | 'pick-destination'
+
+/** Trilha do Curiosity (feature 08, memória do terreno): uma linha
+ * ligando as paradas em ordem de sol + um círculo por parada colorido
+ * pela inclinação que o rover mediu no chão (mesmos limites 15°/20° do
+ * DTM). Mostra onde o mapa de relevo erra. */
+function addRoverTrack(map: Map, stops: RoverStop[]) {
+  map.addSource('rover_track', {
+    type: 'geojson',
+    data: {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'LineString', coordinates: stops.map((s) => [s.lon, s.lat]) },
+        },
+        ...stops.map((s) => ({
+          type: 'Feature' as const,
+          properties: { status: s.status, tilt: s.tilt, sol: s.sol },
+          geometry: { type: 'Point' as const, coordinates: [s.lon, s.lat] },
+        })),
+      ],
+    },
+  })
+  map.addLayer({
+    id: 'rover_track_line',
+    type: 'line',
+    source: 'rover_track',
+    filter: ['==', ['geometry-type'], 'LineString'],
+    paint: { 'line-color': '#ffffff', 'line-opacity': 0.35, 'line-width': 1 },
+  })
+  map.addLayer({
+    id: 'rover_track_stops',
+    type: 'circle',
+    source: 'rover_track',
+    filter: ['==', ['geometry-type'], 'Point'],
+    paint: {
+      'circle-radius': ['match', ['get', 'status'], 'seguro', 3, 6],
+      'circle-color': [
+        'match',
+        ['get', 'status'],
+        'perigo',
+        SLOPE_COLOR_HEX.perigo,
+        'atencao',
+        SLOPE_COLOR_HEX.atencao,
+        SLOPE_COLOR_HEX.seguro,
+      ],
+      'circle-stroke-color': '#05070a',
+      'circle-stroke-width': 1,
+    },
+  })
+}
 
 interface MapCanvasProps {
   layersMeta: LayerMeta[]
@@ -211,6 +264,12 @@ export function MapCanvas({
       loadedRef.current = true
       onZoomChangeRef.current(map.getZoom())
       onMapReady(map)
+
+      // trilha do Curiosity (feature 08) -- falha silenciosa: sem ela o
+      // mapa continua útil (mesmo padrão da nomenclatura em App.tsx).
+      getRoverTrack()
+        .then((stops) => addRoverTrack(map, stops))
+        .catch(() => {})
     })
 
     mapRef.current = map
