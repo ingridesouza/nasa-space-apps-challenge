@@ -229,6 +229,19 @@ def build_photos(db, photos_src, positions, stops, cfg, bundle):
     return n
 
 
+def localize_mastcam(db, bundle) -> int:
+    """Baixa a Mastcam de cada alvo para o pacote; a API nunca serve URL externa."""
+    session = requests.Session()
+    session.headers["User-Agent"] = "H2G2-DETON8/1.0 (uso educacional)"
+    n = 0
+    for tid, url in db.execute("SELECT id, mastcam_path FROM targets WHERE mastcam_path LIKE 'http%'").fetchall():
+        rel = f"mastcam/{tid}.jpg"
+        db.execute("UPDATE targets SET mastcam_path = ? WHERE id = ?",
+                   (rel if download(session, url, bundle / rel) else "", tid))
+        n += (bundle / rel).exists()
+    return n
+
+
 def build_rtrees(db):
     for table, tree in (("panoramas", "pano_rtree"), ("photos", "photo_rtree")):
         db.execute(f"DELETE FROM {tree}")
@@ -375,6 +388,7 @@ def main() -> int:
     n_alvos, n_med = build_science(db, make_science_sources(cfg["science_source"], cfg, ROOT)[0],
                                    stops, cfg)
     log(f"F04: {n_alvos} alvos, {n_med} medições (science_source: {cfg['science_source']})")
+    log(f"F04: {localize_mastcam(db, bundle)} fotos Mastcam no pacote")
     orbital = build_orbital(cfg, bundle, win) if source != "mock" else None
     write_track(db, bundle, win, orbital, cfg)
     wp_file = waypoints_file or cfg["public"]["waypoints_file"]

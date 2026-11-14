@@ -67,6 +67,8 @@ def main() -> int:
         "SELECT rmc, site, drive, sol, lat, lon, elev, yaw, source FROM waypoints")]
     science, _ = make_science_sources(cfg["science_source"], cfg, ROOT)
     n_t, n_m = build_science(db, science, stops, cfg)
+    from etl.build import localize_mastcam  # alvos voltam com URL da Mastcam: trazer pro pacote
+    localize_mastcam(db, Path(args.bundle))
     db.commit()
     db.close()
     print(f"F04: {n_t} alvos, {n_m} medições (science_source: {cfg['science_source']})")
