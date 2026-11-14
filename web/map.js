@@ -224,13 +224,23 @@ function posicionar(m, p) {
 export const setOrigem = (p) => posicionar(marcadorOrigem, p)
 export const setDestino = (p) => posicionar(marcadorDestino, p)
 
+let marcadoresEscala = []
+/** Paradas intermediárias da rota (não confundir com a trilha do Curiosity,
+ * que também usa a palavra "paradas" em outro sentido). Quantidade varia,
+ * então recria os marcadores a cada chamada em vez de reusar um fixo. */
+export function setEscalas(escalas) {
+  if (!map) return
+  marcadoresEscala.forEach((m) => m.remove())
+  marcadoresEscala = escalas.map((p) => marcador('h2g2-route-marker h2g2-route-marker--escala').setLngLat([p.lon, p.lat]).addTo(map))
+}
+
 export function setRota(rota) {
   if (!carregado) return
   map.getSource(ROUTE_ID).setData({
     type: 'FeatureCollection',
     features: (rota?.trechos_risco ?? []).map((t) => ({
       type: 'Feature',
-      properties: { slope_status: t.slope_status },
+      properties: { slope_status: t.status_previsto ?? t.slope_status }, // feature 06: inclui a previsão
       geometry: { type: 'LineString', coordinates: [[t.de[1], t.de[0]], [t.para[1], t.para[0]]] },
     })),
   })

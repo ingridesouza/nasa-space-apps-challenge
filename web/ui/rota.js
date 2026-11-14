@@ -1,18 +1,23 @@
 // Feature 02: painel de rota (antes RoutePanel.tsx). Mesmo A* real sobre o DTM,
 // pesos diferentes por tipo (ver api/route_planning.py).
 import { getPrevisao, getRoute } from '../api.js'
-import { coord, esc, num, veredito } from './util.js'
+import { alertasHtml, coord, esc, num, veredito } from './util.js'
 
 const TIPO_LABEL = { mais_segura: 'Mais segura', mais_rapida: 'Mais rápida', mais_ciencia: 'Mais ciência' }
 
 /** Capacidade de O2 de referência pra barra -- simulada, mesma linguagem
- * do modelo de O2/tempo em api/route_planning.py (não é spec de traje). */
-const CAPACIDADE_O2_L_SIMULADA = 400
+ * do modelo de O2/tempo em api/route_planning.py (não é spec de traje).
+ * Editável no painel (gap "nível de O2 do traje configurável"): cada
+ * traje/missão pode ter um tanque diferente, não existe telemetria real
+ * de traje nesse protótipo pra saber o valor certo sozinho. */
+const CAPACIDADE_O2_L_PADRAO = 400
+let capacidadeO2L = CAPACIDADE_O2_L_PADRAO
 const RESERVA_MINIMA_PCT = 0.2
 
 function piorStatus(rota) {
-  if (rota.trechos_risco.some((t) => t.slope_status === 'perigo')) return 'perigo'
-  if (rota.trechos_risco.some((t) => t.slope_status === 'atencao')) return 'atencao'
+  const st = (t) => t.status_previsto ?? t.slope_status // feature 06: inclui a previsão
+  if (rota.trechos_risco.some((t) => st(t) === 'perigo')) return 'perigo'
+  if (rota.trechos_risco.some((t) => st(t) === 'atencao')) return 'atencao'
   return 'seguro'
 }
 
@@ -31,27 +36,55 @@ function perfilSvg(perfil) {
 
 function detalheRota(r) {
   const status = piorStatus(r)
-  const o2Pct = (r.o2_estimado_l / CAPACIDADE_O2_L_SIMULADA) * 100
+  const o2Pct = (r.o2_estimado_l / capacidadeO2L) * 100
   const o2Ok = o2Pct <= (1 - RESERVA_MINIMA_PCT) * 100
   const alvo = r.alvo_cientifico
+
+  // Ida e volta: nosso modelo de velocidade só depende da magnitude da
+  // inclinação do trecho (ver api/route_planning.py, custo_aresta), não
+  // da direção -- subida e descida custam o mesmo no modelo. Então o
+  // caminho de volta (mesma rota, sentido invertido) tem o MESMO custo
+  // da ida, não é uma suposição otimista, é consequência direta do
+  // modelo já existente. Dobrar é honesto aqui -- ver aviso na UI.
+  const o2VoltaL = r.o2_estimado_l * 2
+  const o2VoltaPct = (o2VoltaL / capacidadeO2L) * 100
+  const voltaOk = o2VoltaPct <= (1 - RESERVA_MINIMA_PCT) * 100
+  const doseVolta = r.dose_rad_estimada_ugy !== null ? r.dose_rad_estimada_ugy * 2 : null
+
   return `<div style="margin-bottom:var(--s-3)">
     ${veredito(status, [
       { ok: status !== 'perigo', label: 'Nenhum trecho acima do limite de 20°' },
-      { ok: o2Ok, label: 'O₂ dentro da reserva simulada (20%)' },
+      { ok: o2Ok, label: 'O₂ dentro da reserva simulada (20%) só pra ida' },
+      { ok: voltaOk, label: 'O₂ também alcança pra voltar (ida + volta)' },
     ])}
+    ${r.alertas?.length > 0 ? `<div class="h2g2-bloco" style="margin-top:var(--s-2)">
+      <span class="h2g2-stat-label">Alertas do agente nesse trecho (feature 08)</span>
+      ${alertasHtml(r.alertas)}
+    </div>` : ''}
     <div class="h2g2-card h2g2-stat-grid" style="margin-top:var(--s-2)">
-      <div><span class="h2g2-stat-label">Distância</span><span class="h2g2-stat-value">${num(r.distancia_m)}m</span></div>
-      <div><span class="h2g2-stat-label">Tempo</span><span class="h2g2-stat-value">~${num(r.tempo_estimado_min)} min</span></div>
+      <div><span class="h2g2-stat-label">Distância (ida)</span><span class="h2g2-stat-value">${num(r.distancia_m)}m</span></div>
+      <div><span class="h2g2-stat-label">Tempo (ida)</span><span class="h2g2-stat-value">~${num(r.tempo_estimado_min)} min</span></div>
       <div class="h2g2-full">
-        <span class="h2g2-stat-label">O₂ estimado (simulado)</span>
-        <span class="h2g2-stat-value">${num(r.o2_estimado_l, 1)}L de ${CAPACIDADE_O2_L_SIMULADA}L</span>
+        <span class="h2g2-stat-label">O₂ estimado (simulado, só ida)</span>
+        <span class="h2g2-stat-value">${num(r.o2_estimado_l, 1)}L de ${capacidadeO2L}L</span>
         <div class="h2g2-progress" style="margin-top:4px">
           <div class="h2g2-progress-fill" style="width:${Math.min(o2Pct, 100)}%;background:${o2Ok ? 'var(--verdict-seguro)' : 'var(--verdict-perigo)'}"></div>
         </div>
       </div>
       <div class="h2g2-full">
-        <span class="h2g2-stat-label">Dose de radiação (RAD, real)</span>
+        <span class="h2g2-stat-label">Dose de radiação (RAD, real, só ida)</span>
         <span class="h2g2-stat-value">${r.dose_rad_estimada_ugy !== null ? `${r.dose_rad_estimada_ugy.toFixed(2)} µGy` : '—'}</span>
+      </div>
+    </div>
+    <div class="h2g2-card" style="margin-top:var(--s-2)">
+      <span class="h2g2-stat-label">Ida + volta (mesma rota, sentido inverso)</span>
+      <span class="h2g2-stat-value">${num(r.o2_estimado_l * 2, 1)}L de ${capacidadeO2L}L</span>
+      <div class="h2g2-progress" style="margin-top:4px">
+        <div class="h2g2-progress-fill" style="width:${Math.min(o2VoltaPct, 100)}%;background:${voltaOk ? 'var(--verdict-seguro)' : 'var(--verdict-perigo)'}"></div>
+      </div>
+      <div class="h2g2-dim h2g2-micro" style="margin-top:4px;line-height:1.4">
+        ~${num(r.tempo_estimado_min * 2)} min · ${doseVolta !== null ? `${doseVolta.toFixed(2)} µGy` : '—'} de radiação no total.
+        Assume o mesmo custo da ida (nosso modelo de velocidade não diferencia subida de descida).
       </div>
     </div>
     <div class="h2g2-card" style="margin-top:var(--s-2)"><span class="h2g2-stat-label">Perfil de elevação</span>${perfilSvg(r.perfil_elevacao)}</div>
@@ -72,29 +105,40 @@ let erro = null
 let carregando = false
 let pedido = 0
 let el, cb
-let ultimo = { origem: null, destino: null }
-const janelas = new Map() // tempo_estimado_min -> janela_eva (F06); undefined = calculando
+let ultimo = { origem: null, destino: null, escalas: [] }
+const janelas = new Map() // "sol|minutos" -> janela_eva (F06); undefined = calculando
+let solEva = null // null = hoje (a API decide)
+
+/** Sol escolhido no painel de condições: a janela de EVA passa a ser desse sol. */
+export function setSolEva(sol) {
+  solEva = sol
+  render(ultimo.origem, ultimo.destino)
+}
 
 /** F06 no PDF: "acoplar a previsão à rota, sugerindo a melhor janela para a EVA". */
 function secaoJanela(r) {
-  const chave = r.tempo_estimado_min
+  const minutos = r.tempo_estimado_min
+  const chave = `${solEva}|${minutos}`
   if (!janelas.has(chave)) {
     janelas.set(chave, undefined)
-    getPrevisao({ duracao_min: chave })
-      .then((p) => p.janela_eva, () => null)
+    getPrevisao({ duracao_min: minutos, ...(solEva && { sol: solEva }) })
+      .then((p) => p, () => null)
       .then((j) => {
         janelas.set(chave, j)
         render(ultimo.origem, ultimo.destino)
       })
   }
-  const j = janelas.get(chave)
+  const prev = janelas.get(chave)
+  const j = prev === undefined ? undefined : (prev?.janela_eva ?? null)
+  const dose = prev?.dose_ugy_dia ? (prev.dose_ugy_dia.valor / 24) * (minutos / 60) : null
   const corpo = j === undefined
     ? '<span class="h2g2-dim">calculando pela previsão local...</span>'
     : j === null
       ? '<span class="h2g2-dim">sem curva horária para prever a janela</span>'
       : `<strong>${esc(j.inicio_lmst)}–${esc(j.fim_lmst)}</strong> hora solar local · hora mais fria prevista ${num(j.temp_mais_fria_na_janela_c, 0)} °C
-         <div class="h2g2-dim h2g2-micro" title="${esc(j.criterio)}">estimado (não medido) · climatologia REMS por hora</div>`
-  return `<div class="h2g2-small h2g2-sep" style="margin-bottom:var(--s-3)"><span class="h2g2-stat-label">Melhor janela p/ esta EVA (${esc(Math.ceil(chave / 60))}h)</span><div>${corpo}</div></div>`
+         ${dose !== null ? `<div style="color:var(--ember)">dose prevista nesta EVA: ~${num(dose, 1)} µGy</div>` : ''}
+         <div class="h2g2-dim h2g2-micro" title="${esc(j.criterio)}">estimado (não medido) · REMS por hora${dose !== null ? ' · RAD por estação' : ''}</div>`
+  return `<div class="h2g2-small h2g2-sep" style="margin-bottom:var(--s-3)"><span class="h2g2-stat-label">Melhor janela p/ esta EVA (${esc(Math.ceil(minutos / 60))}h${solEva ? ` · sol ${esc(solEva)}` : ''})</span><div>${corpo}</div></div>`
 }
 
 const rotaAtiva = () => data?.rotas.find((r) => r.tipo === tipo) ?? null
@@ -104,7 +148,19 @@ function render(origem, destino) {
   if (!origem) corpo = '<div class="h2g2-dim h2g2-mono h2g2-small">Clique no mapa pra marcar a origem.</div>'
   else if (!destino) corpo = `<div class="h2g2-dim h2g2-mono h2g2-small">Origem: ${coord(origem)}<br>Clique no mapa pra marcar o destino.</div>`
   else {
-    corpo = `<button class="h2g2-link-btn" data-acao="reset" style="margin-bottom:var(--s-3)">↺ escolher outros pontos</button>`
+    corpo = `<button class="h2g2-link-btn" data-acao="reset" style="margin-bottom:var(--s-3)">↺ escolher outros pontos</button>
+      <label class="h2g2-mono h2g2-small h2g2-dim" style="display:flex;align-items:center;gap:var(--s-2);margin-bottom:var(--s-3)">
+        Capacidade de O₂ do traje
+        <input type="number" min="1" step="1" value="${capacidadeO2L}" data-campo="capacidade-o2"
+          style="width:5em;background:var(--panel-bg,transparent);color:inherit;border:1px solid var(--ink-3);border-radius:4px;padding:2px 4px">L
+      </label>`
+    corpo += `<div class="h2g2-small" style="margin-bottom:var(--s-3)">
+      ${ultimo.escalas.map((p, i) => `<div class="h2g2-mono h2g2-dim" style="display:flex;justify-content:space-between;gap:var(--s-2)">
+        <span>parada ${i + 1}: ${coord(p)}</span>
+        <button class="h2g2-link-btn" data-acao="remover-escala" data-i="${i}" aria-label="Remover parada ${i + 1}">×</button>
+      </div>`).join('')}
+      <button class="h2g2-link-btn" data-acao="adicionar-escala">+ adicionar parada no caminho</button>
+    </div>`
     if (carregando) corpo += '<div class="h2g2-dim h2g2-mono h2g2-small">calculando rota (A* sobre o DTM)...</div>'
     if (erro) corpo += `<div class="h2g2-erro">${esc(erro)}</div>`
     if (data) {
@@ -132,7 +188,8 @@ function render(origem, destino) {
     </div>${corpo}`
 }
 
-/** Liga o painel. callbacks: onFechar(), onReset(), onRotaAtiva(rota|null). */
+/** Liga o painel. callbacks: onFechar(), onReset(), onRotaAtiva(rota|null),
+ * onAdicionarEscala(), onRemoverEscala(indice). */
 export function iniciarRota(container, callbacks) {
   el = container
   cb = callbacks
@@ -144,11 +201,22 @@ export function iniciarRota(container, callbacks) {
       cb.onRotaAtiva(rotaAtiva())
     } else if (b.dataset.acao === 'fechar') return cb.onFechar()
     else if (b.dataset.acao === 'reset') return cb.onReset()
+    else if (b.dataset.acao === 'adicionar-escala') return cb.onAdicionarEscala()
+    else if (b.dataset.acao === 'remover-escala') return cb.onRemoverEscala(Number(b.dataset.i))
     else avisoExpandido = b.dataset.acao === 'expandir'
     render(ultimo.origem, ultimo.destino)
   })
-  return async function atualizarRota(origem, destino) {
-    ultimo = { origem, destino }
+  // 'change' (não 'input'): o render() troca o innerHTML inteiro, então
+  // reagir a cada tecla derrubaria o foco do campo no meio da digitação.
+  // 'change' só dispara ao sair do campo (blur/Enter), onde isso não importa.
+  el.addEventListener('change', (e) => {
+    if (e.target.dataset.campo !== 'capacidade-o2') return
+    const v = Number(e.target.value)
+    if (v > 0) capacidadeO2L = v
+    render(ultimo.origem, ultimo.destino)
+  })
+  return async function atualizarRota(origem, destino, escalas = []) {
+    ultimo = { origem, destino, escalas }
     const meu = ++pedido
     data = null
     erro = null
@@ -157,7 +225,7 @@ export function iniciarRota(container, callbacks) {
     render(origem, destino)
     if (!carregando) return
     try {
-      data = await getRoute(origem, destino)
+      data = await getRoute(origem, destino, escalas)
       tipo = 'mais_segura'
     } catch (e) {
       erro = e.message

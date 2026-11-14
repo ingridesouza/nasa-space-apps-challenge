@@ -121,6 +121,17 @@ def _regra_sem_historico(lat: float, lon: float, raster_values: dict, waypoints_
     return [_alerta("atencao", "sem_historico", msg, "MMGIS MSL_waypoints + DTM HiRISE (Mars Trek)")]
 
 
+def _regra_risco_previsto(raster_values: dict) -> list[dict]:
+    from previsao import risco_inclinacao  # import tardio: previsao usa este módulo
+
+    risco = risco_inclinacao(raster_values.get("slope_deg"))
+    if not risco or risco["chance_pct"] < 20 or raster_values.get("slope_status") != "seguro":
+        return []  # mapa já avisa (>= 15°) ou chance baixa
+    msg = (f"O mapa diz {_num(raster_values['slope_deg'])}°, mas onde o mapa marca {risco['faixa_mapa']} "
+           f"o rover mediu {risco['limite_deg']}° ou mais em {risco['chance_pct']}% das paradas.")
+    return [_alerta("atencao", "risco_previsto", msg, "Previsão H2G2: histórico do rover × DTM")]
+
+
 def _regra_volta_base(lat: float, lon: float) -> list[dict]:
     dist = haversine_m(lat, lon, *BASE_LAT_LON)
     if dist <= LIMITE_VOLTA_BASE_M:
@@ -137,6 +148,7 @@ def alertas_do_ponto(lat: float, lon: float, raster_values: dict, waypoints_path
         _regras_inclinacao(raster_values)
         + _regra_terreno_historico(lat, lon, waypoints_path)
         + _regra_sem_historico(lat, lon, raster_values, waypoints_path)
+        + _regra_risco_previsto(raster_values)
         + _regra_volta_base(lat, lon)
         + _regra_areia(raster_values)
     )
@@ -167,6 +179,41 @@ def tempo_e_alertas_do_sol(sol_dado: int, agora: datetime | None = None) -> tupl
                                f"Temporada de tempestades de poeira (Ls {_num(ls_agora)}°, risco maior entre 180° e 360°).",
                                "Mars24 (Ls) + climatologia de poeira"))
     return tempo, alertas
+
+
+#: ~5.88 m/px é o pixel do DTM (route_planning.py) -- amostrar 1 a cada
+#: 5 pontos da rota já cobre a escala dos raios de alerta (25-100 m)
+#: sem rodar a regra do histórico do rover ponto a ponto num caminho
+#: com centenas de pixels.
+PASSO_AMOSTRA_ROTA = 5
+
+
+def alertas_da_rota(pontos: list[tuple[float, float]], waypoints_path: str = WAYPOINTS_PATH) -> list[dict]:
+    """Alertas do agente (feature 08) cruzados com o caminho calculado
+    pela feature 02 (route_planning.py): maior inclinação que o
+    Curiosity já mediu perto da rota e trechos que saem do raio de
+    volta da base. A inclinação em si já está em trechos_risco (mesmo
+    limite do DTM que o A*); aqui só entra o que o agente sabe e o A*
+    não usa pra escolher caminho.
+
+    Cada alerta carrega `indice_ponto` (índice em `pontos`) -- quem
+    chama (api/main.py) converte pra distância acumulada real usando o
+    mesmo `perfil_elevacao` que já devolve pro gráfico, pra dizer EM
+    QUE TRECHO da caminhada o alerta vale, não só que ele existe."""
+    amostra_idx = list(range(0, len(pontos), PASSO_AMOSTRA_ROTA))
+    if pontos and amostra_idx[-1] != len(pontos) - 1:
+        amostra_idx.append(len(pontos) - 1)
+
+    vistos = set()
+    alertas = []
+    for i in amostra_idx:
+        lat, lon = pontos[i]
+        for a in _regra_terreno_historico(lat, lon, waypoints_path) + _regra_volta_base(lat, lon):
+            chave = (a["tipo"], a["mensagem"])
+            if chave not in vistos:
+                vistos.add(chave)
+                alertas.append({**a, "indice_ponto": i})
+    return alertas
 
 
 def paradas_no_bbox(min_lon: float, min_lat: float, max_lon: float, max_lat: float) -> list[dict] | None:

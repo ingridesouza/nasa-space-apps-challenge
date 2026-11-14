@@ -54,6 +54,13 @@ def test_parada_ingreme_entre_25_e_100_m_vira_atencao():
     assert a["terreno_historico"]["nivel"] == "atencao" and "22,4°" in a["terreno_historico"]["mensagem"]
 
 
+def test_previsao_vira_alerta_quando_o_mapa_diz_seguro():
+    a = tipos(alertas_do_ponto(-4.8150, 137.3750, MAPA_SEGURO))  # mapa 11°: faixa 10–15° do histórico
+    assert a["risco_previsto"]["nivel"] == "atencao" and "%" in a["risco_previsto"]["mensagem"]
+    plano = {"slope_deg": 5.0, "slope_status": "seguro", "classe_ai4mars": None}
+    assert "risco_previsto" not in tipos(alertas_do_ponto(-4.8150, 137.3750, plano))
+
+
 def test_area_sem_historico_do_rover():
     inexplorado = (-4.8150, 137.3750)  # dentro do mapa, longe da trilha do Curiosity
     a = tipos(alertas_do_ponto(*inexplorado, MAPA_SEGURO))

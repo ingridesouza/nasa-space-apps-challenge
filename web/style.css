@@ -385,6 +385,12 @@ button {
   background: var(--mars2);
   box-shadow: 0 0 10px var(--mars2);
 }
+.h2g2-route-marker--escala {
+  width: 12px;
+  height: 12px;
+  background: var(--hud-cyan);
+  box-shadow: 0 0 8px var(--hud-cyan);
+}
 @keyframes h2g2-route-marker-in {
   from {
     transform: scale(2.2);
@@ -488,7 +494,7 @@ button {
 .h2g2-layer-row input[type='range'] { width: 100%; }
 .h2g2-planejada { display: flex; justify-content: space-between; font-size: var(--t-small); margin-bottom: var(--s-2); }
 
-.h2g2-btn-rota { position: absolute; top: var(--s-4); left: 50%; transform: translateX(-50%); padding: var(--s-2) var(--s-4); font-size: var(--t-small); cursor: pointer; color: var(--ink); }
+.h2g2-btn-rota { padding: var(--s-2) var(--s-4); font-size: var(--t-small); cursor: pointer; color: var(--ink); }
 .h2g2-btn-rota.on { color: var(--hud-cyan); border-color: var(--hud-cyan); }
 .h2g2-instrucao { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); padding: var(--s-3) var(--s-5); font-size: var(--t-body); font-weight: 600; text-align: center; white-space: nowrap; pointer-events: none; color: var(--verdict-seguro); border-color: var(--verdict-seguro); }
 .h2g2-instrucao.destino { color: var(--mars2); border-color: var(--mars2); }
@@ -526,15 +532,61 @@ button {
 /* F03 panorama e F04 Mastcam no painel do ponto; F08 caixa de pergunta */
 .h2g2-pano { width: 100%; height: 200px; border: 1px solid var(--glass-rim); border-radius: var(--r-2); overflow: hidden; margin-bottom: var(--s-1); }
 .h2g2-mastcam { width: 100%; max-height: 160px; object-fit: cover; margin-top: var(--s-2); border-radius: var(--r-2); display: block; }
-.h2g2-agente { display: flex; gap: var(--s-2); }
-.h2g2-agente input { flex: 1; min-width: 0; padding: var(--s-1) var(--s-2); background: var(--n900); color: var(--ink); border: 1px solid var(--glass-rim); border-radius: var(--r-2); font: inherit; font-size: var(--t-small); }
-.h2g2-agente button { padding: var(--s-1) var(--s-2); font-size: var(--t-micro); cursor: pointer; }
-.h2g2-agente-saida { margin-top: var(--s-2); }
 
 /* F07 modo traje: com luva e visor, só mapa, alertas, veredito e pergunta, tudo maior */
-.h2g2-btn-traje { position: absolute; bottom: var(--s-4); left: 50%; transform: translateX(-50%); padding: var(--s-2) var(--s-4); font-size: var(--t-small); cursor: pointer; color: var(--ink); }
+.h2g2-btn-traje { padding: var(--s-2) var(--s-4); font-size: var(--t-small); cursor: pointer; color: var(--ink); }
 .h2g2-btn-traje[aria-pressed='true'] { color: var(--hud-cyan); border-color: var(--hud-cyan); }
 .traje #camadas, .traje .h2g2-extra { display: none; }
 .traje .h2g2-alerta { font-size: var(--t-body); font-weight: 600; }
 .traje .h2g2-painel-dir { width: 380px; }
 .traje button, .traje input { min-height: 44px; }
+.h2g2-sol-eva { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
+.h2g2-sol-eva input { width: 6.5em; padding: 2px var(--s-1); background: var(--n900); color: var(--ink); border: 1px solid var(--glass-rim); border-radius: var(--r-2); font: inherit; }
+
+/* topo: ações lado a lado */
+.h2g2-acoes { position: absolute; top: var(--s-4); left: 50%; transform: translateX(-50%); display: flex; gap: var(--s-2); }
+
+/* F06: faixa de previsão, entre a coluna da esquerda e o painel da direita */
+.h2g2-previsao { position: absolute; left: 272px; right: 332px; bottom: var(--s-4); padding: var(--s-3) var(--s-4);
+  display: grid; grid-template-columns: auto 1fr minmax(220px, 280px); grid-template-areas: "sol nums janela" "rodape rodape rodape";
+  gap: var(--s-2) var(--s-4); align-items: center; }
+.h2g2-prev-sol { grid-area: sol; }
+.h2g2-prev-passo { display: flex; align-items: center; gap: var(--s-1); font-size: var(--t-small); }
+.h2g2-prev-passo button { width: 28px; height: 28px; background: var(--n900); color: var(--ink); border: 1px solid var(--glass-rim); border-radius: var(--r-2); cursor: pointer; font-size: var(--t-body); line-height: 1; }
+.h2g2-prev-passo button:hover, .h2g2-prev-passo button:focus-visible { border-color: var(--hud-cyan); color: var(--hud-cyan); }
+.h2g2-prev-passo input { width: 5.5em; padding: 2px var(--s-1); background: var(--n900); color: var(--ink); border: 1px solid var(--glass-rim); border-radius: var(--r-2); font: inherit; font-family: var(--font-mono); }
+.h2g2-prev-nums { grid-area: nums; display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); }
+.h2g2-prev-num { display: flex; flex-direction: column; }
+.h2g2-prev-valor { font-size: var(--t-4); color: var(--ink); line-height: 1.15; font-variant-numeric: tabular-nums; }
+.h2g2-prev-valor small, .h2g2-prev-hora small { font-size: var(--t-micro); color: var(--ink-3); margin-left: 2px; }
+.h2g2-prev-janela { grid-area: janela; }
+.h2g2-prev-hora { font-size: var(--t-body); color: var(--hud-cyan); font-variant-numeric: tabular-nums; }
+.h2g2-prev-rodape { grid-area: rodape; border-top: 1px solid var(--glass-rim); padding-top: var(--s-1); }
+.h2g2-curva { width: 100%; height: 64px; display: block; }
+.h2g2-curva-linha { fill: none; stroke: var(--ink-2); stroke-width: 1.5; }
+.h2g2-curva-janela { fill: var(--hud-cyan); opacity: 0.18; }
+.h2g2-curva-eixo { fill: var(--ink-3); font-size: 8px; font-family: var(--font-mono); }
+.traje .h2g2-prev-rodape { display: none; }
+.h2g2-prev-alerta { color: var(--verdict-atencao); font-size: var(--t-small); font-weight: 600; margin-bottom: var(--s-1); }
+.h2g2-prev-medir summary { cursor: pointer; font-size: var(--t-micro); color: var(--ink-3); font-family: var(--font-mono); margin-top: var(--s-1); }
+.h2g2-prev-medir form { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-2); align-items: end; margin-top: var(--s-1); font-size: var(--t-micro); }
+.h2g2-prev-medir label { display: flex; flex-direction: column; color: var(--ink-3); }
+.h2g2-prev-medir input { width: 6em; padding: 2px var(--s-1); background: var(--n900); color: var(--ink); border: 1px solid var(--glass-rim); border-radius: var(--r-2); font: inherit; }
+.h2g2-prev-medir form > button:not(.h2g2-link-btn) { padding: 3px var(--s-2); cursor: pointer; }
+
+/* F08: assistente sempre à mão, aberto pelo topo ou pela tecla "/" */
+.h2g2-btn-ass { padding: var(--s-2) var(--s-4); font-size: var(--t-small); cursor: pointer; color: var(--ink); }
+.h2g2-btn-ass.on { color: var(--hud-cyan); border-color: var(--hud-cyan); }
+.h2g2-btn-ass kbd { font-family: var(--font-mono); font-size: var(--t-micro); border: 1px solid var(--glass-rim); border-radius: var(--r-2); padding: 0 4px; margin-left: 4px; color: var(--ink-3); }
+.h2g2-assistente { position: absolute; top: 76px; left: 50%; transform: translateX(-50%); width: min(620px, calc(100vw - 32px)); max-height: 62vh; overflow-y: auto; padding: var(--s-4); z-index: 5; }
+.h2g2-ass-form { display: flex; gap: var(--s-2); margin: var(--s-2) 0; }
+.h2g2-ass-form input { flex: 1; min-width: 0; padding: var(--s-2) var(--s-3); background: var(--n900); color: var(--ink); border: 1px solid var(--hud-cyan); border-radius: var(--r-2); font: inherit; font-size: var(--t-body); }
+.h2g2-ass-form button { padding: var(--s-2) var(--s-3); cursor: pointer; }
+.h2g2-ass-sugestoes { display: flex; flex-wrap: wrap; gap: var(--s-1); margin-bottom: var(--s-2); }
+.h2g2-ass-sugestoes button { padding: 4px var(--s-2); font-size: var(--t-micro); background: var(--n900); color: var(--ink-2); border: 1px solid var(--glass-rim); border-radius: 999px; cursor: pointer; }
+.h2g2-ass-sugestoes button:hover:not(:disabled), .h2g2-ass-sugestoes button:focus-visible { border-color: var(--hud-cyan); color: var(--hud-cyan); }
+.h2g2-ass-hist { margin-top: var(--s-3); display: flex; flex-direction: column; gap: var(--s-3); }
+.h2g2-ass-item { border-top: 1px solid var(--glass-rim); padding-top: var(--s-2); }
+.h2g2-ass-q { font-size: var(--t-small); color: var(--hud-cyan); margin-bottom: var(--s-1); }
+.h2g2-ass-r { font-size: var(--t-body); line-height: 1.45; margin: 0 0 var(--s-1); }
+.traje .h2g2-ass-r { font-size: var(--t-4); }

@@ -21,12 +21,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from agente import AgenteIndisponivel, fontes_do_contexto, montar_contexto, perguntar
-from alertas import alertas_do_ponto, paradas_no_bbox, tempo_e_alertas_do_sol
+from alertas import BASE_LAT_LON, alertas_da_rota, alertas_do_ponto, paradas_no_bbox, tempo_e_alertas_do_sol
 from conditions import get_cached_conditions
 from db import get_connection
 from mosaics import build_hillshade_png, build_mosaic_png
 from nomenclature import get_cached_nomenclature
-from previsao import previsao_do_sol
+from previsao import apagar_medicao, previsao_do_sol, registrar_medicao, risco_inclinacao, status_previsto
 from raster_sampling import sample_all_rasters
 from route_planning import ForaDoGridError, SemCaminhoError, plan_route
 from tempo_marte import sol_msl
@@ -50,6 +50,17 @@ app.include_router(ficha.router)
 app.mount("/bundle", StaticFiles(directory=panorama.BUNDLE, check_dir=False), name="bundle")
 
 
+@app.middleware("http")
+async def front_sempre_revalidado(request: Request, call_next):
+    """Front (web/) com Cache-Control: no-cache -- o navegador revalida a cada carga
+    (304 barato, é local). Sem isso, depois de atualizar o sistema ele mistura módulo
+    JS velho do cache com novo e a página não sobe."""
+    resp = await call_next(request)
+    if request.url.path == "/" or request.url.path.endswith((".js", ".mjs", ".css", ".html")):
+        resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
 @app.get("/api/point")
 def get_point(lat: float, lon: float, request: Request):
     """Combina busca vetorial (fotos próximas, alvo científico) e
@@ -70,6 +81,8 @@ def get_point(lat: float, lon: float, request: Request):
         "raster_values": rasters,
         # feature 08: acréscimo ao contrato, nenhuma chave acima mudou
         "alertas": alertas_do_ponto(lat, lon, rasters),
+        # feature 06: chance de o terreno real passar de 15°, pelo histórico do rover
+        "previsao_inclinacao": risco_inclinacao(rasters.get("slope_deg")),
     }
 
 
@@ -169,11 +182,19 @@ def get_photos(request: Request):
 def get_rover_track():
     """Paradas do Curiosity dentro do bbox das camadas, com a inclinação
     medida pelo rover já classificada (feature 08, memória do terreno).
-    O bbox vem do raster_registry, mesma fonte única do /layers."""
+    O bbox vem do raster_registry, mesma fonte única do /layers.
+
+    Bug real corrigido: era MIN(min)/MAX(max) -- a UNIÃO dos bbox de
+    todas as camadas, dominada pela THEMIS (cobre uma área bem maior
+    que o CTX/HiRISE/DTM baixados de verdade). Isso deixava passar
+    paradas reais do rover fora de qualquer imagem de base, então a
+    trilha aparecia sobre fundo preto ao afastar o zoom. O certo é a
+    INTERSECÇÃO (MAX(min)/MIN(max)): só a área onde toda camada tem
+    dado de verdade."""
     conn = get_connection()
     try:
         bbox = conn.execute(
-            "SELECT MIN(min_lon), MIN(min_lat), MAX(max_lon), MAX(max_lat) FROM raster_registry"
+            "SELECT MAX(min_lon), MAX(min_lat), MIN(max_lon), MIN(max_lat) FROM raster_registry"
         ).fetchone()
     finally:
         conn.close()
@@ -214,32 +235,69 @@ def get_tile(layer_name: str, z: int, x: int, y: int):
 
 
 @app.get("/api/route")
-def get_route(origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float):
+def get_route(
+    origin_lat: float,
+    origin_lon: float,
+    dest_lat: float,
+    dest_lon: float,
+    stop_lat: list[float] = Query(default=[]),
+    stop_lon: list[float] = Query(default=[]),
+):
     """Feature 02 -- A* real sobre o DTM, duas variantes (mais_segura/
     mais_rapida). Ver route_planning.py pro desvio consciente do AI4Mars
     (não cobre o boxwork -- custo usa só inclinação real, areia vira
     aviso textual). Dose de radiação real (RAD, mesmo REFERENCE_SOL de
     /api/conditions) entra como estimativa acumulada pela duração da
-    caminhada -- None se o sol não estiver cacheado, nunca 0 fingido."""
+    caminhada -- None se o sol não estiver cacheado, nunca 0 fingido.
+
+    stop_lat/stop_lon (mesmo tamanho, mesma ordem): paradas intermediárias
+    entre origem e destino -- gap "paradas intermediárias"."""
+    if len(stop_lat) != len(stop_lon):
+        raise HTTPException(status_code=422, detail="stop_lat e stop_lon precisam ter o mesmo tamanho")
+    paradas = list(zip(stop_lat, stop_lon))
+
     dados_rad = get_cached_conditions(REFERENCE_SOL)
     dose_rad_ugy_por_hora = dados_rad["rad"]["dose_media_ugy_por_hora"] if dados_rad else None
 
     conn = get_connection()
     try:
-        resultado = plan_route(conn, origin_lat, origin_lon, dest_lat, dest_lon, dose_rad_ugy_por_hora)
+        resultado = plan_route(conn, origin_lat, origin_lon, dest_lat, dest_lon, dose_rad_ugy_por_hora, paradas)
     except ForaDoGridError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except SemCaminhoError as e:
         raise HTTPException(status_code=422, detail=str(e))
     finally:
         conn.close()
+    # feature 06: cada trecho ganha a chance prevista e o status que a considera
+    for rota in resultado["rotas"]:
+        for t in rota["trechos_risco"]:
+            risco = risco_inclinacao(t["slope_deg"])
+            t["chance_pct"] = risco["chance_pct"] if risco else None
+            t["status_previsto"] = status_previsto(t["slope_status"], risco)
+        rota["trechos_risco_previsto"] = sum(t["status_previsto"] != t["slope_status"] for t in rota["trechos_risco"])
+
+    # feature 08: acréscimo ao contrato, nenhuma chave acima muda --
+    # cruza o histórico do rover e o limite de volta à base (mesmas
+    # regras do /api/point) com os pontos de cada variante calculada.
+    # distancia_m (acima do início, não do destino) vem do mesmo
+    # perfil_elevacao do gráfico -- é o "em que trecho" que faltava:
+    # sem isso, o alerta valia pra rota inteira, não pra um ponto dela.
+    for rota in resultado["rotas"]:
+        alertas = alertas_da_rota([tuple(p) for p in rota["pontos"]])
+        perfil = rota["perfil_elevacao"]
+        for alerta in alertas:
+            alerta["distancia_m"] = perfil[alerta.pop("indice_ponto")]["distancia_acumulada_m"]
+        alertas.sort(key=lambda a: a["distancia_m"])
+        rota["alertas"] = alertas
+
     return resultado
 
 
 class Pergunta(BaseModel):
     pergunta: str = Field(min_length=1, max_length=500)
-    lat: float = Field(ge=-90, le=90)
-    lon: float = Field(ge=-180, le=360)
+    # sem ponto escolhido, o assistente responde sobre a base (mesma de api/alertas.py)
+    lat: float = Field(BASE_LAT_LON[0], ge=-90, le=90)
+    lon: float = Field(BASE_LAT_LON[1], ge=-180, le=360)
     sol: int = REFERENCE_SOL
 
 
@@ -274,6 +332,30 @@ def get_previsao(sol: int | None = None, duracao_min: float | None = Query(None,
     if prev is None:
         raise HTTPException(status_code=404, detail="Sem climatologia: rodar data-pipeline/scripts/cache_climatologia.py")
     return prev
+
+
+class Medicao(BaseModel):
+    """Leitura do sensor do habitat/traje (feature 06): faixas físicas de Gale com folga."""
+    sol: int = Field(ge=1, le=20000)
+    temp_min_c: float = Field(ge=-150, le=40)
+    temp_max_c: float = Field(ge=-150, le=60)
+    pressao_pa: float = Field(ge=100, le=1500)
+    solo_meio_dia_c: float | None = Field(None, ge=-150, le=80)
+    dose_ugy_dia: float | None = Field(None, ge=0, le=100000)
+
+
+@app.post("/api/medicao")
+def post_medicao(m: Medicao):
+    if m.temp_min_c > m.temp_max_c:
+        raise HTTPException(status_code=422, detail="temp_min_c maior que temp_max_c")
+    return registrar_medicao(m.model_dump())
+
+
+@app.delete("/api/medicao/{sol}")
+def delete_medicao(sol: int):
+    if not apagar_medicao(sol):
+        raise HTTPException(status_code=404, detail=f"Nenhuma medição local no sol {sol}")
+    return {"apagada": sol}
 
 
 @app.get("/health")
