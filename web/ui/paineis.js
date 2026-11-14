@@ -70,24 +70,7 @@ export function renderCamadas(el, estado) {
 
 /** Clima (REMS) + radiação (RAD) do sol de referência -- dado real cacheado, não ao vivo. */
 /** Previsão de hoje (feature 06): sempre rotulada como estimativa, com o erro medido. */
-function linhaPrevisao(p) {
-  if (!p?.temp_min_c || !p?.temp_max_c) return ''
-  const erro = p.erro_backtest?.temp_min_c?.erro_medio
-  return `<div class="h2g2-small h2g2-sep" style="margin-top:var(--s-2)" title="${esc(p.metodo)} · ${esc(p.fonte)}">
-    <span class="h2g2-stat-label">Previsão · sol ${esc(p.sol)}</span>
-    <div>${num(p.temp_min_c.valor, 0)}° a ${num(p.temp_max_c.valor, 0)}°C${p.pressao_pa ? ` · ${num(p.pressao_pa.valor, 0)} Pa` : ''}</div>
-    <div class="h2g2-dim h2g2-micro">estimado (não medido) · base: sol ${esc(p.sol_base)}${erro !== undefined ? ` · erro típico ±${num(erro, 1)}°C` : ''}</div>
-  </div>`
-}
-
-/** Teste do PDF da F06: prevê um sol já guardado sem olhar pra ele e compara com o medido. */
-function linhaValidacao(v) {
-  if (!v?.medido || !v.temp_min_c || !v.temp_max_c) return ''
-  return `<div class="h2g2-dim h2g2-micro" style="margin-top:var(--s-1)">teste · sol ${esc(v.sol)} previsto a partir do ${esc(v.sol_base)}:
-    ${num(v.temp_min_c.valor, 0)}° a ${num(v.temp_max_c.valor, 0)}°C · medido: ${num(v.medido.temp_min_c, 0)}° a ${num(v.medido.temp_max_c, 0)}°C</div>`
-}
-
-export function renderCondicoes(el, { conditions: c, previsao, validacao, error }) {
+export function renderCondicoes(el, { conditions: c, error }) {
   const corpo = error
     ? '<div class="h2g2-dim h2g2-mono h2g2-small">indisponível</div>'
     : !c
@@ -100,7 +83,6 @@ export function renderCondicoes(el, { conditions: c, previsao, validacao, error 
           <div class="h2g2-full h2g2-sep"><span class="h2g2-stat-label">Dose RAD</span><span class="h2g2-stat-value" style="color:var(--ember)">${num(c.rad.dose_estimada_ugy_por_dia, 1)} µGy/dia</span></div>
         </div>
         ${c.tempo ? `<div class="h2g2-dim h2g2-micro h2g2-mono" style="margin-top:var(--s-2)" title="${esc(c.tempo.fonte)}">hoje: sol ${esc(c.tempo.sol_agora)} · Ls ${num(c.tempo.ls_agora, 1)}° · dado de ${esc(c.tempo.data_do_dado)}</div>` : ''}
-        ${c.alertas?.length ? `<div style="margin-top:var(--s-2)">${alertasHtml(c.alertas)}</div>` : ''}
-        ${linhaPrevisao(previsao)}${linhaValidacao(validacao)}`
+        ${c.alertas?.length ? `<div style="margin-top:var(--s-2)">${alertasHtml(c.alertas)}</div>` : ''}`
   el.innerHTML = `<p class="h2g2-panel-title">Condições · sol ${esc(c?.sol ?? '—')}</p>${corpo}`
 }

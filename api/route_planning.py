@@ -242,6 +242,7 @@ def _monta_rota(tipo: str, caminho_rc, elevacao, slope_deg, transform, pixel_siz
             "de": [pontos[i - 1][0], pontos[i - 1][1]],
             "para": [pontos[i][0], pontos[i][1]],
             "slope_status": status,
+            "slope_deg": round(float(s), 2),
         })
 
     tempo_min = tempo_s / 60.0

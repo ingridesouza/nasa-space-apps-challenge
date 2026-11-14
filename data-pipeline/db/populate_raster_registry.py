@@ -108,6 +108,14 @@ CAMADAS = [
         "categoria": "topografica",
         "tipo_acesso": "hillshade_derivado",
     },
+    {
+        # Feature 06: chance histórica (paradas do rover) de o terreno real passar
+        # de 15°, pintada por pixel a partir do mesmo DTM -- api/previsao.py
+        "layer_name": "risco_previsto",
+        "local_tile_path": os.path.join(TILES_DIR, "dtm_hirise_1m", "dem_512x512.tif"),
+        "categoria": "topografica",
+        "tipo_acesso": "risco_derivado",
+    },
 ]
 
 

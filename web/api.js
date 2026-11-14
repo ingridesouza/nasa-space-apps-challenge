@@ -12,6 +12,15 @@ async function get(caminho) {
 
 export const getPoint = (lat, lon) => get(`/api/point?lat=${lat}&lon=${lon}`)
 export const getConditions = () => get('/api/conditions')
+/** F06: medição do sensor do habitat/traje. 422 traz detail (texto ou lista do pydantic). */
+export async function postMedicao(m) {
+  const resp = await fetch('/api/medicao', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(m) })
+  const corpo = await resp.json().catch(() => null)
+  if (!resp.ok) throw new Error(typeof corpo?.detail === 'string' ? corpo.detail : 'medição fora da faixa física de Gale')
+  return corpo
+}
+export const apagarMedicao = (sol) => fetch(`/api/medicao/${sol}`, { method: 'DELETE' })
+
 /** F06. q opcional: {sol, duracao_min}. */
 export const getPrevisao = (q = {}) => get(`/api/previsao?${new URLSearchParams(q)}`)
 export const getNomenclature = () => get('/api/nomenclature')
@@ -26,11 +35,11 @@ export const getPanorama = (lat, lon) => get(`/panoramas/nearest?lat=${lat}&lon=
 export const getFichaCientifica = (lat, lon) => get(`/science/card?lat=${lat}&lon=${lon}`)
 
 /** F08: pergunta ao agente local. 503 (modelo fora) traz detail={mensagem, alertas}. */
-export async function perguntar(pergunta, lat, lon) {
+export async function perguntar(pergunta, lat, lon) { // sem lat/lon: a API usa a base
   const resp = await fetch('/api/ask', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pergunta, lat, lon }),
+    body: JSON.stringify(lat === undefined ? { pergunta } : { pergunta, lat, lon }),
   })
   const corpo = await resp.json().catch(() => null)
   if (!resp.ok) throw new Error(corpo?.detail?.mensagem ?? `/api/ask falhou: ${resp.status}`)

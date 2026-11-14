@@ -1,7 +1,6 @@
 // Briefing de segurança do ponto clicado (antes PointInfoPanel + NearbyPhotosSection
 // + ScienceTargetSection).
 import { getFichaCientifica, getPanorama, getPoint } from '../api.js'
-import { renderAgente } from './agente.js'
 import { abrirLightbox } from './lightbox.js'
 import { alertasHtml, coord, esc, nomeMaisProximo, veredito } from './util.js'
 
@@ -20,7 +19,7 @@ const GRAVIDADE = ['seguro', 'atencao', 'perigo']
 function seloDoPonto(statusMapa, alertas) {
   let status = statusMapa
   for (const a of alertas) {
-    if ((a.tipo === 'terreno_historico' || a.tipo === 'inclinacao') && GRAVIDADE.indexOf(a.nivel) > GRAVIDADE.indexOf(status)) status = a.nivel
+    if (['terreno_historico', 'inclinacao', 'risco_previsto'].includes(a.tipo) && GRAVIDADE.indexOf(a.nivel) > GRAVIDADE.indexOf(status)) status = a.nivel
   }
   const semHistorico = alertas.some((a) => a.tipo === 'sem_historico')
   if (semHistorico && status === 'seguro') {
@@ -29,7 +28,7 @@ function seloDoPonto(statusMapa, alertas) {
   return veredito(status)
 }
 
-function secaoElevacao(rv, alertas = []) {
+function secaoElevacao(rv, alertas = [], risco = null) {
   const camada = camadaPrincipal(rv.fontes)
   const principal =
     rv.elevacao_m === null
@@ -39,6 +38,9 @@ function secaoElevacao(rv, alertas = []) {
           <div class="h2g2-card" style="margin-top:var(--s-2)">
             <div class="h2g2-display h2g2-elev">${rv.elevacao_m.toFixed(1)}<span class="h2g2-mono h2g2-small h2g2-dim"> m</span></div>
             ${rv.slope_deg !== null ? `<div class="h2g2-dim h2g2-mono h2g2-small">slope ${rv.slope_deg.toFixed(2)}°</div>` : ''}
+            ${risco ? `<div class="h2g2-small" style="margin-top:var(--s-1)${risco.chance_pct >= 20 ? ';color:var(--verdict-atencao)' : ''}" title="${esc(risco.metodo)} · ${esc(risco.fonte)}">
+              chance real ≥${esc(risco.limite_deg)}°: <strong>${esc(risco.chance_pct)}%</strong>
+              <div class="h2g2-dim h2g2-micro">estimado: ${esc(risco.acima)} de ${esc(risco.n)} paradas do rover com o mapa em ${esc(risco.faixa_mapa)}</div></div>` : ''}
             <div class="h2g2-dim h2g2-micro" style="margin-top:var(--s-1)">
               ${esc(CATEGORIA_LABEL[rv.fontes[camada]?.categoria] ?? rv.fontes[camada]?.categoria ?? '')} · ${esc(camada)}
             </div>
@@ -155,9 +157,8 @@ export async function abrirPonto(el, ponto, nomenclatura, onFechar) {
   const alertas = data.alertas.length === 0 ? '' : `<div class="h2g2-bloco">${alertasHtml(data.alertas)}</div>`
 
   // fotos por último: podem ser 100+ e empurrariam ficha e pergunta pra fora da tela
-  el.innerHTML = topo + alertas + secaoElevacao(data.raster_values, data.alertas) + secaoCiencia(data.science_target, f04) +
-    secaoPanorama(pano) + '<div class="h2g2-secao" data-agente></div>' + secaoFotos(data.nearby_photos)
-  renderAgente(el.querySelector('[data-agente]'), ponto)
+  el.innerHTML = topo + alertas + secaoElevacao(data.raster_values, data.alertas, data.previsao_inclinacao) + secaoCiencia(data.science_target, f04) +
+    secaoPanorama(pano) + secaoFotos(data.nearby_photos)
   const div = el.querySelector('[data-pano]')
   if (div && window.pannellum) {
     viewer = window.pannellum.viewer(div, {

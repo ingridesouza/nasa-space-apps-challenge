@@ -34,6 +34,7 @@ def montar_contexto(ponto: dict, condicoes: dict | None) -> dict:
         "alvo_cientifico": ponto["science_target"],
         "fotos_proximas": len(ponto["nearby_photos"]),
         "alertas": ponto["alertas"],
+        "previsao_inclinacao": ponto.get("previsao_inclinacao"),
         "condicoes_ambientais": condicoes,  # None = sem dado em cache para o sol
     }
 
@@ -55,6 +56,10 @@ def contexto_em_texto(ctx: dict) -> str:
     linhas.append(f"PONTO: lat {ctx['ponto']['lat']}, lon {ctx['ponto']['lon']}")
     linhas.append(f"INCLINAÇÃO DO MAPA: {t.get('slope_deg')}° ({t.get('slope_status')}) · elevação {t.get('elevacao_m')} m (fonte: DTM HiRISE)"
                   if t.get("slope_deg") is not None else "INCLINAÇÃO DO MAPA: sem dado")
+    pi = ctx.get("previsao_inclinacao")
+    if pi:
+        linhas.append(f"CHANCE DE O TERRENO REAL PASSAR DE {pi['limite_deg']}° (ESTIMADA pelo histórico do rover): "
+                      f"{pi['chance_pct']}% ({pi['acima']} de {pi['n']} paradas com o mapa em {pi['faixa_mapa']})")
     alvo = ctx["alvo_cientifico"]
     linhas.append(f"ALVO CIENTÍFICO PRÓXIMO: {json.dumps(alvo, ensure_ascii=False)}" if alvo else "ALVO CIENTÍFICO PRÓXIMO: nenhum")
     linhas.append(f"FOTOS DO ROVER POR PERTO: {ctx['fotos_proximas']}")
@@ -70,7 +75,9 @@ def contexto_em_texto(ctx: dict) -> str:
         if pv and pv["temp_min_c"] and pv["temp_max_c"]:
             linhas.append(f"PREVISÃO PARA HOJE, SOL {pv['sol']} (ESTIMADA, não medida; {pv['metodo']}): "
                           f"mínima {pv['temp_min_c']['valor']} °C, máxima {pv['temp_max_c']['valor']} °C"
-                          + (f", pressão {pv['pressao_pa']['valor']} Pa" if pv["pressao_pa"] else ""))
+                          + (f", pressão {pv['pressao_pa']['valor']} Pa" if pv["pressao_pa"] else "")
+                          + (f", chão ao meio-dia {pv['solo_meio_dia_c']['valor']} °C" if pv.get("solo_meio_dia_c") else "")
+                          + (f", radiação {pv['dose_ugy_dia']['valor']} µGy por dia" if pv.get("dose_ugy_dia") else ""))
     else:
         linhas.append("CONDIÇÕES AMBIENTAIS: sem dado")
     return "\n".join(linhas)

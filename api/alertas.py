@@ -121,6 +121,17 @@ def _regra_sem_historico(lat: float, lon: float, raster_values: dict, waypoints_
     return [_alerta("atencao", "sem_historico", msg, "MMGIS MSL_waypoints + DTM HiRISE (Mars Trek)")]
 
 
+def _regra_risco_previsto(raster_values: dict) -> list[dict]:
+    from previsao import risco_inclinacao  # import tardio: previsao usa este módulo
+
+    risco = risco_inclinacao(raster_values.get("slope_deg"))
+    if not risco or risco["chance_pct"] < 20 or raster_values.get("slope_status") != "seguro":
+        return []  # mapa já avisa (>= 15°) ou chance baixa
+    msg = (f"O mapa diz {_num(raster_values['slope_deg'])}°, mas onde o mapa marca {risco['faixa_mapa']} "
+           f"o rover mediu {risco['limite_deg']}° ou mais em {risco['chance_pct']}% das paradas.")
+    return [_alerta("atencao", "risco_previsto", msg, "Previsão H2G2: histórico do rover × DTM")]
+
+
 def _regra_volta_base(lat: float, lon: float) -> list[dict]:
     dist = haversine_m(lat, lon, *BASE_LAT_LON)
     if dist <= LIMITE_VOLTA_BASE_M:
@@ -137,6 +148,7 @@ def alertas_do_ponto(lat: float, lon: float, raster_values: dict, waypoints_path
         _regras_inclinacao(raster_values)
         + _regra_terreno_historico(lat, lon, waypoints_path)
         + _regra_sem_historico(lat, lon, raster_values, waypoints_path)
+        + _regra_risco_previsto(raster_values)
         + _regra_volta_base(lat, lon)
         + _regra_areia(raster_values)
     )

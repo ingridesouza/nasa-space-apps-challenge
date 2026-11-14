@@ -230,7 +230,7 @@ export function setRota(rota) {
     type: 'FeatureCollection',
     features: (rota?.trechos_risco ?? []).map((t) => ({
       type: 'Feature',
-      properties: { slope_status: t.slope_status },
+      properties: { slope_status: t.status_previsto ?? t.slope_status }, // feature 06: inclui a previsão
       geometry: { type: 'LineString', coordinates: [[t.de[1], t.de[0]], [t.para[1], t.para[0]]] },
     })),
   })
