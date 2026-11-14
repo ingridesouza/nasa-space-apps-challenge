@@ -1,0 +1,69 @@
+# H2G2 · Feature 03 · Panorama no ponto
+# Trocar de fonte = mudar "source" e rodar `python etl/build.py` de novo.
+source: public            # mock | public | official
+
+# F04 · ficha científica. Trocar de fonte = mudar aqui e rodar `python etl/build.py`.
+science_source: mock      # mock | public | official
+card_radius_m: 150        # alvo mais longe que isto: "nenhum alvo estudado"
+science:
+  targets_csv: ../dados/m8_alvos.csv
+  index_csv: ../dados/science_index.csv
+
+sols:
+  min: 4550
+  max: 4845
+
+# Janela do mapa (tarefa 2): retângulo das paradas + margem de ~300 m.
+# Preenchida pelo build a partir dos waypoints; estes valores vêm da M7.
+window:
+  lon_min: 137.374117
+  lon_max: 137.388573
+  lat_min: -4.815600
+  lat_max: -4.794270
+  margin_deg: 0.005
+
+radius_m:
+  panorama: 500           # decidido em 12/11 (98% da janela coberta)
+  photos: 200
+
+photos:
+  per_stop: 3             # fotos por parada, com azimutes diferentes
+  limit: 20               # máximo devolvido pela API
+  el_min: -30             # elevação aceita (graus): evita fotos do chão
+  el_max: 15
+  min_az_sep: 40          # separação mínima entre azimutes na mesma parada
+
+pano_max_width: 8000
+
+# Panoramas coloridos Mastcam (um por parada), gravados à parte dos Navcam.
+# Posição = a da parada (site/drive) ; center_az calibrado à mão contra a Navcam
+# do sol 4711 (mesma parada): mesa à direita e crista à esquerda dão ~140°, a
+# antena/RTG dá ~128° -> 135° ± 10°. vaov vem da proporção da imagem; horizon_frac
+# é a altura do horizonte lida na imagem (fração, 0 = topo).
+color_panos:
+  - id: color_PIA26696B
+    sol: 4718                  # sol de referência do furo (Nevado Sajama)
+    site: 120
+    drive: 82                  # parada 120_82 (sol 4711), a mais próxima de 4718
+    image: ../dados_panoramas/panos/colored_images.png
+    max_width: 8192
+    center_az: 135.0
+    horizon_frac: 0.27
+    page_url: https://science.nasa.gov/resource/curiosity-rover-360-degree-panorama-nevado-sajama/
+    credit: NASA/JPL-Caltech/MSSS
+    camera: Mastcam
+    pos_quality: estimada
+orbital_crop_m: 100
+mars_radius_m: 3396190
+
+# Entradas da fonte "public" (caminhos relativos a este arquivo)
+public:
+  waypoints_url: https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json
+  waypoints_file: ../dados/MSL_waypoints.json
+  places_file: ../dados/localized_interp.csv
+  panoramas_csv: ../dados_panoramas/panoramas.csv
+  panoramas_root: ..
+  hirise_tif: ../dados/boxwork.tif
+  raw_images_api: https://mars.nasa.gov/api/v1/raw_image_items/
+  hirise_cog: https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/MSL/MSL_Gale_HiRISE-LRGB_78quads_sharp_cog.tif
+  request_delay_s: 0.5
