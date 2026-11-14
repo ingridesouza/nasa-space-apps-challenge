@@ -92,7 +92,7 @@ Fica de fora: liga/desliga da trilha no `LayerControlPanel`. Ele só controla ca
 
 - **Entrada:** `{pergunta, lat, lon, sol}`. **Saída:** `{resposta, fontes, alertas}`.
 - **Contexto:** o mesmo JSON do `/api/point` (já com `alertas`) mais `/api/conditions` e a feição IAU mais próxima, colado inteiro no prompt.
-- **Modelo:** Ollama local (`gemma3:4b`) chamado com `urllib` da biblioteca padrão; sem SDK novo. O Ollama é instalado à parte (`brew install ollama`), fora do `requirements.txt`.
+- **Modelo:** Ollama local (`gemma3:4b`, Google) chamado com `urllib` da biblioteca padrão; sem SDK novo. O Ollama é instalado à parte (`brew install ollama`), fora do `requirements.txt`.
 - **Prompt:** responder só com o contexto; citar fonte e sol; dizer "não sei" quando faltar dado; nunca criar nem cancelar um alerta.
 - **CORS:** `allow_methods` passa a incluir `POST`.
 - **Ollama fora do ar:** responder 503 com mensagem clara; os alertas continuam funcionando, porque não dependem do modelo.

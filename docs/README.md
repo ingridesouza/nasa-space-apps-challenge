@@ -17,5 +17,12 @@ Salvador 2026).
   — plano de implementação da feature 08 por fase: arquivos, contratos,
   regras e casos de teste.
 
+- [`H2G2_NasaSpaceApps_DETON8.pdf`](H2G2_NasaSpaceApps_DETON8.pdf) — plano de produto
+  oficial (9 features, fontes, pesquisas de apoio).
+- [`raio-x-implementacao.md`](raio-x-implementacao.md) — **o que falta**: gaps do sistema
+  contra o PDF, por gravidade, com os próximos passos.
+- [`feature-06-previsao-clima.md`](feature-06-previsao-clima.md) — previsão local do clima:
+  método, dados, erro medido e janela de EVA.
+
 Para o status técnico de implementação da feature 01 (mapa hiperlocal),
 ver [`PROXIMOS-PASSOS.md`](../PROXIMOS-PASSOS.md) na raiz do repo.
