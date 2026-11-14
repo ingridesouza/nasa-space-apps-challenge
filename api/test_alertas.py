@@ -49,6 +49,20 @@ def test_fora_do_bbox_sem_dado():
     assert any("areia" in a["mensagem"] for a in alertas)
 
 
+def test_parada_ingreme_entre_25_e_100_m_vira_atencao():
+    a = tipos(alertas_do_ponto(-4.7863, 137.4076, MAPA_SEGURO))  # ~50 m da parada de 22,4° (sol 4309)
+    assert a["terreno_historico"]["nivel"] == "atencao" and "22,4°" in a["terreno_historico"]["mensagem"]
+
+
+def test_area_sem_historico_do_rover():
+    inexplorado = (-4.8150, 137.3750)  # dentro do mapa, longe da trilha do Curiosity
+    a = tipos(alertas_do_ponto(*inexplorado, MAPA_SEGURO))
+    assert a["sem_historico"]["nivel"] == "atencao" and "100 m" in a["sem_historico"]["mensagem"]
+    assert "sem_historico" not in tipos(alertas_do_ponto(*SOL_4309, MAPA_SEGURO))  # na trilha do rover
+    sem_mapa = {"slope_deg": None, "slope_status": None, "classe_ai4mars": None}
+    assert "sem_historico" not in tipos(alertas_do_ponto(*inexplorado, sem_mapa))  # "sem inclinação" já avisa
+
+
 def test_ordem_por_gravidade():
     niveis = [a["nivel"] for a in alertas_do_ponto(*SOL_4309, MAPA_SEGURO)]
     assert niveis == sorted(niveis, key=["perigo", "atencao", "info"].index)
@@ -57,6 +71,37 @@ def test_ordem_por_gravidade():
 def test_sem_arquivo_de_paradas():
     alertas = alertas_do_ponto(*SOL_4309, MAPA_SEGURO, waypoints_path="/nao/existe.json")
     assert any("Histórico do rover indisponível" in a["mensagem"] for a in alertas)
+
+
+
+def test_tempo_marte_contra_referencias():
+    from datetime import datetime, timezone
+
+    from tempo_marte import data_do_sol, ls, sol_msl
+
+    # exemplo resolvido do Mars24: 6/jan/2000 0h UTC -> Ls 277,18758°
+    assert abs(ls(datetime(2000, 1, 6, tzinfo=timezone.utc)) - 277.18758) < 0.001
+    # datas reais de panoramas do pacote F03 (só a data, sem hora: tolera 1 dia)
+    for sol, data in ((4552, "2025-05-27"), (4647, "2025-09-02"), (4816, "2026-02-22")):
+        assert abs((data_do_sol(sol).date() - datetime.fromisoformat(data).date()).days) <= 1
+        assert abs(sol_msl(datetime.fromisoformat(data + "T12:00+00:00")) - sol) <= 1
+
+
+def test_modo_sem_terra_idade_e_poeira():
+    from datetime import datetime, timezone
+
+    from alertas import tempo_e_alertas_do_sol
+    from tempo_marte import data_do_sol
+
+    tempo, alertas = tempo_e_alertas_do_sol(4650, agora=data_do_sol(4650))
+    assert tempo["idade_do_dado_sols"] == 0 and not any(a["tipo"] == "dado_antigo" for a in alertas)
+    _, alertas = tempo_e_alertas_do_sol(4650, agora=data_do_sol(4660))
+    assert any(a["tipo"] == "dado_antigo" and "10 sols" in a["mensagem"] for a in alertas)
+    # 2026-11-14: Ls ~22° (fora da temporada); sol 4650 (set/2025): Ls ~135° (fora também)
+    _, alertas = tempo_e_alertas_do_sol(4650, agora=datetime(2026, 11, 14, tzinfo=timezone.utc))
+    assert not any(a["tipo"] == "temporada_poeira" for a in alertas)
+    _, alertas = tempo_e_alertas_do_sol(4650, agora=datetime(2026, 5, 1, tzinfo=timezone.utc))
+    assert any(a["tipo"] == "temporada_poeira" for a in alertas)
 
 
 if __name__ == "__main__":

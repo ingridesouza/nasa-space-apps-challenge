@@ -60,7 +60,7 @@ class PDSRemsAdapter:
         url = f"{BASE_URL}/{bucket}/SOL{sol:05d}/"
         r = requests.get(url, timeout=20)
         r.raise_for_status()
-        m = re.search(r'href="([^"]+RNV\d+_+P1)\.TAB"', r.text)
+        m = re.search(r'href="([^"]+RNV\d+_+P\d)\.TAB"', r.text)  # P1 nos sols novos, P3 nos antigos
         if not m:
             raise ValueError(f"Produto RNV não encontrado em {url}")
         return m.group(1)
@@ -79,7 +79,33 @@ class PDSRemsAdapter:
 
         tab = requests.get(base + prefix + ".TAB", timeout=60)
         text = tab.content.decode("ascii", errors="replace")
+        return {"sol": sol, "product_id": prefix, "leituras": self._ler_linhas(text, names)}
 
+    def fetch_sol_amostra(self, sol: int, n: int = 180) -> dict:
+        """Igual a fetch_sol, mas baixa só n linhas espalhadas pelo sol num
+        único pedido HTTP com vários Range (~120 KB em vez de ~20 MB). O Apache
+        do PDS devolve o arquivo inteiro acima de 200 faixas (MaxRanges). A
+        tabela é Table_Character: toda linha tem record_length bytes."""
+        bucket = self._find_bucket(sol)
+        prefix = self._find_product_prefix(sol, bucket)
+        base = f"{BASE_URL}/{bucket}/SOL{sol:05d}/"
+
+        xml = requests.get(base + prefix + ".xml", timeout=20).text
+        field_blocks = re.findall(r"<Field_Character>.*?</Field_Character>", xml, re.S)
+        names = [re.search(r"<name>([^<]+)</name>", f).group(1) for f in field_blocks]
+        tam = int(re.search(r"<record_length[^>]*>(\d+)<", xml).group(1))
+        total = int(re.search(r"<records>(\d+)</records>", xml).group(1))
+        inicios = sorted({i * total // n * tam for i in range(n)})
+        faixas = ",".join(f"{o}-{o + tam - 1}" for o in inicios)
+        tab = requests.get(base + prefix + ".TAB", headers={"Range": f"bytes={faixas}"}, timeout=60)
+        tab.raise_for_status()
+        # resposta multipart: sobram só as linhas de dado (começam pelo relógio da sonda)
+        linhas = [l for l in tab.content.decode("ascii", errors="replace").splitlines()
+                  if re.match(r"\s*\d+,\"\d{5}M", l)]
+        return {"sol": sol, "product_id": prefix, "leituras": self._ler_linhas("\n".join(linhas), names)}
+
+    @staticmethod
+    def _ler_linhas(text: str, names: list[str]) -> list[dict]:
         reader = csv.reader(io.StringIO(text), skipinitialspace=True)
         leituras = []
         for row in reader:
@@ -96,5 +122,4 @@ class PDSRemsAdapter:
                     except ValueError:
                         leitura[campo] = val.strip('"')
             leituras.append(leitura)
-
-        return {"sol": sol, "product_id": prefix, "leituras": leituras}
+        return leituras

@@ -22,6 +22,17 @@ Plano completo: `feature04.md`. Este arquivo registra onde paramos e o que se co
 | ChemCam RMI | 362 |
 | CheMin | 3 (sols 4566, 4695, 4720) |
 
+## Entregue em 14/11 (tarefas 3 e 4, versão mínima)
+
+- `etl/sources/science_public.py` (`science_source: public`, agora o padrão): os mesmos 10 alvos da M8, com medições lidas do PDS. São 24 linhas `medido`, cada uma com o arquivo de origem.
+- **Vínculo estrito:** uma linha do `science_index.csv` só entra se foi feita na mesma parada (site_drive) citada na M8 e dentro da faixa de sols do alvo. Parada citada "a N sol(s) de distância" não liga nada. Monte Grande, Polígonos e os dois contatos ficam sem medição.
+- **APXS:** os 4 maiores óxidos (% em peso) do RDR `apb_*.csv`.
+- **CheMin:** os 4 maiores minerais (% da fração cristalina) do `cmb_*min*.csv`. Os 3 CheMin caem em Altadena, Valle de la Luna e Nevado Sajama.
+- **ChemCam LIBS:** o RDR é espectro. Vira uma linha por alvo com os alvos ChemCam da parada, sem número. Os alvos de calibração (`CCAM_*`) ficam fora.
+- **Órbita:** o CRISM (tarefa 5) não está feito. Com a fonte `public`, não há linha de órbita, em vez de uma linha de exemplo.
+- Os RDRs ficam em `.cache/pds/rdr/` (18 arquivos). `python etl/science.py` refaz só a F04 e traz a Mastcam para o pacote.
+- **Pendente:** a divergência do Mojo (118_1944 × 118_2028) e o `pos_quality="exata"`. Os alvos continuam `por_sol`.
+
 ## O que constatamos
 
 - APXS cobre os sols 4550–4709 (88 sols antes da Release 42). A dúvida do plano está resolvida.

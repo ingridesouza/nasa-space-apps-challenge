@@ -17,8 +17,8 @@ e [`docs/PITCH.md`](docs/PITCH.md).
 |---|---|
 | `api/` | API FastAPI (feature 01 mapa, 02 rota/A*, 08 alertas+trilha do rover) — também serve `web/` na raiz (`/`), mesma origem. Ver [`api/README.md`](api/README.md) |
 | `data-pipeline/` | ETL dos dados reais (Mars Trek, PDS, MMGIS, API de imagens do MSL) — adapters + scripts `fetch_*`/`seed_*`. Ver [`data-pipeline/README.md`](data-pipeline/README.md) |
-| `web/` | **Frontend único do projeto**, HTML/CSS/JS puro (features 01/02/08) — sem bundler/`npm install`, MapLibre e fontes vendorizados. `frontend/` React foi removido de verdade em 2026-11-14 (ver nota abaixo). Ver [`docs/migracao-front-html-puro.md`](docs/migracao-front-html-puro.md) |
-| `subprojetos/f03-f04-victoria/` | Feature 03 (fotos/panorama no ponto) e 04 (ficha científica) — app própria, HTML/JS puro |
+| `web/` | **Frontend único do projeto**, HTML/CSS/JS puro (features 01 a 08) — sem bundler/`npm install`, MapLibre e fontes vendorizados. `frontend/` React foi removido de verdade em 2026-11-14 (ver nota abaixo). Ver [`docs/migracao-front-html-puro.md`](docs/migracao-front-html-puro.md) |
+| `subprojetos/f03-f04-victoria/` | Feature 03 (fotos/panorama no ponto) e 04 (ficha científica): ETL e dados próprios; a API principal já serve as rotas dele e o `web/` mostra panorama e ficha |
 | `docs/` | Proposta de produto, pitch, docs de feature. Ver [`docs/README.md`](docs/README.md) |
 | `PROXIMOS-PASSOS.md` | Status técnico real de cada fonte de dado e cada feature -- o doc mais honesto do repo sobre o que funciona de verdade |
 | `CLAUDE.md` | Diretrizes de arquitetura pro time -- motivou a migração pro `web/`, ver seção abaixo |
@@ -26,13 +26,20 @@ e [`docs/PITCH.md`](docs/PITCH.md).
 
 ## Rodar
 
+### API + mapa (features 01/02/08)
+
 ```bash
-cd api && pip install -r requirements.txt && python -m uvicorn main:app --port 8124
+make build   # uma vez, com internet: dependências + dados reais em data/local/
+make run     # API e mapa em http://localhost:8000
 ```
 
-Abrir `http://127.0.0.1:8124/` — a própria API serve o `web/` (mesma
-origem, sem CORS, sem build, sem `npm install`). Com `make`
-(Linux/Mac/WSL): `make build && make run` — ver `Makefile` na raiz.
+Agente local (`/api/ask`): instale o [Ollama](https://ollama.com) uma vez. O `make build`
+baixa o modelo `gemma3:4b` (3,3 GB) para `data/local/ollama/`, e o `make run` sobe o
+Ollama lendo dessa pasta. O modelo fica fora do git (passa do limite do GitHub). Levar o pacote para outra máquina
+ainda não funciona só copiando `data/local/` (ver item 5 de `docs/raio-x-implementacao.md`).
+
+Sem `make` (Windows): `cd api && pip install -r requirements.txt && python -m uvicorn main:app --port 8000`
+e abrir http://localhost:8000. Não há `npm install` nem build de front.
 
 ### Subprojeto F03/F04 (Victoria)
 
@@ -44,11 +51,15 @@ Ver instruções próprias em `subprojetos/f03-f04-victoria/`.
 |---|---|---|
 | 01 | Mapa hiperlocal em camadas (CTX/HiRISE/Relevo/THEMIS, tiles reais) | ✅ |
 | 02 | Rota inteligente (A* real: mais segura/mais rápida/mais ciência) + radiação real + indicadores de risco | ✅ — falta paradas intermediárias e "motivo de cada alerta" por trecho |
-| 03 | Fotos/panorama no ponto | ✅ no subprojeto `f03-f04-victoria` (a integrar com `api/`) |
-| 04 | Ficha científica do ponto | ✅ no subprojeto `f03-f04-victoria` (a integrar com `api/`) |
-| 05 | Painel de condições (REMS/RAD) | ✅ |
-| 08 | Agente local: alertas por regra + trilha do Curiosity (inclinação medida) | ✅ |
-| 06, 07, 09, 10 | Previsão climática, HUD no traje, sync Terra-Marte, perigos colaborativos | não iniciadas |
+| 03 | Fotos/panorama no ponto | ✅ panorama e fotos na tela principal (fotos ainda da lista antiga, ver raio-x) |
+| 04 | Ficha científica do ponto | ✅ medições reais do PDS (APXS, CheMin, ChemCam) |
+| 05 | Painel de condições (REMS/RAD) | ✅ + hora/estação marciana e alerta de dado antigo |
+| 06 | Previsão climática local | ✅ estação + anomalia, previsto × medido, janela de EVA na rota |
+| 07 | Modo traje (HUD) | 🟡 versão mínima: falta minimapa e trilha de volta |
+| 08 | Agente local: alertas por regra + perguntas (Gemma local) + voz de saída | 🟡 falta microfone e rota no contexto |
+| 09 | Sync Terra-Marte | não iniciada (pitch) |
+
+O que falta, por gravidade: [`docs/raio-x-implementacao.md`](docs/raio-x-implementacao.md).
 
 Detalhe completo, com o que é limitação real de dado (CRISM, AI4Mars)
 vs. o que é só trabalho pendente, em [`PROXIMOS-PASSOS.md`](PROXIMOS-PASSOS.md).
@@ -86,9 +97,3 @@ Validado ao vivo depois da remoção: `/` serve o `web/`, `/api/route`
 devolve as 3 variantes (incluindo "mais ciência" e radiação real,
 construídas antes da migração), `/api/point` com alertas, `/tiles` e
 `/rover-photos` -- tudo funcionando junto, nada quebrou na troca.
-
-**Bug real encontrado e corrigido nessa migração:** o `Makefile`
-atualizado fazia `make test` chamar `test_agente.py` e `test_f03.py`,
-que não existem em `api/` (conferido: busca no repo inteiro não acha
-nenhum dos dois). `make test` falharia direto. Corrigido pra rodar só
-`test_alertas.py`, que existe e passa (6 testes).

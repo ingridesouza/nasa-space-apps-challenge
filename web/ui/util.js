@@ -11,8 +11,8 @@ export const num = (v, casas = 0) => (v === null || v === undefined ? '—' : Nu
 export const coord = (p) => `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`
 
 /** Veredito GO/NO-GO (antes VerdictBadge.tsx). checklist: [{ok, label}]. */
-export function veredito(status, checklist = []) {
-  const v = SLOPE_VERDICT[status]
+export function veredito(status, checklist = [], rotulo = null) {
+  const v = { ...SLOPE_VERDICT[status], ...(rotulo && { label: rotulo }) }
   const itens = checklist
     .map((i) => `<div class="h2g2-mono ${i.ok ? 'ok' : 'falha'}">${i.ok ? '✓' : '⚠'} ${esc(i.label)}</div>`)
     .join('')
@@ -21,6 +21,13 @@ export function veredito(status, checklist = []) {
     ${itens && `<div class="h2g2-veredito-check">${itens}</div>`}
   </div>`
 }
+
+/** Alertas da feature 08 (api/alertas.py): mesmas cores do veredito. */
+const ALERTA_COR = { perigo: 'var(--verdict-perigo)', atencao: 'var(--verdict-atencao)', info: 'var(--ink-3)' }
+
+export const alertasHtml = (alertas) => alertas
+  .map((a) => `<div class="h2g2-mono h2g2-alerta" title="fonte: ${esc(a.fonte)}" style="color:${ALERTA_COR[a.nivel]}">● ${esc(a.mensagem)}</div>`)
+  .join('')
 
 const MARS_RADIUS_M = 3_396_190
 

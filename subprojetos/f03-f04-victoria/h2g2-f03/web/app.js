@@ -38,11 +38,13 @@
 
     carregando();
     const q = `lat=${lat}&lon=${lon}`;
-    const [pano, fotos] = await Promise.allSettled([
+    const [pano, fotos, ficha] = await Promise.allSettled([
       fetch(`/panoramas/nearest?${q}`).then((r) => (r.ok ? r.json() : Promise.reject(r.status))),
       fetch(`/photos/near?${q}`).then((r) => (r.ok ? r.json() : Promise.reject(r.status))),
+      fetch(`/science/card?${q}`).then((r) => (r.ok ? r.json() : Promise.reject(r.status))),
     ]);
-    if (pano.status === "fulfilled") { mostrarStatus(pano.value); mostrarPano(pano.value); mostrarFicha(FICHA_EXEMPLO); }
+    mostrarFicha(ficha.status === "fulfilled" ? ficha.value : null);
+    if (pano.status === "fulfilled") { mostrarStatus(pano.value); mostrarPano(pano.value); }
     else { erro("c-status", "Falha ao consultar a API."); limparPano(); }
     if (fotos.status === "fulfilled") mostrarFotos(fotos.value);
     else $("c-fotos").hidden = true;
@@ -222,30 +224,35 @@
   $("visor-fechar").addEventListener("click", fecharVisor);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") fecharVisor(); });
 
-  // ---------------- Ficha científica (só layout, dado de exemplo) ----------------
-  const FICHA_EXEMPLO = {
-    alvo: "Mojo", tipo: "hollow (depressão)", sol: 4643, faixa: "4641–4644", rmc: "118_2028",
-    instrumentos: ["Mastcam"],
-    feito: "Rover estacionado dentro do hollow Mojo; mosaicos das cristas, de um sulco e do piso do hollow para ver movimento de regolito.",
-    blog: "https://science.nasa.gov/blog/curiosity-blog-sols-4641-4648-thinking-outside-and-inside-the-boxwork/",
-    mastcam: "https://mars.nasa.gov/msl-raw-images/msss/04643/mcam/4643ML1082140001804938C00_DXXX.jpg",
-  };
+  // ---------------- Ficha científica (F04, /science/card) ----------------
+  function linhaFicha(l) {
+    const fonte = l.fonte_arquivo ? esc(l.fonte_arquivo)
+      : `<a href="${esc(l.fonte_url)}" target="_blank" rel="noopener">fonte</a>`;
+    const meta = [l.instrumento, l.confianca_rotulo].filter(Boolean).map(esc).join(" · ");
+    return `<p class="ficha-txt">${esc(l.texto)}</p><p class="rotulo mono">${meta} · ${fonte}</p>`;
+  }
 
-  function mostrarFicha(a) {
+  function mostrarFicha(c) {
     $("c-ficha").open = false;
-    $("c-ficha").hidden = !a;
-    if (!a) return;
-    $("ficha-nome").textContent = a.alvo;
-    $("ficha-tipo").textContent = a.tipo;
+    const vazia = !c || (!c.alvo && !c.linhas.length);
+    $("c-ficha").hidden = vazia;
+    if (vazia) return;
+    const a = c.alvo;
+    $("ficha-nome").textContent = a ? a.nome : "Sem alvo estudado";
+    $("ficha-tipo").textContent = a ? a.tipo_rotulo : "";
+    $("ficha-tipo").hidden = !a;
     $("flutuante").hidden = false;
     requestAnimationFrame(posicionarFichas);
-    $("ficha").innerHTML = `
+    const topo = a ? `
       <div class="ficha">
-        <img class="ficha-img" src="${esc(a.mastcam)}" alt="Mastcam do alvo ${esc(a.alvo)}" onerror="this.style.visibility='hidden'">
-        <div class="tags"><span class="tag">sol ${a.sol}</span><span class="tag">${esc(a.rmc)}</span>
-          ${a.instrumentos.map((i) => `<span class="tag">${esc(i)}</span>`).join("")}</div>
+        ${c.mastcam ? `<img class="ficha-img" src="${esc(c.mastcam.img)}" alt="${esc(c.mastcam.rotulo)}">` : "<span></span>"}
+        <div class="tags"><span class="tag">sol ${a.sol}</span>${a.rmc ? `<span class="tag">${esc(a.rmc)}</span>` : ""}
+          <span class="tag">${esc(a.distancia_rotulo)}</span></div>
       </div>
-      <p class="ficha-txt">${esc(a.feito)}</p>
-      <p class="rotulo mono"><a href="${esc(a.blog)}" target="_blank" rel="noopener">post do blog Curiosity</a> · Mastcam NASA/JPL-Caltech/MSSS</p>`;
+      ${c.mastcam ? `<p class="rotulo mono">${esc(c.mastcam.rotulo)} · ${esc(c.mastcam.credito)}</p>` : ""}
+      ${c.aviso_posicao ? `<p class="rotulo">${esc(c.aviso_posicao)}</p>` : ""}` : "";
+    $("ficha").innerHTML = topo
+      + (c.mensagem ? `<p class="vazio">${esc(c.mensagem)}</p>` : "")
+      + [...c.linhas, ...c.contexto].map(linhaFicha).join("");
   }
 })();

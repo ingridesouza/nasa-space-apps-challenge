@@ -1,11 +1,9 @@
 // Briefing de segurança do ponto clicado (antes PointInfoPanel + NearbyPhotosSection
 // + ScienceTargetSection).
-import { getPoint } from '../api.js'
+import { getFichaCientifica, getPanorama, getPoint } from '../api.js'
+import { renderAgente } from './agente.js'
 import { abrirLightbox } from './lightbox.js'
-import { coord, esc, nomeMaisProximo, veredito } from './util.js'
-
-/** Alertas da feature 08 (api/alertas.py): mesmas cores do veredito. */
-const ALERTA_COR = { perigo: 'var(--verdict-perigo)', atencao: 'var(--verdict-atencao)', info: 'var(--ink-3)' }
+import { alertasHtml, coord, esc, nomeMaisProximo, veredito } from './util.js'
 
 const CATEGORIA_LABEL = { topografica: 'Topografia', optica: 'Óptica', termica: 'Térmica', espectral_quimica: 'Mineralogia' }
 
@@ -16,13 +14,28 @@ function camadaPrincipal(fontes) {
   return Object.keys(fontes)[0] ?? null
 }
 
-function secaoElevacao(rv) {
+const GRAVIDADE = ['seguro', 'atencao', 'perigo']
+
+/** Selo nunca contradiz alerta: vale o pior entre o mapa e o que o rover mediu por perto. */
+function seloDoPonto(statusMapa, alertas) {
+  let status = statusMapa
+  for (const a of alertas) {
+    if ((a.tipo === 'terreno_historico' || a.tipo === 'inclinacao') && GRAVIDADE.indexOf(a.nivel) > GRAVIDADE.indexOf(status)) status = a.nivel
+  }
+  const semHistorico = alertas.some((a) => a.tipo === 'sem_historico')
+  if (semHistorico && status === 'seguro') {
+    return veredito('atencao', [{ ok: false, label: 'só mapa de órbita: o rover nunca passou aqui' }], 'Não verificado: só mapa de órbita')
+  }
+  return veredito(status)
+}
+
+function secaoElevacao(rv, alertas = []) {
   const camada = camadaPrincipal(rv.fontes)
   const principal =
     rv.elevacao_m === null
       ? '<div class="h2g2-empty-state">Fora da área de teste com dado baixado (ver PROXIMOS-PASSOS.md).</div>'
       : `<div class="h2g2-bloco">
-          ${rv.slope_status ? veredito(rv.slope_status) : ''}
+          ${rv.slope_status ? seloDoPonto(rv.slope_status, alertas) : ''}
           <div class="h2g2-card" style="margin-top:var(--s-2)">
             <div class="h2g2-display h2g2-elev">${rv.elevacao_m.toFixed(1)}<span class="h2g2-mono h2g2-small h2g2-dim"> m</span></div>
             ${rv.slope_deg !== null ? `<div class="h2g2-dim h2g2-mono h2g2-small">slope ${rv.slope_deg.toFixed(2)}°</div>` : ''}
@@ -48,12 +61,42 @@ function secaoFotos(fotos) {
           <img src="${esc(p.url)}" alt="${esc(p.camera)} · sol ${esc(p.sol)}" loading="lazy">
           <div class="h2g2-mono h2g2-dim">${esc(p.distance_m)}m · ${esc(p.bearing)} · sol ${esc(p.sol)}</div>
         </button>`).join('')}</div>`
-  return `<div class="h2g2-secao"><p class="h2g2-panel-title">Fotos próximas</p>${corpo}</div>`
+  return `<div class="h2g2-secao h2g2-extra"><p class="h2g2-panel-title">Fotos próximas</p>${corpo}</div>`
 }
 
-function secaoCiencia(t) {
+const fonte = (l) => (l.fonte_url
+  ? `<a href="${esc(l.fonte_url)}" target="_blank" rel="noreferrer" style="color:var(--ink-3)">fonte</a>`
+  : esc(l.fonte_arquivo))
+
+/** Ficha da F04 (/science/card). Linhas mock ficam de fora (CLAUDE.md): só a contagem aparece. */
+function fichaF04(f) {
+  if (!f?.alvo) return ''
+  const linhas = [...f.linhas, ...f.contexto].filter((l) => l.secao !== 'nome')
+  const reais = linhas.filter((l) => l.confianca !== 'mock')
+  const ocultas = linhas.length - reais.length
+  const a = f.alvo
+  return `<div class="h2g2-small h2g2-sep">
+    <div><strong>${esc(a.nome)}</strong> <span class="h2g2-dim">· ${esc(a.tipo_rotulo)} · ${esc(a.distancia_rotulo)}</span></div>
+    ${f.aviso_posicao ? `<div class="h2g2-dim h2g2-micro">${esc(f.aviso_posicao)}</div>` : ''}
+    ${reais.map((l) => `<div style="margin-top:var(--s-1)">${esc(l.texto)}
+      <span class="h2g2-dim h2g2-micro">· ${esc(l.confianca_rotulo)} · ${fonte(l)}</span></div>`).join('')}
+    ${ocultas ? `<div class="h2g2-dim h2g2-micro" style="margin-top:var(--s-1)">${ocultas} medição(ões) de exemplo ocultas: fonte ainda não ligada ao pacote.</div>` : ''}
+    ${f.mastcam ? `<img class="h2g2-mastcam" src="${esc(f.mastcam.img)}" alt="${esc(f.mastcam.rotulo)}" loading="lazy">
+      <div class="h2g2-dim h2g2-micro">${esc(f.mastcam.rotulo)} · ${esc(f.mastcam.credito)}</div>` : ''}
+  </div>`
+}
+
+function secaoPanorama(p) {
+  if (!p) return ''
+  const corpo = p.found
+    ? `<div class="h2g2-pano" data-pano></div><div class="h2g2-dim h2g2-micro">${esc(p.rotulo)} · ${esc(p.credito)}</div>`
+    : `<div class="h2g2-empty-state">${esc(p.mensagem)}.</div>`
+  return `<div class="h2g2-secao h2g2-extra"><p class="h2g2-panel-title">Panorama no ponto</p>${corpo}</div>`
+}
+
+function secaoCiencia(t, f04) {
   const corpo = t === null
-    ? '<div class="h2g2-empty-state">Nenhum alvo científico cadastrado próximo deste ponto.</div>'
+    ? (f04?.alvo ? '' : '<div class="h2g2-empty-state">Nenhum alvo científico cadastrado próximo deste ponto.</div>')
     : `<div class="h2g2-small">
         <div><strong>${esc(t.nome)}</strong></div>
         ${t.medicao_curiosity ? `<div>${esc(t.medicao_curiosity)}</div>` : ''}
@@ -61,10 +104,16 @@ function secaoCiencia(t) {
         ${t.classe_terreno ? `<div class="h2g2-dim">Terreno: ${esc(t.classe_terreno)}</div>` : ''}
         ${t.confianca ? `<div class="h2g2-dim">Confiança: ${esc(t.confianca)}</div>` : ''}
       </div>`
-  return `<div class="h2g2-secao"><p class="h2g2-panel-title">Ficha científica</p>${corpo}</div>`
+  return `<div class="h2g2-secao h2g2-extra"><p class="h2g2-panel-title">Ficha científica</p>${corpo}${fichaF04(f04)}</div>`
 }
 
 let pedido = 0
+let viewer = null // Pannellum do panorama aberto
+
+function destruirPanorama() {
+  viewer?.destroy()
+  viewer = null
+}
 
 /** Mostra o briefing de `ponto` em `el`. nomenclatura: lista de /api/nomenclature. */
 export async function abrirPonto(el, ponto, nomenclatura, onFechar) {
@@ -89,6 +138,9 @@ export async function abrirPonto(el, ponto, nomenclatura, onFechar) {
   }
   el.innerHTML = `${topo}<div class="h2g2-dim h2g2-mono h2g2-small">consultando /api/point...</div>`
 
+  destruirPanorama()
+  // F03/F04 são extras: se falharem, o briefing de segurança sai do mesmo jeito
+  const extras = Promise.allSettled([getPanorama(ponto.lat, ponto.lon), getFichaCientifica(ponto.lat, ponto.lon)])
   let data
   try {
     data = await getPoint(ponto.lat, ponto.lon)
@@ -96,18 +148,28 @@ export async function abrirPonto(el, ponto, nomenclatura, onFechar) {
     if (meu === pedido) el.innerHTML = `${topo}<div class="h2g2-erro">${esc(e.message)}</div>`
     return
   }
+  const [pano, f04] = (await extras).map((r) => (r.status === 'fulfilled' ? r.value : null))
   if (meu !== pedido) return // clique mais novo já substituiu este
 
   fotos = data.nearby_photos.map((p) => ({ url: p.url, sol: p.sol, camera: p.camera, caption: `${p.distance_m}m · ${p.bearing}` }))
-  const alertas = data.alertas.length === 0 ? '' : `<div class="h2g2-bloco">${data.alertas
-    .map((a) => `<div class="h2g2-mono h2g2-alerta" title="fonte: ${esc(a.fonte)}" style="color:${ALERTA_COR[a.nivel]}">● ${esc(a.mensagem)}</div>`)
-    .join('')}</div>`
+  const alertas = data.alertas.length === 0 ? '' : `<div class="h2g2-bloco">${alertasHtml(data.alertas)}</div>`
 
-  el.innerHTML = topo + alertas + secaoElevacao(data.raster_values) + secaoFotos(data.nearby_photos) + secaoCiencia(data.science_target)
+  // fotos por último: podem ser 100+ e empurrariam ficha e pergunta pra fora da tela
+  el.innerHTML = topo + alertas + secaoElevacao(data.raster_values, data.alertas) + secaoCiencia(data.science_target, f04) +
+    secaoPanorama(pano) + '<div class="h2g2-secao" data-agente></div>' + secaoFotos(data.nearby_photos)
+  renderAgente(el.querySelector('[data-agente]'), ponto)
+  const div = el.querySelector('[data-pano]')
+  if (div && window.pannellum) {
+    viewer = window.pannellum.viewer(div, {
+      ...pano.pannellum,
+      hotSpots: [{ pitch: 0, yaw: pano.pannellum.yaw, type: 'info', text: 'direção do ponto clicado' }],
+    })
+  }
 }
 
 export function fecharPonto(el) {
   pedido++ // descarta resposta pendente
+  destruirPanorama()
   el.hidden = true
   el.innerHTML = ''
 }

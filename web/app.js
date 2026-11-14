@@ -1,5 +1,5 @@
 // Orquestração (antes App.tsx): estado num objeto, cada handler chama os renders afetados.
-import { getConditions, getLayers, getNomenclature, getRoverPhotos } from './api.js'
+import { getConditions, getLayers, getNomenclature, getPrevisao, getRoverPhotos } from './api.js'
 import { TOGGLEABLE_LAYERS } from './layers.js'
 import * as mapa from './map.js'
 import { abrirLightbox } from './ui/lightbox.js'
@@ -102,16 +102,23 @@ $('camadas').addEventListener('input', (e) => {
   mapa.setCamadaOpacidade(id, estado.camadas[id].opacity) // sem re-render: não roubar o foco do slider
 })
 $('btn-rota').addEventListener('click', alternarRota)
+// F07 modo traje: mesma tela, só o essencial pro visor (CSS .traje em style.css)
+$('btn-traje').addEventListener('click', (e) => {
+  e.currentTarget.setAttribute('aria-pressed', document.body.classList.toggle('traje'))
+})
 
 // ---- carga inicial ----
 hud()
 camadas()
 renderCondicoes($('condicoes'), { conditions: null, error: null })
 
+// previsão é extra: sem climatologia, o painel segue só com o medido
+const previsao = getPrevisao().catch(() => null)
 getConditions()
-  .then((c) => {
+  .then(async (c) => {
     estado.sol = c.sol
-    renderCondicoes($('condicoes'), { conditions: c, error: null })
+    const validacao = await getPrevisao({ sol: c.sol }).catch(() => null)
+    renderCondicoes($('condicoes'), { conditions: c, previsao: await previsao, validacao, error: null })
     hud()
   })
   .catch((e) => renderCondicoes($('condicoes'), { conditions: null, error: String(e) }))

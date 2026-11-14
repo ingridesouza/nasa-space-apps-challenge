@@ -3,7 +3,7 @@
 source: public            # mock | public | official
 
 # F04 · ficha científica. Trocar de fonte = mudar aqui e rodar `python etl/build.py`.
-science_source: mock      # mock | public | official
+science_source: public    # mock | public (APXS/CheMin/ChemCam do PDS) | official
 card_radius_m: 150        # alvo mais longe que isto: "nenhum alvo estudado"
 science:
   targets_csv: ../dados/m8_alvos.csv

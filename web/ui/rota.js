@@ -1,6 +1,6 @@
 // Feature 02: painel de rota (antes RoutePanel.tsx). Mesmo A* real sobre o DTM,
 // pesos diferentes por tipo (ver api/route_planning.py).
-import { getRoute } from '../api.js'
+import { getPrevisao, getRoute } from '../api.js'
 import { coord, esc, num, veredito } from './util.js'
 
 const TIPO_LABEL = { mais_segura: 'Mais segura', mais_rapida: 'Mais rápida', mais_ciencia: 'Mais ciência' }
@@ -72,6 +72,30 @@ let erro = null
 let carregando = false
 let pedido = 0
 let el, cb
+let ultimo = { origem: null, destino: null }
+const janelas = new Map() // tempo_estimado_min -> janela_eva (F06); undefined = calculando
+
+/** F06 no PDF: "acoplar a previsão à rota, sugerindo a melhor janela para a EVA". */
+function secaoJanela(r) {
+  const chave = r.tempo_estimado_min
+  if (!janelas.has(chave)) {
+    janelas.set(chave, undefined)
+    getPrevisao({ duracao_min: chave })
+      .then((p) => p.janela_eva, () => null)
+      .then((j) => {
+        janelas.set(chave, j)
+        render(ultimo.origem, ultimo.destino)
+      })
+  }
+  const j = janelas.get(chave)
+  const corpo = j === undefined
+    ? '<span class="h2g2-dim">calculando pela previsão local...</span>'
+    : j === null
+      ? '<span class="h2g2-dim">sem curva horária para prever a janela</span>'
+      : `<strong>${esc(j.inicio_lmst)}–${esc(j.fim_lmst)}</strong> hora solar local · hora mais fria prevista ${num(j.temp_mais_fria_na_janela_c, 0)} °C
+         <div class="h2g2-dim h2g2-micro" title="${esc(j.criterio)}">estimado (não medido) · climatologia REMS por hora</div>`
+  return `<div class="h2g2-small h2g2-sep" style="margin-bottom:var(--s-3)"><span class="h2g2-stat-label">Melhor janela p/ esta EVA (${esc(Math.ceil(chave / 60))}h)</span><div>${corpo}</div></div>`
+}
 
 const rotaAtiva = () => data?.rotas.find((r) => r.tipo === tipo) ?? null
 
@@ -88,7 +112,7 @@ function render(origem, destino) {
         .map((r) => `<button class="h2g2-tipo ${r.tipo === tipo ? 'on' : ''}" data-tipo="${r.tipo}">${TIPO_LABEL[r.tipo] ?? esc(r.tipo)}</button>`)
         .join('')}</div>`
       const r = rotaAtiva()
-      if (r) corpo += detalheRota(r)
+      if (r) corpo += detalheRota(r) + secaoJanela(r)
       if (data.avisos.length > 0) {
         corpo += avisoExpandido
           ? `<div>
@@ -112,7 +136,6 @@ function render(origem, destino) {
 export function iniciarRota(container, callbacks) {
   el = container
   cb = callbacks
-  let ultimo = { origem: null, destino: null }
   el.addEventListener('click', (e) => {
     const b = e.target.closest('[data-acao],[data-tipo]')
     if (!b) return

@@ -16,7 +16,6 @@ Protótipo de apoio a astronauta na cratera Gale (área do Curiosity). Princípi
 - Sem React, sem bundler, sem `npm install` para o front. Abrir `index.html` servido pela API deve bastar.
 - ES modules nativos (`<script type="module">`), `fetch` para a API local, DOM direto.
 - Biblioteca só se for pequena e vendorizada (ex.: Pannellum, Leaflet/MapLibre em `lib/`). Justificar cada uma.
-- O `frontend/` (React/Vite) atual é legado a migrar; não adicionar features nele.
 
 ### 3. Pequeno
 - Backend: Python + FastAPI + SQLite (R-tree nativo). Sem PostGIS, sem serviços extras, sem Docker obrigatório.
@@ -30,9 +29,9 @@ Protótipo de apoio a astronauta na cratera Gale (área do Curiosity). Princípi
 |---|---|
 | `api/` | API FastAPI do time (F01, F02, F05, F08). Endpoints em `api/main.py`, lógica em módulos planos |
 | `data-pipeline/` | ETL do time: adapters, `db/schema.sql`, scripts `fetch_*`/`seed_*`. Saída em `data/local/` (ignorado) |
-| `frontend/` | Front React legado — migrar para HTML/JS puro |
+| `web/` | Front HTML/CSS/JS puro (features 01/02/03/04/08), servido pela API em `/` |
 | `docs/` | Proposta, pitch, plano de produto, `feature-NN-*.md` |
-| `subprojetos/f03-f04-victoria/` | F03 (panorama/fotos no ponto) e F04 (ficha científica): app própria (`h2g2-f03/`: api, etl, web puro), dados e docs. A mesclar com `api/` + `data-pipeline/` |
+| `subprojetos/f03-f04-victoria/` | F03 (panorama/fotos no ponto) e F04 (ficha científica): `h2g2-f03/` (api, etl, web puro), dados e docs. A API principal já serve as rotas dele (`/panoramas/nearest`, `/photos/near`, `/science/card`, `/orbital/crop`, `/bundle`); falta mover o ETL para `data-pipeline/` |
 
 Features: 01 mapa em camadas · 02 rota+risco · 03 fotos/panorama no ponto · 04 ficha científica · 05 condições REMS/RAD · 06 clima · 07 HUD · 08 agente local · 09 sync Terra–Marte · 10 perigos colaborativos. Detalhes em `docs/Plano_Produto_Completo.md`.
 

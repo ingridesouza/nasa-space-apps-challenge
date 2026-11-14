@@ -230,8 +230,9 @@ def science_card(lat: float = Query(..., ge=-90, le=90), lon: float = Query(...)
         if t["terrain_class"]:
             linhas.append(_linha("terreno", t["terrain_class"], "contexto", "classificação da equipe H2G2",
                                  t["blog_url"]))
-        if t["mastcam_path"]:
-            out["mastcam"] = {"img": t["mastcam_path"], "credito": t["mastcam_credit"],
+        # Só imagem do pacote local: URL externa quebraria offline (pacote antigo ou foto que falhou no build).
+        if t["mastcam_path"] and not t["mastcam_path"].startswith("http"):
+            out["mastcam"] = {"img": f"/bundle/{t['mastcam_path']}", "credito": t["mastcam_credit"],
                               "rotulo": f"foto Mastcam do sol {t['sol']}"}
     else:
         out["mensagem"] = f"nenhum alvo estudado a menos de {int(radius)} m"

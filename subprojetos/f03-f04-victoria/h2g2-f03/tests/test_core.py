@@ -94,6 +94,7 @@ def test_ficha_do_mojo_na_parada_118_2028():
     assert j["alvo"]["distancia_m"] < 10
     assert j["aviso_posicao"] == "posição aproximada pela parada do sol 4643"
     assert any(l["secao"] == "quimica" for l in j["linhas"])
+    assert j["mastcam"]["img"].startswith("/bundle/")  # offline: nunca URL externa
     assert all(l["fonte_url"] or l["fonte_arquivo"] for l in j["linhas"] + j["contexto"])
 
 
@@ -103,6 +104,37 @@ def test_ficha_sem_alvo_perto_e_fora_da_janela():
 
     longe = science_card(-4.8100, 137.3770, R_CARD)
     assert longe["alvo"] is None and "nenhum alvo estudado a menos de 150 m" in longe["mensagem"]
-    assert any(l["secao"] == "orbita" for l in longe["linhas"])
+    # CRISM (tarefa 5) ainda não ligado: a fonte public não inventa linha de órbita
+    assert not any(l["secao"] == "orbita" and l["confianca"] == "mock" for l in longe["linhas"])
     fora = science_card(-10.0, 137.38, R_CARD)
     assert fora["alvo"] is None and fora["dentro_da_janela"] is False and fora["linhas"] == []
+
+
+# --------------------------------------------------------------------------- #
+# F04 · tarefas 3 e 4: medições reais do PDS (science_source: public)
+# --------------------------------------------------------------------------- #
+
+
+def test_vinculo_so_na_parada_exata_e_frase_por_regra():
+    from etl.sources.science_public import _parada_exata, frase_apxs, frase_chemin
+
+    assert _parada_exata("116_1944 (sol 4564)") == (116, 1944)
+    assert _parada_exata("120_232 (sol 4744, a 1 sol(s) de distância)") is None
+    assert _parada_exata("") is None
+    assert frase_chemin(4566, {"Plagioclase": 51, "Quartz": 1.6}) == \
+        "CheMin (sol 4566): plagioclásio 51,0%, quartzo 1,6% (% da fração cristalina)"
+    assert frase_apxs(4568, {"SiO2": 43.17, "Br": 0.0088}).startswith("APXS (sol 4568): SiO2 43,2%, Br 0,0%")
+
+
+@pytest.mark.skipif(not DB.exists(), reason="pacote não gerado")
+def test_ficha_da_altadena_com_chemin_real():
+    import sqlite3
+    from api.main import R_CARD, science_card
+
+    lat, lon = sqlite3.connect(DB).execute(
+        "SELECT lat, lon FROM waypoints WHERE rmc = '116_1944'").fetchone()
+    j = science_card(lat, lon, R_CARD)
+    assert j["alvo"]["nome"] == "Altadena"
+    assert any(l["instrumento"] == "CheMin" and l["confianca"] == "medido"
+               and l["fonte_arquivo"].startswith("cmb_") for l in j["linhas"])
+    assert not any(l["confianca"] == "mock" for l in j["linhas"])
