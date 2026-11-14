@@ -8,6 +8,7 @@ o bundle os arquivos locais que o card usa: fotos Mastcam, recorte CRISM e
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import sqlite3
 import sys
@@ -30,6 +31,24 @@ CREATE TABLE measurements(id TEXT PRIMARY KEY, target_id TEXT, instrument TEXT,
   confidence TEXT, source_url TEXT, source_file TEXT);
 CREATE VIRTUAL TABLE target_rtree USING rtree(rid, min_lon, max_lon, min_lat, max_lat);
 """
+
+
+def publish(src: Path, dst: Path, schema: str) -> None:
+    """Troca, numa transação só, as tabelas do F03/F04 do banco único `dst`
+    pelas montadas em `src`. As demais tabelas do banco (do time) ficam intactas."""
+    tabelas = re.findall(r"CREATE (?:VIRTUAL )?TABLE (\w+)", schema)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(dst)
+    con.execute("ATTACH DATABASE ? AS f", (str(src),))
+    con.executescript(
+        "BEGIN;\n"
+        + "".join(f"DROP TABLE IF EXISTS main.{t};\n" for t in tabelas)
+        + schema
+        + "".join(f"INSERT INTO main.{t} SELECT * FROM f.{t};\n" for t in tabelas)
+        + "COMMIT;"
+    )
+    con.execute("DETACH DATABASE f")
+    con.close()
 
 
 def build_science(db, science, stops, cfg) -> tuple[int, int]:
@@ -73,16 +92,18 @@ def copy_science_files(cfg, base_dir: Path, bundle: Path) -> list[str]:
 
 
 def main() -> int:
-    """Refaz só as tabelas da F04 num h2g2.db existente (sem rodar o ETL todo)."""
+    """Refaz só as tabelas da F04 no banco único (sem rodar o ETL todo)."""
     from etl.sources import make_science_sources
     from etl.sources.base import Position
 
     ap = argparse.ArgumentParser(description=main.__doc__)
     ap.add_argument("--config", default=str(ROOT / "config.yaml"))
-    ap.add_argument("--bundle", default=str(ROOT / "bundle"))
+    ap.add_argument("--bundle", help="padrão: paths.bundle do config.yaml")
+    ap.add_argument("--db", help="padrão: paths.db do config.yaml")
     args = ap.parse_args()
     cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
-    db = sqlite3.connect(Path(args.bundle) / "h2g2.db")
+    args.bundle = args.bundle or str((ROOT / cfg["paths"]["bundle"]).resolve())
+    db = sqlite3.connect(args.db or (ROOT / cfg["paths"]["db"]).resolve())
     for t in ("target_rtree", "measurements", "targets"):
         db.execute(f"DROP TABLE IF EXISTS {t}")
     db.executescript(SCHEMA_SCIENCE)

@@ -1,4 +1,11 @@
-# H2G2 · Feature 03 · Panorama no ponto
+# H2G2 · F03 (panorama/fotos no ponto) e F04 (ficha científica)
+# Caminhos relativos a este arquivo (data-pipeline/f03/).
+
+# Saída do ETL: tabelas no SQLite único do projeto + arquivos servidos em /bundle.
+paths:
+  db: ../../data/local/h2g2.sqlite
+  bundle: ../../data/local/f03
+  cache: ../../data/local/f03-cache
 # Trocar de fonte = mudar "source" e rodar `python etl/build.py` de novo.
 source: public            # mock | public | official
 
@@ -6,11 +13,11 @@ source: public            # mock | public | official
 science_source: public    # mock | public | official
 card_radius_m: 150        # alvo mais longe que isto: "nenhum alvo estudado"
 science:
-  targets_csv: ../dados/m8_alvos.csv
-  index_csv: ../dados/science_index.csv
-  pds_dir: ../dados/pds            # arquivos APXS/ChemCam/CheMin baixados (offline)
-  mastcam_dir: ../dados/mastcam    # fotos Mastcam dos alvos (copiadas para bundle/mastcam/)
-  terrain_geojson: ../dados/terrain.geojson   # M6 (QGIS); sem arquivo, a linha não aparece
+  targets_csv: dados/m8_alvos.csv
+  index_csv: dados/science_index.csv
+  pds_dir: dados/pds            # arquivos APXS/ChemCam/CheMin baixados (offline)
+  mastcam_dir: dados/mastcam    # fotos Mastcam dos alvos (copiadas para data/local/f03/mastcam/)
+  terrain_geojson: dados/terrain.geojson   # M6 (QGIS); sem arquivo, a linha não aparece
 
 # CRISM (tarefa 5): produto MTRDR achado no Orbital Data Explorer em 13/11.
 # Cobre toda a janela; ~18 m/px. `python etl/crism.py` gera o recorte.
@@ -18,7 +25,7 @@ crism:
   produto: FRT000058A3
   su_url: https://pds-geosciences.wustl.edu/mro/mro-m-crism-5-rdr-mptargeted-v1/mrocr_4001/mtrdr/2007/2007_112/frt000058a3/frt000058a3_07_su165j_mtr3.img
   page_url: https://pds-geosciences.wustl.edu/mro/mro-m-crism-5-rdr-mptargeted-v1/mrocr_4001/mtrdr/2007/2007_112/frt000058a3/
-  crop_json: ../dados/crism_boxwork.json
+  crop_json: dados/crism_boxwork.json
 
 sols:
   min: 4550
@@ -56,7 +63,7 @@ color_panos:
     sol: 4718                  # sol de referência do furo (Nevado Sajama)
     site: 120
     drive: 82                  # parada 120_82 (sol 4711), a mais próxima de 4718
-    image: ../dados_panoramas/panos/colored_image.jpg
+    image: dados_panoramas/panos/colored_image.jpg
     max_width: 8192
     center_az: 135.0
     horizon_frac: 0.27
@@ -70,11 +77,11 @@ mars_radius_m: 3396190
 # Entradas da fonte "public" (caminhos relativos a este arquivo)
 public:
   waypoints_url: https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json
-  waypoints_file: ../dados/MSL_waypoints.json
-  places_file: ../dados/localized_interp.csv
-  panoramas_csv: ../dados_panoramas/panoramas.csv
-  panoramas_root: ..
-  hirise_tif: ../dados/boxwork.tif
+  waypoints_file: dados/MSL_waypoints.json
+  places_file: dados/localized_interp.csv
+  panoramas_csv: dados_panoramas/panoramas.csv
+  panoramas_root: .
+  hirise_tif: dados/boxwork.tif
   raw_images_api: https://mars.nasa.gov/api/v1/raw_image_items/
   hirise_cog: https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/MSL/MSL_Gale_HiRISE-LRGB_78quads_sharp_cog.tif
   request_delay_s: 0.5

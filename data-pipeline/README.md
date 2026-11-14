@@ -2,7 +2,7 @@
 
 Ingestão e normalização dos dados reais (Mars Trek, PDS, API de imagens do
 MSL, AI4Mars, MMGIS) para o schema interno usado pela feature 01
-(`raster_registry`, `science_targets`, `rover_images` — ver
+(`raster_registry`; fotos e alvos científicos vêm do ETL em `f03/` — ver
 `feature-01-mapa-hiperlocal-boxwork.md` na raiz do repo, seção 3.1).
 
 ## Estrutura

@@ -23,9 +23,7 @@ build:
 	$(PY) scripts/cache_conditions.py && \
 	$(PY) scripts/cache_climatologia.py && \
 	$(PY) db/populate_raster_registry.py && \
-	$(PY) db/seed_rover_images.py && \
-	$(PY) scripts/download_rover_photos.py && \
-	$(PY) db/seed_science_targets.py
+	cd f03 && $(PY) etl/build.py
 	@if command -v ollama >/dev/null; then $(OLLAMA_SOBE); sleep 3; ollama pull $(MODELO); \
 	else echo "ollama não instalado: sem agente (/api/ask responde 503; os alertas seguem). Instale e rode make build de novo."; fi
 
@@ -37,4 +35,4 @@ front:
 	@echo "Front servido pela API: rode 'make run' e abra http://localhost:8000"
 
 test:
-	cd api && $(PY) test_alertas.py && $(PY) test_agente.py && $(PY) test_f03.py && $(PY) test_previsao.py
+	cd api && $(PY) test_alertas.py && $(PY) test_agente.py && $(PY) test_previsao.py && $(PY) -m pytest -q test_f03.py

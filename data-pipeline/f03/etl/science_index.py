@@ -12,11 +12,11 @@ Lê as listas oficiais do PDS Geosciences e grava `dados/science_index.csv`:
 - CheMin: `index/index.tab` do volume RDR; só os produtos MIN (abundância
   mineral). O nome traz sol, site e drive.
 
-Rodar a partir de h2g2-f03/:
+Rodar a partir de data-pipeline/f03/:
     python etl/science_index.py            # baixa (ou usa o cache) e grava
-    python etl/science_index.py --offline  # só usa .cache/pds/
+    python etl/science_index.py --offline  # só usa data/local/f03-cache/pds/
 
-As listas brutas ficam em .cache/pds/ para o ETL rodar sem internet.
+As listas brutas ficam em data/local/f03-cache/pds/ para o ETL rodar sem internet.
 A contagem por instrumento vai para o `inventario_pds` do MANIFEST.json.
 """
 
@@ -124,9 +124,9 @@ def update_manifest(bundle: Path, counts: dict, smin: int, smax: int) -> bool:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", default=str(ROOT / "config.yaml"))
-    ap.add_argument("--cache", default=str(ROOT / ".cache" / "pds"))
-    ap.add_argument("--out", default=str(ROOT.parent / "dados" / "science_index.csv"))
-    ap.add_argument("--bundle", default=str(ROOT / "bundle"))
+    ap.add_argument("--cache", default=str(ROOT.parent.parent / "data" / "local" / "f03-cache" / "pds"))
+    ap.add_argument("--out", default=str(ROOT / "dados" / "science_index.csv"))
+    ap.add_argument("--bundle", default=str(ROOT.parent.parent / "data" / "local" / "f03"))
     ap.add_argument("--offline", action="store_true")
     args = ap.parse_args()
 

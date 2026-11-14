@@ -6,8 +6,8 @@ MTRDR escolhido na busca do Orbital Data Explorer, recorta a janela do boxwork
 usa. O SU é binário cru (float32, bandas sequenciais) em projeção equiretangular
 na esfera de 3.396,19 km: basta numpy, sem GDAL.
 
-Rodar a partir de h2g2-f03/:
-    python etl/crism.py            # baixa o SU (~136 MB) para .cache/crism/ se faltar
+Rodar a partir de data-pipeline/f03/:
+    python etl/crism.py            # baixa o SU (~136 MB) para data/local/f03-cache/crism/ se faltar
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ def lbl_value(lbl: str, key: str) -> float:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", default=str(ROOT / "config.yaml"))
-    ap.add_argument("--cache", default=str(ROOT / ".cache" / "crism"))
+    ap.add_argument("--cache", default=str(ROOT.parent.parent / "data" / "local" / "f03-cache" / "crism"))
     args = ap.parse_args()
     cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
     c = cfg["crism"]

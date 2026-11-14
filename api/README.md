@@ -22,11 +22,9 @@ Testar: `http://127.0.0.1:8000/api/point?lat=-4.59&lon=137.44`
   DTM HiRISE 1m e MOLA). Slope calculado por diferença finita numa
   janela 3x3 — simples, não é um algoritmo "oficial" de slope, mas usa
   dado de elevação real.
-- ⚠️ **Fotos próximas e alvo científico**: lógica pronta (busca por
-  raio via R-Tree nativo do SQLite, distância/bearing reais), mas as
-  tabelas `rover_images`/`science_targets` ainda estão vazias — ver
-  pendências 9 e 4 no `PROXIMOS-PASSOS.md` da raiz do repo. O endpoint
-  já devolve `[]`/`null` corretamente, não quebra.
+- ✅ **Fotos próximas e alvo científico**: busca por raio via R-Tree
+  nativo do SQLite nas tabelas do F03/F04 (`photos`, `targets`,
+  `measurements`), geradas por `data-pipeline/f03/etl/build.py`.
 - ❌ **Camadas `tiles_wmts`** (CTX, HiRISE óptica, THEMIS) não entram no
   sampling — são tiles PNG sem georreferência individual, precisariam
   virar um mosaico georreferenciado antes (fora de escopo do MVP).

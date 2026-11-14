@@ -18,7 +18,7 @@ e [`docs/PITCH.md`](docs/PITCH.md).
 | `api/` | API FastAPI (feature 01 mapa, 02 rota/A*, 08 alertas+trilha do rover) — também serve `web/` na raiz (`/`), mesma origem. Ver [`api/README.md`](api/README.md) |
 | `data-pipeline/` | ETL dos dados reais (Mars Trek, PDS, MMGIS, API de imagens do MSL) — adapters + scripts `fetch_*`/`seed_*`. Ver [`data-pipeline/README.md`](data-pipeline/README.md) |
 | `web/` | **Frontend único do projeto**, HTML/CSS/JS puro (features 01 a 08) — sem bundler/`npm install`, MapLibre e fontes vendorizados. `frontend/` React foi removido de verdade em 2026-11-14 (ver nota abaixo). Ver [`docs/migracao-front-html-puro.md`](docs/migracao-front-html-puro.md) |
-| `subprojetos/f03-f04-victoria/` | Feature 03 (fotos/panorama no ponto) e 04 (ficha científica): ETL e dados próprios; a API principal já serve as rotas dele e o `web/` mostra panorama e ficha |
+| `subprojetos/f03-f04-victoria/` | Docs da feature 03 (fotos/panorama no ponto) e 04 (ficha científica). Código em `api/panorama.py` e `api/ficha.py`, ETL em `data-pipeline/f03/` |
 | `docs/` | Proposta de produto, pitch, docs de feature. Ver [`docs/README.md`](docs/README.md) |
 | `PROXIMOS-PASSOS.md` | Status técnico real de cada fonte de dado e cada feature -- o doc mais honesto do repo sobre o que funciona de verdade |
 | `CLAUDE.md` | Diretrizes de arquitetura pro time -- motivou a migração pro `web/`, ver seção abaixo |
@@ -41,9 +41,12 @@ ainda não funciona só copiando `data/local/` (ver item 5 de `docs/raio-x-imple
 Sem `make` (Windows): `cd api && pip install -r requirements.txt && python -m uvicorn main:app --port 8000`
 e abrir http://localhost:8000. Não há `npm install` nem build de front.
 
-### Subprojeto F03/F04 (Victoria)
+### F03/F04 (panorama e ficha científica)
 
-Ver instruções próprias em `subprojetos/f03-f04-victoria/`.
+O `make build` já roda o ETL (`data-pipeline/f03/etl/build.py`). Ele grava as tabelas
+`photos`, `panoramas`, `targets`, `measurements` no `data/local/h2g2.sqlite` e os arquivos em
+`data/local/f03/` (servidos em `/bundle`). O front antigo do F03/F04 fica em
+http://localhost:8000/f03/ até os fronts serem juntados.
 
 ## Status por feature
 

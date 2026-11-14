@@ -30,6 +30,7 @@ import numpy as np
 import rasterio
 
 from geo import MARS_METERS_PER_DEGREE, haversine_m
+from vector_queries import todos_alvos_cientificos
 
 # Mesmos limites da feature 01 (raster_sampling.py) -- um único "limite
 # Artemis" em todo o sistema, não dois valores que podem divergir.
@@ -267,11 +268,6 @@ def _monta_rota(tipo: str, caminho_rc, elevacao, slope_deg, transform, pixel_siz
     }
 
 
-def _todos_alvos_cientificos(conn: sqlite3.Connection) -> list[dict]:
-    rows = conn.execute("SELECT nome, lat, lon, medicao_curiosity, fonte_url FROM science_targets").fetchall()
-    return [dict(r) for r in rows]
-
-
 def _melhor_alvo_cientifico(origin_lat, origin_lon, dest_lat, dest_lon, alvos: list[dict]) -> dict | None:
     """Alvo científico com menor desvio real (em metros) em relação à
     linha reta origem-destino, entre os que cabem em
@@ -313,10 +309,10 @@ def plan_route(conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_
 
     # "mais_ciencia": passa pelo alvo científico real mais próximo do
     # caminho, só se o desvio for razoável (ver MAIS_CIENCIA_DESVIO_MAX_M)
-    # -- com só 3 alvos cadastrados (feature 4), nem sempre vai existir
+    # -- com poucos alvos cadastrados (feature 4), nem sempre vai existir
     # um perto o bastante, e aí essa variante simplesmente não aparece
     # (melhor que forçar um desvio absurdo só pra "ter ciência").
-    alvo = _melhor_alvo_cientifico(origin_lat, origin_lon, dest_lat, dest_lon, _todos_alvos_cientificos(conn))
+    alvo = _melhor_alvo_cientifico(origin_lat, origin_lon, dest_lat, dest_lon, todos_alvos_cientificos(conn))
     if alvo is not None:
         alvo_rc = _latlon_to_rc(transform, alvo["lat"], alvo["lon"])
         try:

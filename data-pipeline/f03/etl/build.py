@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Monta o pacote offline da Feature 03 em bundle/.
+"""Monta o pacote offline do F03/F04: tabelas no SQLite único do projeto
+(data/local/h2g2.sqlite) e arquivos em data/local/f03/ (servidos em /bundle).
 
-Uso (a partir de h2g2-f03/):
+Uso (a partir de data-pipeline/f03/):
     python etl/build.py                    # fonte do config.yaml
     python etl/build.py --source mock      # sem internet, dados de teste
     python etl/build.py --refresh-waypoints   # baixa o MMGIS do dia antes
@@ -16,7 +17,6 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
-import shutil
 import sqlite3
 import sys
 from pathlib import Path
@@ -27,9 +27,10 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+sys.path.append(str(ROOT.parent.parent / "api"))  # geo.py: única implementação de haversine/bearing
 
-from api.geo import R_MARS, haversine  # noqa: E402
-from etl.science import SCHEMA_SCIENCE, build_science, copy_science_files  # noqa: E402
+from geo import R_MARS, haversine, photo_azimuth  # noqa: E402
+from etl.science import SCHEMA_SCIENCE, build_science, copy_science_files, publish  # noqa: E402
 from etl.sources import make_science_sources, make_sources  # noqa: E402
 
 Image.MAX_IMAGE_PIXELS = None  # panoramas e o recorte HiRISE são grandes
@@ -197,8 +198,6 @@ def download(session, url: str, dest: Path) -> bool:
 
 
 def build_photos(db, photos_src, positions, stops, cfg, bundle):
-    from api.geo import photo_azimuth
-
     s = cfg["sols"]
     session = requests.Session()
     session.headers["User-Agent"] = "H2G2-DETON8/1.0 (uso educacional)"
@@ -285,7 +284,7 @@ def write_track(db, bundle, win, orbital, cfg):
         s["pano"] = s["rmc"] in with_pano
     examples = [{"nome": f"Parada {s['rmc']} (sol {s['sol']})", "lat": s["lat"], "lon": s["lon"]}
                 for s in stops if s["rmc"] in ("118_2028", "120_538", "116_1596")]
-    alvos = ROOT.parent / "dados" / "m7_alvos.csv"
+    alvos = ROOT / "dados" / "m7_alvos.csv"
     if alvos.exists():
         import csv
         with open(alvos, newline="", encoding="utf-8") as f:
@@ -374,27 +373,31 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--source", help="mock | public | official (padrão: config.yaml)")
     ap.add_argument("--config", default=str(ROOT / "config.yaml"))
-    ap.add_argument("--bundle", default=str(ROOT / "bundle"))
+    ap.add_argument("--bundle", help="pasta dos arquivos servidos em /bundle (padrão: config.yaml)")
+    ap.add_argument("--db", help="SQLite único do projeto (padrão: config.yaml)")
     ap.add_argument("--refresh-waypoints", action="store_true",
                     help="baixa o MSL_waypoints.json do dia antes de montar")
     args = ap.parse_args()
 
     cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
     source = args.source or cfg["source"]
-    bundle = Path(args.bundle)
+    bundle = Path(args.bundle) if args.bundle else (ROOT / cfg["paths"]["bundle"]).resolve()
     bundle.mkdir(parents=True, exist_ok=True)
 
     waypoints_file = None
     if args.refresh_waypoints and source == "public":
         from etl.sources.public import refresh_waypoints
-        waypoints_file = refresh_waypoints(cfg["public"]["waypoints_url"], (ROOT / "../dados").resolve())
+        waypoints_file = refresh_waypoints(cfg["public"]["waypoints_url"], ROOT / "dados")
         log(f"[2] MMGIS baixado: {waypoints_file}")
 
-    positions, panos_src, photos_src = make_sources(source, cfg, ROOT, ROOT / ".cache", waypoints_file)
+    cache = (ROOT / cfg["paths"]["cache"]).resolve()
+    positions, panos_src, photos_src = make_sources(source, cfg, ROOT, cache, waypoints_file)
     log(f"Fonte: {source} · pacote em {bundle}")
 
-    db_path = bundle / "h2g2.db"
-    tmp_path = bundle / "h2g2.db.part"
+    # Monta num arquivo à parte e só no fim troca as tabelas no banco único:
+    # build que falha no meio não deixa o banco do time pela metade.
+    db_path = Path(args.db) if args.db else (ROOT / cfg["paths"]["db"]).resolve()
+    tmp_path = bundle / "f03.db.part"
     tmp_path.unlink(missing_ok=True)
     db = sqlite3.connect(tmp_path)
     db.executescript(SCHEMA + SCHEMA_SCIENCE)
@@ -415,7 +418,8 @@ def main() -> int:
     manifest = write_manifest(db, bundle, cfg, source, places_check, wp_file)
     db.commit()
     db.close()
-    shutil.move(tmp_path, db_path)
+    publish(tmp_path, db_path, SCHEMA + SCHEMA_SCIENCE)
+    tmp_path.unlink()
 
     c = manifest["contagens"]
     log(f"Pronto: {c['paradas']} paradas, {c['panoramas']} panoramas, {c['fotos']} fotos · {db_path}")

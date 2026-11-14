@@ -32,13 +32,8 @@ from route_planning import ForaDoGridError, SemCaminhoError, plan_route
 from tempo_marte import sol_msl
 from tile_server import render_tile
 from vector_queries import all_photos, nearby_photos, nearest_science_target
-
-# Arquivo real das fotos, baixado por
-# data-pipeline/scripts/download_rover_photos.py -- ANTES rover_images
-# guardava a URL remota de mars.nasa.gov direto (apesar do nome da
-# coluna ser "local_path"), o que quebrava toda foto sem internet no
-# evento. Servido aqui como arquivo estático de verdade, offline.
-ROVER_PHOTOS_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "local", "rover_photos")
+import ficha
+import panorama
 
 # Sol de referência da missão -- dado real cacheado (não é "hoje",
 # é o mesmo sol usado nos testes de REMS/RAD, ver PROXIMOS-PASSOS.md).
@@ -48,8 +43,11 @@ REFERENCE_SOL = 4650
 
 app = FastAPI(title="H2G2 API -- feature 01")
 
-if os.path.isdir(ROVER_PHOTOS_DIR):
-    app.mount("/rover-photos", StaticFiles(directory=ROVER_PHOTOS_DIR), name="rover-photos")
+# F03 (panorama/fotos no ponto) e F04 (ficha científica). Arquivos do pacote
+# (panoramas, fotos, Mastcam, CRISM) gerados por data-pipeline/f03/etl/build.py.
+app.include_router(panorama.router)
+app.include_router(ficha.router)
+app.mount("/bundle", StaticFiles(directory=panorama.BUNDLE, check_dir=False), name="bundle")
 
 
 @app.get("/api/point")
@@ -281,17 +279,6 @@ def get_previsao(sol: int | None = None, duracao_min: float | None = Query(None,
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
-
-# F03 (panorama/fotos no ponto) e F04 (ficha) do subprojeto, na mesma origem.
-# shortcut: reaproveita o app e o bundle/ do subprojeto em vez de mover o código pra api/;
-# mover quando o ETL dele for mesclado ao data-pipeline/.
-F03_DIR = Path(__file__).parent.parent / "subprojetos" / "f03-f04-victoria" / "h2g2-f03"
-sys.path.append(str(F03_DIR))  # append: os módulos de api/ continuam com prioridade
-from api.main import app as f03_app  # noqa: E402 -- pacote "api" do subprojeto
-
-F03_ROTAS = {"/panoramas/nearest", "/photos/near", "/science/card", "/orbital/crop", "/bundle"}
-app.router.routes += [r for r in f03_app.routes if r.path in F03_ROTAS]
 
 
 # Front HTML/JS puro (web/) servido pela própria API -- mesma origem, offline.

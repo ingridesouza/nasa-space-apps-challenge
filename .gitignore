@@ -17,3 +17,6 @@ dist/
 
 # Documentos de contexto pessoal (não versionar)
 feature-01-mapa-hiperlocal-boxwork.md
+
+# pytest
+.pytest_cache/

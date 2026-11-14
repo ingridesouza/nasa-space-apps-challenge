@@ -27,11 +27,11 @@ Protótipo de apoio a astronauta na cratera Gale (área do Curiosity). Princípi
 
 | Caminho | O quê |
 |---|---|
-| `api/` | API FastAPI do time (F01, F02, F05, F08). Endpoints em `api/main.py`, lógica em módulos planos |
-| `data-pipeline/` | ETL do time: adapters, `db/schema.sql`, scripts `fetch_*`/`seed_*`. Saída em `data/local/` (ignorado) |
-| `web/` | Front HTML/CSS/JS puro (features 01/02/03/04/08), servido pela API em `/` |
+| `api/` | API FastAPI (F01–F08). Endpoints em `api/main.py`, lógica em módulos planos; F03 em `panorama.py`, F04 em `ficha.py`; `geo.py` é a única geometria |
+| `data-pipeline/` | ETL: adapters, `db/schema.sql`, scripts `fetch_*`/`seed_*`; `f03/` = ETL do F03/F04 (config, dados de entrada, panoramas). Saída em `data/local/` (ignorado): banco único `h2g2.sqlite` + `f03/` servido em `/bundle` |
+| `web/` | Front HTML/CSS/JS puro (features 01/02/03/04/08), servido pela API em `/`; `web/f03/` = front antigo do F03/F04 em `/f03/`, até juntar os fronts |
 | `docs/` | Proposta, pitch, plano de produto, `feature-NN-*.md` |
-| `subprojetos/f03-f04-victoria/` | F03 (panorama/fotos no ponto) e F04 (ficha científica): `h2g2-f03/` (api, etl, web puro), dados e docs. A API principal já serve as rotas dele (`/panoramas/nearest`, `/photos/near`, `/science/card`, `/orbital/crop`, `/bundle`); falta mover o ETL para `data-pipeline/` |
+| `subprojetos/f03-f04-victoria/` | Só docs do F03/F04 (código e dados já mesclados em `api/`, `data-pipeline/f03/` e `web/f03/`) |
 
 Features: 01 mapa em camadas · 02 rota+risco · 03 fotos/panorama no ponto · 04 ficha científica · 05 condições REMS/RAD · 06 clima · 07 HUD · 08 agente local · 09 sync Terra–Marte · 10 perigos colaborativos. Detalhes em `docs/Plano_Produto_Completo.md`.
 
@@ -39,10 +39,7 @@ Features: 01 mapa em camadas · 02 rota+risco · 03 fotos/panorama no ponto · 0
 
 Time (raiz): `make build` · `make run` (API :8000) · `make front` · `make test`
 
-Subprojeto F03/F04 (a partir de `subprojetos/f03-f04-victoria/h2g2-f03/`, venv na raiz do repo):
-- build: `../../../.venv/bin/python etl/build.py --source public`
-- API + web: `../../../.venv/bin/uvicorn api.main:app --port 8000`
-- testes: `../../../.venv/bin/python -m pytest -q`
+Só o ETL do F03/F04 (a partir de `data-pipeline/f03/`): `../../.venv/bin/python etl/build.py` (o `make build` já roda)
 
 ## Convenções
 - Português em docs, comentários, chaves JSON e commits (imperativo: "Adiciona…", "Corrige…").

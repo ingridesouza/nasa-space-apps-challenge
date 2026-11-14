@@ -1,7 +1,7 @@
 """Fonte pública: MMGIS, PLACES, páginas de panorama do science.nasa.gov e o
 feed de imagens brutas do MSL.
 
-As respostas da API ficam em cache (.cache/), então um segundo build roda sem
+As respostas da API ficam em cache (data/local/f03-cache/), então um segundo build roda sem
 internet.
 """
 
