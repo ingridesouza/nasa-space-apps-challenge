@@ -91,6 +91,8 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
   border:1px solid var(--b400);box-shadow:0 0 0 4px rgba(10,10,11,.6),0 20px 60px rgba(0,0,0,.6);background:#05070a;
   transition:width .25s ease,height .25s ease,left .25s ease,bottom .25s ease,border-radius .25s ease}
 .mapa-box #mapa{position:absolute;inset:0}
+.mars-tint{position:absolute;inset:0;z-index:1;pointer-events:none;background:#a8613a;mix-blend-mode:color;opacity:.6}
+.mapa-box .maplibregl-marker,.mapa-box .maplibregl-ctrl-bottom-right{z-index:2}
 .mapa-box:not(.aberto) #mapa{pointer-events:none}
 .mapa-box .maplibregl-ctrl{display:none}
 .mapa-status{position:absolute;inset:0;display:grid;place-items:center;margin:0;padding:20px;text-align:center;font-size:10px;color:var(--dim)}

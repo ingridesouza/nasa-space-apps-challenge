@@ -1,4 +1,5 @@
-// Seletor de camadas compacto (só no mapa expandido). Eventos em app.js via
+// Seletor de camadas compacto (só no mapa expandido). CTX e HiRISE (grupo 'base')
+// ficam sempre ligadas a 100% e não aparecem aqui. Eventos em app.js via
 // data-toggle / data-opacidade / data-minimizar.
 import { PLANNED_LAYERS, TOGGLEABLE_LAYERS } from '../layers.js'
 import { esc } from './util.js'
@@ -17,7 +18,7 @@ export function renderCamadas(el, estado) {
   el.innerHTML = `
     <div class="cam-topo"><span class="eyebrow">Camadas</span>
       <button type="button" class="ibtn ibtn-sm" data-minimizar title="Minimizar mapa (Esc)">✕</button></div>
-    ${TOGGLEABLE_LAYERS.map((l) => linha(l.id, estado.camadas[l.id].visible, l.label, '', estado.camadas[l.id].opacity)).join('')}
+    ${TOGGLEABLE_LAYERS.filter((l) => l.grupo !== 'base').map((l) => linha(l.id, estado.camadas[l.id].visible, l.label, '', estado.camadas[l.id].opacity)).join('')}
     ${linha('fotos', estado.fotosVisiveis, `Rastro do rover (${estado.nFotos})`, 'Posições reais das fotos Navcam')}
     ${linha('trilha', estado.trilhaVisivel, 'Trilha do Curiosity', 'Paradas reais, coloridas pela inclinação medida pelo rover: verde seguro, âmbar atenção, vermelho perigo.')}
     <p class="rotulo mono">${planejadas}</p>`
