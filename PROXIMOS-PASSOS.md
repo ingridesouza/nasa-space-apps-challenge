@@ -224,6 +224,43 @@ documentado foram encontrados e **corrigidos**:
 **Gap real, não é bug, é escopo de outra feature:** só 3 de 8-10 alvos
 científicos (ficha "pokédex" completa é trabalho da feature 4/Victoria).
 
+## Auditoria de "roda offline de verdade?" (2026-11-14)
+
+Checado linha a linha depois da pergunta direta "será que tudo que
+construímos vai rodar offline sem ser pesado" -- é um requisito que,
+se falhar, invalida a demo inteira no evento.
+
+**Confirmado OK:**
+- Zero chamada de rede em tempo de execução em `api/*.py` (checado via
+  grep por `requests.get`/`urlopen`/`httpx` -- só existe em scripts de
+  fetch do `data-pipeline/`, nunca chamado pela API rodando).
+- `data/local/` (todo o dado real cacheado -- tiles, DTM/MOLA, condições,
+  nomenclatura, waypoints, fotos) = **~130MB no total**. Leve, não é
+  motivo de preocupação de peso/espaço.
+- React/MapLibre/frontend inteiro vira bundle estático no build do
+  Vite -- não busca nada de rede em tempo de execução. Único
+  pré-requisito é `npm install` ter rodado uma vez, com internet, antes
+  do evento (igual `pip install -r requirements.txt` do lado
+  Python) -- não é particularidade de React, é de qualquer projeto
+  Node/Python com dependências.
+
+**Bug real encontrado e corrigido:** `rover_images.local_path`
+guardava a URL remota de `mars.nasa.gov` direto (apesar do nome da
+coluna), não um arquivo local -- sem internet, as ~200 fotos (grid,
+lightbox, pins do rastro do rover) quebrariam todas, virando ícone de
+imagem quebrada. Corrigido com `data-pipeline/scripts/download_rover_photos.py`
+(baixa de verdade pro disco, 39MB) + `api/main.py` servindo via
+`StaticFiles` em `/rover-photos/...`. Reflete em todo lugar que usa
+foto (`nearby_photos`, `all_photos` em `api/vector_queries.py`, agora
+com parâmetro `base_url` pra montar a URL local em vez de devolver a
+remota).
+
+**Gap conhecido, não crítico:** as fontes (Chakra Petch, IBM Plex Sans,
+JetBrains Mono) carregam via CDN do Google em `frontend/index.html`.
+Sem internet, degrada pra fonte padrão do sistema -- não quebra nada,
+só perde a tipografia escolhida. Auto-hospedar resolveria por completo;
+não fiz ainda por não ser bloqueante pra demo.
+
 ## Notas técnicas
 
 - `adapters/mars_trek_wmts.py`: lida com CRS geográfico (graus) e
