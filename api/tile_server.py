@@ -155,6 +155,14 @@ def render_tile(
     # uma reprojeção cartográfica de verdade, só reamostragem contínua
     # entre duas grades de pixel diferentes (ver docstring do módulo
     # sobre o endereçamento z/x/y não depender do raio do corpo).
+    #
+    # Resampling.cubic em vez de bilinear -- interpolação mais nítida
+    # dos MESMOS pixels reais ao dar zoom in além da resolução nativa
+    # (já confirmado: z16 é o maior nível que o Mars Trek oferece pra
+    # HiRISE nessa região, não existe mais detalhe real pra baixar).
+    # Isto não inventa nenhum pixel novo, só troca o jeito de
+    # interpolar os que já temos por um kernel mais nítido que a média
+    # simples do bilinear.
     reproject(
         source=array,
         destination=destino,
@@ -162,7 +170,7 @@ def render_tile(
         src_crs=crs,
         dst_transform=dst_transform,
         dst_crs=crs,
-        resampling=Resampling.bilinear,
+        resampling=Resampling.cubic,
     )
 
     if array.ndim == 2:

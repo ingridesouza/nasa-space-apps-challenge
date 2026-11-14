@@ -122,6 +122,14 @@ export function buildStyle(layersMeta: LayerMeta[]): StyleSpecification {
       source: layer.id,
       layout: { visibility: layer.defaultVisible ? 'visible' : 'none' },
       paint: { 'raster-opacity': layer.defaultOpacity },
+      // overlay (Relevo/THEMIS) some de vez além da resolução real
+      // deles, em vez de continuar à mostra como um tile minúsculo
+      // esticado -- como ficam por cima da base com opacidade alta
+      // (60-70%), esse estica lavava a nitidez da HiRISE por baixo
+      // (bug real reportado pelo usuário: "embaça total o mapa"). A
+      // camada base (CTX/HiRISE) continua visível além do maxzoom
+      // dela, só borrada (comportamento esperado de overzoom).
+      ...(layer.grupo === 'overlay' ? { maxzoom: LAYER_MAXZOOM[layer.id] } : {}),
     })
   }
 

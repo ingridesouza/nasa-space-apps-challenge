@@ -81,6 +81,15 @@ export function MapCanvas({
     // de ponto (eram indistinguíveis antes, confundia o usuário).
     const canvas = mapRef.current?.getCanvas()
     if (canvas) canvas.style.cursor = pickMode === 'point' ? '' : 'crosshair'
+
+    // o crosshair de "último ponto clicado" nunca era removido ao
+    // entrar no modo rota -- ficava preso na tela num lugar antigo,
+    // sem relação com origem/destino atuais (bug real reportado: "o
+    // traço não cai onde eu cliquei", na verdade era esse marcador
+    // velho confundindo a leitura, não a rota em si).
+    if (pickMode !== 'point') {
+      markerRef.current?.remove()
+    }
   }, [pickMode])
 
   useEffect(() => {
