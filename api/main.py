@@ -246,3 +246,9 @@ def get_route(origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: f
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# Front HTML/JS puro (web/) servido pela própria API -- mesma origem, offline.
+# Fica por último: o mount em "/" engoliria /api, /tiles e /layers se viesse antes.
+WEB_DIR = os.path.join(os.path.dirname(__file__), "..", "web")
+app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")
