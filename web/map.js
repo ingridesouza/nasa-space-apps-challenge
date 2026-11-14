@@ -224,6 +224,16 @@ function posicionar(m, p) {
 export const setOrigem = (p) => posicionar(marcadorOrigem, p)
 export const setDestino = (p) => posicionar(marcadorDestino, p)
 
+let marcadoresEscala = []
+/** Paradas intermediárias da rota (não confundir com a trilha do Curiosity,
+ * que também usa a palavra "paradas" em outro sentido). Quantidade varia,
+ * então recria os marcadores a cada chamada em vez de reusar um fixo. */
+export function setEscalas(escalas) {
+  if (!map) return
+  marcadoresEscala.forEach((m) => m.remove())
+  marcadoresEscala = escalas.map((p) => marcador('h2g2-route-marker h2g2-route-marker--escala').setLngLat([p.lon, p.lat]).addTo(map))
+}
+
 export function setRota(rota) {
   if (!carregado) return
   map.getSource(ROUTE_ID).setData({

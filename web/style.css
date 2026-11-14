@@ -385,6 +385,12 @@ button {
   background: var(--mars2);
   box-shadow: 0 0 10px var(--mars2);
 }
+.h2g2-route-marker--escala {
+  width: 12px;
+  height: 12px;
+  background: var(--hud-cyan);
+  box-shadow: 0 0 8px var(--hud-cyan);
+}
 @keyframes h2g2-route-marker-in {
   from {
     transform: scale(2.2);

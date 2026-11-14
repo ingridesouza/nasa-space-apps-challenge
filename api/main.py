@@ -237,19 +237,33 @@ def get_tile(layer_name: str, z: int, x: int, y: int):
 
 
 @app.get("/api/route")
-def get_route(origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float):
+def get_route(
+    origin_lat: float,
+    origin_lon: float,
+    dest_lat: float,
+    dest_lon: float,
+    stop_lat: list[float] = Query(default=[]),
+    stop_lon: list[float] = Query(default=[]),
+):
     """Feature 02 -- A* real sobre o DTM, duas variantes (mais_segura/
     mais_rapida). Ver route_planning.py pro desvio consciente do AI4Mars
     (não cobre o boxwork -- custo usa só inclinação real, areia vira
     aviso textual). Dose de radiação real (RAD, mesmo REFERENCE_SOL de
     /api/conditions) entra como estimativa acumulada pela duração da
-    caminhada -- None se o sol não estiver cacheado, nunca 0 fingido."""
+    caminhada -- None se o sol não estiver cacheado, nunca 0 fingido.
+
+    stop_lat/stop_lon (mesmo tamanho, mesma ordem): paradas intermediárias
+    entre origem e destino -- gap "paradas intermediárias"."""
+    if len(stop_lat) != len(stop_lon):
+        raise HTTPException(status_code=422, detail="stop_lat e stop_lon precisam ter o mesmo tamanho")
+    paradas = list(zip(stop_lat, stop_lon))
+
     dados_rad = get_cached_conditions(REFERENCE_SOL)
     dose_rad_ugy_por_hora = dados_rad["rad"]["dose_media_ugy_por_hora"] if dados_rad else None
 
     conn = get_connection()
     try:
-        resultado = plan_route(conn, origin_lat, origin_lon, dest_lat, dest_lon, dose_rad_ugy_por_hora)
+        resultado = plan_route(conn, origin_lat, origin_lon, dest_lat, dest_lon, dose_rad_ugy_por_hora, paradas)
     except ForaDoGridError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except SemCaminhoError as e:

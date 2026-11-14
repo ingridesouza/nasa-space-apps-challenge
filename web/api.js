@@ -27,8 +27,15 @@ export const getNomenclature = () => get('/api/nomenclature')
 export const getRoverTrack = () => get('/api/rover-track')
 export const getLayers = () => get('/layers')
 export const getRoverPhotos = () => get('/api/photos')
-export const getRoute = (o, d) =>
-  get(`/api/route?origin_lat=${o.lat}&origin_lon=${o.lon}&dest_lat=${d.lat}&dest_lon=${d.lon}`)
+/** paradas: [{lat,lon}, ...] opcional, em ordem -- pontos entre origem e destino. */
+export const getRoute = (o, d, paradas = []) => {
+  const params = new URLSearchParams({ origin_lat: o.lat, origin_lon: o.lon, dest_lat: d.lat, dest_lon: d.lon })
+  for (const p of paradas) {
+    params.append('stop_lat', p.lat)
+    params.append('stop_lon', p.lon)
+  }
+  return get(`/api/route?${params}`)
+}
 export const mosaicUrl = (layer) => `/mosaics/${layer}.png`
 // F03/F04 (rotas do subprojeto servidas pela mesma API)
 export const getPanorama = (lat, lon) => get(`/panoramas/nearest?lat=${lat}&lon=${lon}`)

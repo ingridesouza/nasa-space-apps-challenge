@@ -105,7 +105,7 @@ let erro = null
 let carregando = false
 let pedido = 0
 let el, cb
-let ultimo = { origem: null, destino: null }
+let ultimo = { origem: null, destino: null, escalas: [] }
 const janelas = new Map() // "sol|minutos" -> janela_eva (F06); undefined = calculando
 let solEva = null // null = hoje (a API decide)
 
@@ -154,6 +154,13 @@ function render(origem, destino) {
         <input type="number" min="1" step="1" value="${capacidadeO2L}" data-campo="capacidade-o2"
           style="width:5em;background:var(--panel-bg,transparent);color:inherit;border:1px solid var(--ink-3);border-radius:4px;padding:2px 4px">L
       </label>`
+    corpo += `<div class="h2g2-small" style="margin-bottom:var(--s-3)">
+      ${ultimo.escalas.map((p, i) => `<div class="h2g2-mono h2g2-dim" style="display:flex;justify-content:space-between;gap:var(--s-2)">
+        <span>parada ${i + 1}: ${coord(p)}</span>
+        <button class="h2g2-link-btn" data-acao="remover-escala" data-i="${i}" aria-label="Remover parada ${i + 1}">×</button>
+      </div>`).join('')}
+      <button class="h2g2-link-btn" data-acao="adicionar-escala">+ adicionar parada no caminho</button>
+    </div>`
     if (carregando) corpo += '<div class="h2g2-dim h2g2-mono h2g2-small">calculando rota (A* sobre o DTM)...</div>'
     if (erro) corpo += `<div class="h2g2-erro">${esc(erro)}</div>`
     if (data) {
@@ -181,7 +188,8 @@ function render(origem, destino) {
     </div>${corpo}`
 }
 
-/** Liga o painel. callbacks: onFechar(), onReset(), onRotaAtiva(rota|null). */
+/** Liga o painel. callbacks: onFechar(), onReset(), onRotaAtiva(rota|null),
+ * onAdicionarEscala(), onRemoverEscala(indice). */
 export function iniciarRota(container, callbacks) {
   el = container
   cb = callbacks
@@ -193,6 +201,8 @@ export function iniciarRota(container, callbacks) {
       cb.onRotaAtiva(rotaAtiva())
     } else if (b.dataset.acao === 'fechar') return cb.onFechar()
     else if (b.dataset.acao === 'reset') return cb.onReset()
+    else if (b.dataset.acao === 'adicionar-escala') return cb.onAdicionarEscala()
+    else if (b.dataset.acao === 'remover-escala') return cb.onRemoverEscala(Number(b.dataset.i))
     else avisoExpandido = b.dataset.acao === 'expandir'
     render(ultimo.origem, ultimo.destino)
   })
@@ -205,8 +215,8 @@ export function iniciarRota(container, callbacks) {
     if (v > 0) capacidadeO2L = v
     render(ultimo.origem, ultimo.destino)
   })
-  return async function atualizarRota(origem, destino) {
-    ultimo = { origem, destino }
+  return async function atualizarRota(origem, destino, escalas = []) {
+    ultimo = { origem, destino, escalas }
     const meu = ++pedido
     data = null
     erro = null
@@ -215,7 +225,7 @@ export function iniciarRota(container, callbacks) {
     render(origem, destino)
     if (!carregando) return
     try {
-      data = await getRoute(origem, destino)
+      data = await getRoute(origem, destino, escalas)
       tipo = 'mais_segura'
     } catch (e) {
       erro = e.message

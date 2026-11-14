@@ -24,7 +24,9 @@ const estado = {
   modoRota: false,
   origem: null,
   destino: null,
+  escalas: [], // paradas intermediárias, em ordem, entre origem e destino
 }
+let aguardandoEscala = false // true logo depois de "+ adicionar parada no caminho"
 
 const hud = () => {
   renderHud($('hud'), estado)
@@ -39,24 +41,40 @@ const atualizarRota = iniciarRota($('rota'), {
   onFechar: alternarRota,
   onReset: () => marcarRota(null, null),
   onRotaAtiva: mapa.setRota,
+  onAdicionarEscala: () => {
+    aguardandoEscala = true
+    mapa.setModo('pick-destination')
+    const instr = $('instrucao')
+    instr.hidden = false
+    instr.classList.add('destino')
+    instr.textContent = 'clique no mapa para adicionar a PARADA'
+  },
+  onRemoverEscala: (i) => {
+    estado.escalas.splice(i, 1)
+    mapa.setEscalas(estado.escalas)
+    atualizarRota(estado.origem, estado.destino, estado.escalas)
+  },
 })
 
 function marcarRota(origem, destino) {
   estado.origem = origem
   estado.destino = destino
+  estado.escalas = []
   mapa.setOrigem(origem)
   mapa.setDestino(destino)
+  mapa.setEscalas([])
   mapa.setModo(!estado.modoRota ? 'point' : !origem ? 'pick-origin' : !destino ? 'pick-destination' : 'pick-origin')
   // instrução grande, cor do marcador que vai aparecer (verde=origem, vermelho=destino)
   const instr = $('instrucao')
   instr.hidden = !estado.modoRota || Boolean(origem && destino)
   instr.classList.toggle('destino', Boolean(origem))
   instr.textContent = !origem ? 'PASSO 1/2 · clique no mapa para marcar a ORIGEM' : 'PASSO 2/2 · clique no mapa para marcar o DESTINO'
-  if (estado.modoRota) atualizarRota(origem, destino)
+  if (estado.modoRota) atualizarRota(origem, destino, estado.escalas)
 }
 
 function alternarRota() {
   estado.modoRota = !estado.modoRota
+  aguardandoEscala = false
   const btn = $('btn-rota')
   btn.classList.toggle('on', estado.modoRota)
   btn.textContent = estado.modoRota ? '✕ cancelar rota' : '◇ planejar rota'
@@ -80,6 +98,13 @@ function cliqueNoMapa(lat, lon) {
       estado.ponto = null
       hud()
     })
+  } else if (aguardandoEscala) {
+    aguardandoEscala = false
+    estado.escalas.push(p)
+    mapa.setEscalas(estado.escalas)
+    mapa.setModo('pick-origin')
+    $('instrucao').hidden = true
+    atualizarRota(estado.origem, estado.destino, estado.escalas)
   } else if (!estado.origem) marcarRota(p, null)
   else if (!estado.destino) marcarRota(estado.origem, p)
   else marcarRota(p, null) // terceiro clique recomeça a escolha

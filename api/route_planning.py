@@ -290,7 +290,28 @@ def _melhor_alvo_cientifico(origin_lat, origin_lon, dest_lat, dest_lon, alvos: l
     return melhor
 
 
-def plan_route(conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_lon, dose_rad_ugy_por_hora=None) -> dict:
+def _astar_encadeado(elevacao, slope_deg, transform, pixel_size_m, pontos_rc: list, tipo: str) -> list:
+    """Encadeia A* por uma sequência de pontos (origem, paradas..., destino),
+    uma chamada por perna, concatenando sem duplicar o pixel de junção
+    entre pernas consecutivas. Generaliza o que "mais_ciencia" já fazia
+    com 2 pernas (origem->alvo->destino) pra N pernas (paradas manuais)."""
+    caminho = _astar(elevacao, slope_deg, transform, pixel_size_m, pontos_rc[0], pontos_rc[1], tipo)
+    for i in range(1, len(pontos_rc) - 1):
+        perna = _astar(elevacao, slope_deg, transform, pixel_size_m, pontos_rc[i], pontos_rc[i + 1], tipo)
+        caminho += perna[1:]
+    return caminho
+
+
+def plan_route(
+    conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_lon, dose_rad_ugy_por_hora=None, paradas=None
+) -> dict:
+    """paradas: lista opcional de (lat, lon) -- pontos que a rota precisa
+    visitar em ordem, entre a origem e o destino (gap "paradas
+    intermediárias"). Com paradas, a variante "mais_ciencia" não entra:
+    ela já é uma forma automática de visitar um ponto no meio do
+    caminho, e duas lógicas de "ponto no meio" ao mesmo tempo só
+    confundiriam qual rota passa por onde -- se o astronauta já está
+    escolhendo os pontos manualmente, isso substitui a sugestão automática."""
     path = _dtm_path(conn)
     elevacao, transform, bounds, nodata = _load_dtm(path)
 
@@ -301,15 +322,17 @@ def plan_route(conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_
     def dentro_bbox(lat, lon):
         return bounds.left <= lon <= bounds.right and bounds.bottom <= lat <= bounds.top
 
-    if not dentro_bbox(origin_lat, origin_lon) or not dentro_bbox(dest_lat, dest_lon):
-        raise ForaDoGridError("Origem ou destino fora da área com dado DTM baixado")
+    paradas = paradas or []
+    todos_pontos = [(origin_lat, origin_lon), *paradas, (dest_lat, dest_lon)]
+    if not all(dentro_bbox(lat, lon) for lat, lon in todos_pontos):
+        raise ForaDoGridError("Origem, parada ou destino fora da área com dado DTM baixado")
 
-    origem_rc = _latlon_to_rc(transform, origin_lat, origin_lon)
-    destino_rc = _latlon_to_rc(transform, dest_lat, dest_lon)
+    pontos_rc = [_latlon_to_rc(transform, lat, lon) for lat, lon in todos_pontos]
+    origem_rc, destino_rc = pontos_rc[0], pontos_rc[-1]
 
     rotas = []
     for tipo in ("mais_segura", "mais_rapida"):
-        caminho = _astar(elevacao, slope_deg, transform, pixel_size_m, origem_rc, destino_rc, tipo)
+        caminho = _astar_encadeado(elevacao, slope_deg, transform, pixel_size_m, pontos_rc, tipo)
         rotas.append(_monta_rota(tipo, caminho, elevacao, slope_deg, transform, pixel_size_m, dose_rad_ugy_por_hora))
 
     # "mais_ciencia": passa pelo alvo científico real mais próximo do
@@ -317,23 +340,24 @@ def plan_route(conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_
     # -- com só 3 alvos cadastrados (feature 4), nem sempre vai existir
     # um perto o bastante, e aí essa variante simplesmente não aparece
     # (melhor que forçar um desvio absurdo só pra "ter ciência").
-    alvo = _melhor_alvo_cientifico(origin_lat, origin_lon, dest_lat, dest_lon, _todos_alvos_cientificos(conn))
-    if alvo is not None:
-        alvo_rc = _latlon_to_rc(transform, alvo["lat"], alvo["lon"])
-        try:
-            perna1 = _astar(elevacao, slope_deg, transform, pixel_size_m, origem_rc, alvo_rc, "mais_segura")
-            perna2 = _astar(elevacao, slope_deg, transform, pixel_size_m, alvo_rc, destino_rc, "mais_segura")
-            caminho_completo = perna1 + perna2[1:]  # sem duplicar o pixel do alvo
-            rota_ciencia = _monta_rota(
-                "mais_ciencia", caminho_completo, elevacao, slope_deg, transform, pixel_size_m, dose_rad_ugy_por_hora
-            )
-            rota_ciencia["alvo_cientifico"] = {
-                "nome": alvo["nome"],
-                "medicao_curiosity": alvo["medicao_curiosity"],
-                "fonte_url": alvo["fonte_url"],
-            }
-            rotas.append(rota_ciencia)
-        except (SemCaminhoError, ForaDoGridError):
-            pass  # alvo existe mas não tem caminho caminhável até ele -- sem essa variante, sem quebrar as outras duas
+    if not paradas:
+        alvo = _melhor_alvo_cientifico(origin_lat, origin_lon, dest_lat, dest_lon, _todos_alvos_cientificos(conn))
+        if alvo is not None:
+            alvo_rc = _latlon_to_rc(transform, alvo["lat"], alvo["lon"])
+            try:
+                caminho_completo = _astar_encadeado(
+                    elevacao, slope_deg, transform, pixel_size_m, [origem_rc, alvo_rc, destino_rc], "mais_segura"
+                )
+                rota_ciencia = _monta_rota(
+                    "mais_ciencia", caminho_completo, elevacao, slope_deg, transform, pixel_size_m, dose_rad_ugy_por_hora
+                )
+                rota_ciencia["alvo_cientifico"] = {
+                    "nome": alvo["nome"],
+                    "medicao_curiosity": alvo["medicao_curiosity"],
+                    "fonte_url": alvo["fonte_url"],
+                }
+                rotas.append(rota_ciencia)
+            except (SemCaminhoError, ForaDoGridError):
+                pass  # alvo existe mas não tem caminho caminhável até ele -- sem essa variante, sem quebrar as outras duas
 
     return {"rotas": rotas, "avisos": [AVISO_AREIA]}
