@@ -112,7 +112,7 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .mapa-aberto .mapa-acoes,.mapa-aberto .flutuante-toggle,.mapa-aberto .pilula ~ .visor-fechar{display:none}
 /* com o mapa aberto, só o card de rota fica por cima; o resto some sem perder o layout */
 .mapa-aberto .flutuante{z-index:12}
-.mapa-aberto #c-status,.mapa-aberto #c-pano,.mapa-aberto #c-fotos,.mapa-aberto .fichas{visibility:hidden}
+.mapa-aberto .fichas{z-index:12}
 
 .camadas{position:absolute;z-index:12;top:72px;left:20px;width:250px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
 .cam-topo{display:flex;align-items:center;justify-content:flex-end;margin-bottom:4px}
@@ -136,8 +136,10 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .h2g2-crosshair::after{top:50%;left:0;height:2px;width:100%;transform:translateY(-50%)}
 .h2g2-crosshair-dot{position:absolute;top:50%;left:50%;width:8px;height:8px;border-radius:50%;border:2px solid var(--b200);transform:translate(-50%,-50%)}
 .h2g2-route-marker{width:16px;height:16px;border-radius:50%;border:2px solid var(--n950);box-shadow:0 0 6px rgba(0,0,0,.6)}
-.h2g2-route-marker--origin{background:var(--ok);box-shadow:0 0 10px var(--ok)}
-.h2g2-route-marker--destination{background:var(--mars2);box-shadow:0 0 10px var(--mars2)}
+.h2g2-route-marker--origin{background:var(--n700);border-color:var(--b200);box-shadow:0 0 0 2px rgba(10,10,11,.55)}
+.h2g2-flag{width:24px;height:28px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
+.h2g2-flag svg{display:block}
+.h2g2-pano-marker{width:9px;height:9px;border-radius:50%;background:var(--b400);border:1px solid rgba(10,10,11,.5);opacity:.75}
 .h2g2-route-marker--escala{width:12px;height:12px;background:var(--b200)}
 
 /* destino por coordenadas: mesmo formulário do visor antigo, no lugar do minimapa */
@@ -145,6 +147,8 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .campo{display:grid;grid-template-columns:62px 1fr;align-items:center;gap:8px;font-size:11px;color:var(--mut)}
 .campo input{width:100%;min-height:36px;padding:0 10px;background:rgba(10,10,11,.8);border:1px solid var(--line);border-radius:2px;color:var(--tx);font-size:13px}
 .campo input:focus{border-color:var(--b400)}
+.campo input[type=number]{-moz-appearance:textfield;appearance:textfield}
+.campo input::-webkit-outer-spin-button,.campo input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .campo input[aria-invalid=true]{border-color:var(--mars2)}
 .coords-msg{margin:0;font-size:11px;line-height:1.4;color:#FF9C7D}
 
@@ -154,16 +158,16 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .flutuante::-webkit-scrollbar{display:none}
 .flutuante,.fichas{transition:opacity .22s ease,visibility 0s}
 .flutuante.colapsada{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .22s ease,visibility 0s .22s}
+/* pannellum põe visibility:visible inline no hotspot: sem isso o "i" vaza da barra recolhida */
+.flutuante.colapsada .pnlm-hotspot-base{visibility:hidden!important}
+.flutuante-toggle[hidden]{display:none}
 .flutuante-toggle{position:absolute;z-index:8;top:20px;right:20px;}
 .flutuante[hidden] + .flutuante-toggle{display:none}
 .flutuante.colapsada + .flutuante-toggle{right:20px}
 .card{flex:none;pointer-events:auto;padding:12px;backdrop-filter:blur(10px);
   background:linear-gradient(160deg,rgba(32,56,98,.55),rgba(18,18,20,.88) 58%);box-shadow:0 20px 60px rgba(0,0,0,.55)}
-#c-status{padding:0;background:none;border:0;box-shadow:none;backdrop-filter:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px;align-self:flex-end;width:max-content;max-width:100%}
 #c-status[hidden]{display:none}
-#c-status .kv{gap:28px;padding:5px 10px;border:1px solid var(--line);border-radius:3px;font-size:12px;max-width:100%;
-  background:linear-gradient(160deg,rgba(32,56,98,.55),rgba(18,18,20,.88) 58%);backdrop-filter:blur(10px)}
-#c-status .vazio{padding:5px 10px;border:1px solid var(--line);border-radius:3px;background:rgba(18,18,20,.88)}
+#c-status .kv:last-child{border-bottom:0}
 .fichas{position:absolute;z-index:7;right:calc(var(--painel-w) + 32px);bottom:20px;width:340px;max-height:calc(100% - 40px);
   display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none}
 .fichas.colapsada{opacity:0;visibility:hidden;transition:opacity .22s ease,visibility 0s .22s}
@@ -263,3 +267,10 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
   .flutuante-toggle,.flutuante.colapsada + .flutuante-toggle{right:20px;top:auto;bottom:calc(min(55vh,100%) + 8px)}
   .flutuante.colapsada + .flutuante-toggle{bottom:12px}
 }
+.rota-topo{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:8px}
+.rota-topo .link-btn{margin-left:auto;font-size:12px;white-space:nowrap}
+.legenda-rota{font-size:11px;color:var(--mut)}
+.legenda-rota > div{display:flex;gap:14px}
+.legenda-rota > div span{display:flex;align-items:center;gap:6px}
+.legenda-rota i{width:14px;height:4px;border-radius:2px}
+.legenda-rota .legenda-titulo{display:block;margin-bottom:4px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;opacity:.6}

@@ -1,7 +1,8 @@
 // F02 + F06: card de rota (A* real sobre o DTM, pesos por tipo em api/route_planning.py)
 // com a janela da EVA da previsão local. A origem é sempre a posição atual.
 import { apagarMedicao, getPrevisao, getRoute, postMedicao } from '../api.js'
-import { alertasHtml, coord, esc, num, veredito } from './util.js'
+import { SLOPE_COLOR_HEX } from '../layers.js'
+import { coord, esc, num, veredito } from './util.js'
 
 const TIPO_LABEL = { mais_segura: 'Mais segura', mais_rapida: 'Mais rápida', mais_ciencia: 'Mais ciência' }
 
@@ -95,14 +96,7 @@ function detalheRota(r) {
       { ok: r.o2_estimado_l <= limite, label: 'O₂ da ida dentro da reserva de 20%' },
       { ok: r.o2_estimado_l * 2 <= limite, label: 'O₂ alcança para voltar (ida + volta)' },
     ])}
-    ${r.alertas?.length ? `<div class="rota-sec">${alertasHtml(r.alertas)}</div>` : ''}
-    <div class="rota-sec">
-      ${kv('Distância · ida', `${num(r.distancia_m)} m`)}
-      ${kv('Tempo · ida / ida + volta', `~${num(r.tempo_estimado_min)} / ~${num(r.tempo_estimado_min * 2)} min`)}
-      ${kv('Dose RAD · ida / ida + volta', dose !== null ? `${dose.toFixed(2)} / ${(dose * 2).toFixed(2)} µGy` : '—')}
-    </div>
     ${o2Html(r)}
-    <div class="rota-sec"><span class="fl-sec">Perfil de elevação</span>${perfilSvg(r.perfil_elevacao)}</div>
     ${alvo ? `<div class="rota-sec"><span class="fl-sec">Passa perto de</span>
       <button type="button" class="alvo-btn" data-acao="alvo">◇ ${esc(alvo.nome)} <span class="mono">abrir ficha ›</span></button></div>` : ''}`
 }
@@ -178,13 +172,16 @@ const rotaAtiva = () => st.data?.rotas.find((r) => r.tipo === st.tipo) ?? null
 
 function render() {
   let corpo
+  // legenda das cores do traçado (mesmas faixas de api/route_planning.py)
+  const legenda = st.data ? `<div class="legenda-rota mono"><span class="legenda-titulo">Inclinação</span><div>${[['seguro', '< 15°'], ['atencao', '15–20°'], ['perigo', '≥ 20°']]
+    .map(([k, t]) => `<span><i style="background:${SLOPE_COLOR_HEX[k]}"></i>${t}</span>`).join('')}</div></div>` : ''
   if (!st.destino) corpo = '<p class="vazio">Clique no mapa ou digite as coordenadas do destino.</p>'
   else {
     corpo = `<div class="rota-sec">
       ${kv('Origem', 'posição atual')}
       ${st.escalas.map((p, i) => kv(`Parada ${i + 1}`, `${coord(p)} <button type="button" class="link-btn" data-acao="remover-escala" data-i="${i}" aria-label="Remover parada ${i + 1}">×</button>`)).join('')}
       ${kv('Destino', coord(st.destino))}
-      <button type="button" class="link-btn" data-acao="adicionar-escala">+ parada no caminho</button>
+      ${rotaAtiva() ? kv('Comprimento da rota', `${num(rotaAtiva().distancia_m)} m`) + kv('Tempo · ida + volta', `~${num(rotaAtiva().tempo_estimado_min * 2)} min`) : ''}
     </div>`
     if (st.carregando) corpo += '<p class="vazio">calculando rota (A* sobre o DTM)…</p>'
     if (st.erro) corpo += `<p class="vazio erro">${esc(st.erro)}</p>`
@@ -192,7 +189,7 @@ function render() {
       corpo += `<div class="tipos">${st.data.rotas
         .map((r) => `<button type="button" class="tipo ${r.tipo === st.tipo ? 'on' : ''}" data-tipo="${r.tipo}">${TIPO_LABEL[r.tipo] ?? esc(r.tipo)}</button>`).join('')}</div>`
       const r = rotaAtiva()
-      if (r) corpo += detalheRota(r) + secaoEva(r)
+      if (r) corpo += detalheRota(r)
       if (st.data.avisos.length) {
         corpo += `<details class="rota-sec avisos"${st.avisosAbertos ? ' open' : ''}><summary class="fl-sec">⚠ Avisos gerais da região</summary>
           ${st.data.avisos.map((a) => `<p class="rotulo mono aviso">${esc(a)}</p>`).join('')}</details>`
@@ -202,7 +199,7 @@ function render() {
   const aberto = el.querySelector('details.rota-corpo')?.open ?? true
   el.innerHTML = `<details class="rota-corpo"${aberto ? ' open' : ''}>
     <summary><span class="ficha-nome">Rota</span><span class="tag">${st.data ? esc(TIPO_LABEL[st.tipo] ?? '') : st.destino ? 'calculando' : 'sem destino'}</span></summary>
-    <div class="rota-body">${corpo}
+    <div class="rota-body">${st.destino ? `<div class="rota-topo">${legenda}<button type="button" class="link-btn" data-acao="adicionar-escala">+ parada no caminho</button></div>` : ''}${corpo}
       <button type="button" class="link-btn rota-cancelar" data-acao="cancelar">✕ cancelar rota</button></div>
   </details>`
 }

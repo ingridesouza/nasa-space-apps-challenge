@@ -67,14 +67,22 @@ function buildStyle(metas) {
 let map = null
 let carregado = false
 let modo = 'visor' // 'visor' (círculo) | 'explorar' | 'rota'
-let marcadorClique, marcadorOrigem, marcadorDestino
+let marcadorClique, marcadorOrigem, marcadorDestino, marcadorPano
 
-function marcador(classe, filho) {
+function marcador(classe, filho, opcoes = {}) {
   const el = document.createElement('div')
   el.className = classe
-  if (filho) el.appendChild(filho)
-  return new Marker({ element: el })
+  if (typeof filho === 'string') el.innerHTML = filho
+  else if (filho) el.appendChild(filho)
+  return new Marker({ element: el, ...opcoes })
 }
+
+// bandeira de chegada: a base do mastro (x=3, y=27) cai exatamente no destino
+const BANDEIRA = `<svg viewBox="0 0 24 28" width="24" height="28" aria-hidden="true">
+  <path d="M3 27V2" stroke="#0a0a0b" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M3 27V2" stroke="#e2e2e6" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M4 2.5h16l-4 5 4 5H4z" fill="#E8643F" stroke="#0a0a0b" stroke-width="1.2" stroke-linejoin="round"/>
+</svg>`
 
 const vazio = () => ({ type: 'FeatureCollection', features: [] })
 
@@ -99,8 +107,11 @@ export function criarMapa(container, metas, { onClick, onLoad }) {
   const dot = document.createElement('div')
   dot.className = 'h2g2-crosshair-dot'
   marcadorClique = marcador('h2g2-crosshair', dot)
+  marcadorPano = marcador('h2g2-pano-marker') // criado antes: fica por baixo dos outros
   marcadorOrigem = marcador('h2g2-route-marker h2g2-route-marker--origin')
-  marcadorDestino = marcador('h2g2-route-marker h2g2-route-marker--destination')
+  marcadorOrigem.getElement().title = 'Posição atual (início do trajeto)'
+  marcadorDestino = marcador('h2g2-flag', BANDEIRA, { anchor: 'bottom-left', offset: [-3, 1] })
+  marcadorDestino.getElement().title = 'Destino'
 
   map.on('click', (e) => {
     // pin de foto consome o clique (não abre briefing nem marca rota por baixo)
@@ -166,6 +177,11 @@ function posicionar(m, p) {
 }
 export const setOrigem = (p) => posicionar(marcadorOrigem, p)
 export const setDestino = (p) => posicionar(marcadorDestino, p)
+/** Parada do Curiosity onde foi tirado o panorama mostrado na barra (null tira). */
+export function setPanorama(p) {
+  posicionar(marcadorPano, p)
+  if (p && marcadorPano) marcadorPano.getElement().title = `Panorama mais próximo · sol ${p.sol}`
+}
 
 let marcadoresEscala = []
 /** Paradas intermediárias da rota. Quantidade varia,

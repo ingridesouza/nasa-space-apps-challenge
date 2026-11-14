@@ -2,7 +2,7 @@
 // que expande; rota (F02 + F06) num card; assistente (F08) no topo.
 // A posição atual vem do rastreador (simulado em /api/posicao) e é a origem da rota.
 import {
-  getFichaCientifica, getFotosPerto, getLayers, getNomenclature, getPanorama,
+  getFichaCientifica, getFotosPerto, getLayers, getPanorama,
   getPoint, getPosicao,
 } from './api.js'
 import { TOGGLEABLE_LAYERS } from './layers.js'
@@ -10,7 +10,7 @@ import * as mapa from './map.js'
 import { iniciarAssistente } from './ui/agente.js'
 import { renderCamadas } from './ui/camadas.js'
 import { iniciarRota } from './ui/rota.js'
-import { esc, nomeMaisProximo } from './ui/util.js'
+import { esc } from './ui/util.js'
 
 const $ = (id) => document.getElementById(id)
 const mobile = () => matchMedia('(max-width:900px)').matches
@@ -25,7 +25,6 @@ const estado = {
   escalas: [],
   rota: null,
   camadas: Object.fromEntries(TOGGLEABLE_LAYERS.map((l) => [l.id, { visible: l.defaultVisible, opacity: l.defaultOpacity }])),
-  nomenclatura: [],
 }
 let aguardandoEscala = false
 
@@ -44,7 +43,7 @@ async function carregarLocal(local) {
   ])).map((r) => (r.status === 'fulfilled' ? r.value : null))
   if (meu !== seqLocal) return // outro local já substituiu este
   ultimo = { pano }
-  mostrarStatus()
+  mapa.setPanorama(pano?.found ? pano : null)
   if (pano) mostrarPano(pano)
   else limparPano()
   mostrarFicha(ficha ?? 'erro')
@@ -52,29 +51,32 @@ async function carregarLocal(local) {
   else $('c-fotos').hidden = true
 }
 
+// barra fechada e travada (sem toggle) até haver destino com rota calculada
+function limparBarra() {
+  seqLocal++
+  estado.local = null
+  ultimo = null
+  limparPano()
+  fecharFoto()
+  mapa.setPanorama(null)
+  for (const id of ['c-status', 'c-fotos', 'c-ficha']) $(id).hidden = true
+  $('flutuante-toggle').hidden = true
+  colapsarBarra(false)
+  $('flutuante').hidden = $('c-rota').hidden
+}
+
+const mesmoPonto = (a, b) => a && b && a.lat === b.lat && a.lon === b.lon
+
 function carregando() {
   for (const id of ['c-pano', 'c-fotos', 'c-ficha']) $(id).hidden = true
+  $('flutuante-toggle').hidden = false
   const primeira = $('flutuante').hidden
   if (primeira) colapsarBarra(true) // nasce transparente e faz fade-in
-  card('c-status', '<p class="vazio">Processando posição…</p>')
   posicionarToggle()
   if (primeira) requestAnimationFrame(() => requestAnimationFrame(() => colapsarBarra(false)))
 }
 
 function card(id, html) { $(id).innerHTML = html; $(id).hidden = false; $('flutuante').hidden = false }
-
-// ---------------- Status: só o que o astronauta não sabe de cabeça ----------------
-function mostrarStatus() {
-  if (!ultimo || !estado.local) return
-  const { pano: p } = ultimo
-  const l = estado.local
-  const linhas = [[l.tipo === 'destino' ? 'Destino' : 'Posição atual', `${l.lat.toFixed(6)}° · ${l.lon.toFixed(6)}°E`]]
-  const perto = nomeMaisProximo(estado.nomenclatura, l.lat, l.lon)
-  if (perto) linhas.push(['Perto de', `${perto.feature.nome} · ${(perto.distance_m / 1000).toFixed(1)} km`, `Nome oficial IAU/USGS · ${perto.feature.tipo}`])
-  if (p?.found) linhas.push(['Distância da parada', `${p.distancia_m} m`])
-  card('c-status', linhas.map(([k, v, titulo]) =>
-    `<div class="kv"${titulo ? ` title="${esc(titulo)}"` : ''}><span>${esc(k)}</span><span>${esc(v)}</span></div>`).join(''))
-}
 
 // ---------------- Panorama ----------------
 let viewer = null // preview (sempre no painel)
@@ -124,7 +126,7 @@ function colapsarBarra(c) {
 }
 // botão fica à esquerda do primeiro card (largura variável); recolhido, vai para a borda
 function posicionarToggle() {
-  const t = $('flutuante-toggle'), s = $('c-status')
+  const t = $('flutuante-toggle'), s = $('c-status').hidden ? $('c-rota') : $('c-status')
   const colap = $('flutuante').classList.contains('colapsada')
   t.style.right = mobile() ? '' : (colap || s.hidden) ? '20px' : (20 + s.offsetWidth + 8) + 'px'
 }
@@ -263,9 +265,7 @@ function abrirMapa(modo) {
   mapa.setModo(modo)
   if (modo === 'rota') {
     if (!estado.rotaAtiva) {
-      estado.rotaAtiva = true
-      $('c-rota').hidden = false
-      $('flutuante').hidden = false
+      estado.rotaAtiva = true // card de rota só aparece com destino (a instrução já guia o clique)
       atualizarRota(estado.posicao, null, [])
     }
     if (!estado.destino) instrucao('clique no mapa ou digite as coordenadas do DESTINO')
@@ -284,7 +284,6 @@ function fecharMapa() {
   rotaAberta(false)
   let carga = Promise.resolve()
   if (estado.rotaAtiva && !estado.destino) cancelarRota()
-  else if (estado.destino && estado.local?.tipo !== 'destino') carga = carregarLocal({ ...estado.destino, tipo: 'destino', rotulo: 'o destino da rota' })
   depoisDaTransicao(() => {
     mapa.redimensionar()
     mapa.centrar(estado.destino ?? estado.posicao, estado.rota)
@@ -304,6 +303,10 @@ const atualizarRota = iniciarRota($('c-rota'), {
     estado.rota = r
     mapa.setRota(r)
     if (r && estado.mapa === 'visor') mapa.centrar(null, r)
+    // rota calculada: a barra abre com panorama, fotos e ficha do DESTINO (não da origem)
+    if (r && estado.destino && !mesmoPonto(estado.local, estado.destino)) {
+      carregarLocal({ ...estado.destino, tipo: 'destino', rotulo: 'o destino da rota' })
+    }
   },
   onAdicionarEscala: () => {
     if (estado.mapa !== 'rota') abrirMapa('rota')
@@ -323,6 +326,9 @@ const atualizarRota = iniciarRota($('c-rota'), {
 })
 
 function definirDestino(p) {
+  if (!mesmoPonto(estado.local, p)) limparBarra() // dados do destino anterior saem já
+  $('c-rota').hidden = false
+  $('flutuante').hidden = false
   estado.destino = p
   estado.escalas = []
   mapa.setDestino(p)
@@ -333,7 +339,6 @@ function definirDestino(p) {
 }
 
 function cancelarRota() {
-  const eraDestino = estado.local?.tipo === 'destino'
   Object.assign(estado, { rotaAtiva: false, destino: null, escalas: [], rota: null })
   aguardandoEscala = false
   mapa.setDestino(null)
@@ -347,7 +352,7 @@ function cancelarRota() {
     $('coords').hidden = true
     instrucao(null)
   }
-  if (eraDestino && estado.posicao) carregarLocal(estado.posicao)
+  limparBarra()
 }
 
 // ---------------- Destino por coordenadas ----------------
@@ -442,14 +447,11 @@ document.addEventListener('keydown', (e) => {
 iniciarAssistente($('assistente'), $('btn-assistente'), () => estado.local ?? estado.posicao)
 
 // ---------------- Carga inicial ----------------
-getNomenclature().then((n) => { estado.nomenclatura = n; mostrarStatus() }).catch(() => {})
-
 getPosicao()
   .then((p) => {
     estado.posicao = { lat: p.lat, lon: p.lon, rotulo: 'a posição atual', fonte: p.rotulo, tipo: 'posicao' }
-      mapa.setOrigem(estado.posicao)
+    mapa.setOrigem(estado.posicao)
     mapa.centrar(estado.posicao)
-    return carregarLocal(estado.posicao)
   })
   .catch((e) => card('c-status', `<p class="vazio erro">Sem posição: ${esc(e.message)}</p>`))
 
