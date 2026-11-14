@@ -171,11 +171,19 @@ def get_photos(request: Request):
 def get_rover_track():
     """Paradas do Curiosity dentro do bbox das camadas, com a inclinação
     medida pelo rover já classificada (feature 08, memória do terreno).
-    O bbox vem do raster_registry, mesma fonte única do /layers."""
+    O bbox vem do raster_registry, mesma fonte única do /layers.
+
+    Bug real corrigido: era MIN(min)/MAX(max) -- a UNIÃO dos bbox de
+    todas as camadas, dominada pela THEMIS (cobre uma área bem maior
+    que o CTX/HiRISE/DTM baixados de verdade). Isso deixava passar
+    paradas reais do rover fora de qualquer imagem de base, então a
+    trilha aparecia sobre fundo preto ao afastar o zoom. O certo é a
+    INTERSECÇÃO (MAX(min)/MIN(max)): só a área onde toda camada tem
+    dado de verdade."""
     conn = get_connection()
     try:
         bbox = conn.execute(
-            "SELECT MIN(min_lon), MIN(min_lat), MAX(max_lon), MAX(max_lat) FROM raster_registry"
+            "SELECT MAX(min_lon), MAX(min_lat), MIN(max_lon), MIN(max_lat) FROM raster_registry"
         ).fetchone()
     finally:
         conn.close()
