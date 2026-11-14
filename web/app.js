@@ -74,7 +74,7 @@ function mostrarStatus() {
   const linhas = [[l.tipo === 'destino' ? 'Destino' : 'Posição atual', `${l.lat.toFixed(6)}° · ${l.lon.toFixed(6)}°E`]]
   const perto = nomeMaisProximo(estado.nomenclatura, l.lat, l.lon)
   if (perto) linhas.push(['Perto de', `${perto.feature.nome} · ${(perto.distance_m / 1000).toFixed(1)} km`, `Nome oficial IAU/USGS · ${perto.feature.tipo}`])
-  if (p?.found) linhas.push(['Data', p.date || '—'], ['Distância da parada', `${p.distancia_m} m`])
+  if (p?.found) linhas.push(['Distância da parada', `${p.distancia_m} m`])
   card('c-status', linhas.map(([k, v, titulo]) =>
     `<div class="kv"${titulo ? ` title="${esc(titulo)}"` : ''}><span>${esc(k)}</span><span>${esc(v)}</span></div>`).join(''))
 }
