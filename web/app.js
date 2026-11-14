@@ -3,7 +3,7 @@
 // A posição atual vem do rastreador (simulado em /api/posicao) e é a origem da rota.
 import {
   getFichaCientifica, getFotosPerto, getLayers, getNomenclature, getPanorama,
-  getPoint, getPosicao, getRoverPhotos,
+  getPoint, getPosicao,
 } from './api.js'
 import { TOGGLEABLE_LAYERS } from './layers.js'
 import * as mapa from './map.js'
@@ -25,9 +25,6 @@ const estado = {
   escalas: [],
   rota: null,
   camadas: Object.fromEntries(TOGGLEABLE_LAYERS.map((l) => [l.id, { visible: l.defaultVisible, opacity: l.defaultOpacity }])),
-  fotosVisiveis: true,
-  trilhaVisivel: false,
-  nFotos: 0,
   nomenclatura: [],
 }
 let aguardandoEscala = false
@@ -422,17 +419,9 @@ $('camadas').addEventListener('click', (e) => {
   if (e.target.closest('[data-minimizar]')) return fecharMapa()
   const id = e.target.closest('[data-toggle]')?.dataset.toggle
   if (!id) return
-  if (id === 'fotos') {
-    estado.fotosVisiveis = !estado.fotosVisiveis
-    mapa.setFotosVisiveis(estado.fotosVisiveis)
-  } else if (id === 'trilha') {
-    estado.trilhaVisivel = !estado.trilhaVisivel
-    mapa.setTrilhaVisivel(estado.trilhaVisivel)
-  } else {
-    const c = estado.camadas[id]
-    c.visible = !c.visible
-    mapa.setCamadaVisivel(id, c.visible)
-  }
+  const c = estado.camadas[id]
+  c.visible = !c.visible
+  mapa.setCamadaVisivel(id, c.visible)
   camadas()
 })
 $('camadas').addEventListener('input', (e) => {
@@ -469,14 +458,8 @@ try {
   $('mapa-status').remove()
   mapa.criarMapa($('mapa'), metas, {
     onClick: cliqueNoMapa,
-    onPhotoClick: async (f) => {
-      await fecharMapa()
-      abrirFoto({ img: f.url, rotulo: `sol ${f.sol} · ${f.camera}` })
-    },
     onLoad: () => {
       if (estado.posicao) { mapa.setOrigem(estado.posicao); mapa.centrar(estado.posicao) }
-      // "rastro do rover": pins nas posições reais das fotos
-      getRoverPhotos().then((f) => { estado.nFotos = f.length; mapa.setFotos(f); if (estado.mapa !== 'visor') camadas() }).catch(() => {})
     },
   })
 } catch (e) {

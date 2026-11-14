@@ -1,7 +1,6 @@
 // Mapa MapLibre (antes MapCanvas.tsx + style.ts). API imperativa direta:
 // app.js chama as funções exportadas quando o estado muda.
 import { Map, Marker, NavigationControl } from './lib/maplibre/maplibre-gl.mjs'
-import { getRoverTrack } from './api.js'
 import { LAYER_MAXZOOM, SLOPE_COLOR_HEX, TOGGLEABLE_LAYERS } from './layers.js'
 
 /** Centro da campanha de boxwork (sol ~4500-4684, MSL_waypoints.json) --
@@ -10,9 +9,6 @@ const CENTRO_INICIAL = [137.384, -4.801]
 const ZOOM_INICIAL = 15 // começa no nível da HiRISE
 
 const ROUTE_ID = 'h2g2-route-line'
-const PHOTOS_ID = 'h2g2-rover-photos'
-const TRACK_LINE_ID = 'rover_track_line'
-const TRACK_STOPS_ID = 'rover_track_stops'
 
 const corPorStatus = (padrao) => [
   'match', ['get', 'slope_status'],
@@ -71,7 +67,6 @@ function buildStyle(metas) {
 let map = null
 let carregado = false
 let modo = 'visor' // 'visor' (círculo) | 'explorar' | 'rota'
-let trilhaVisivel = false
 let marcadorClique, marcadorOrigem, marcadorDestino
 
 function marcador(classe, filho) {
@@ -83,8 +78,8 @@ function marcador(classe, filho) {
 
 const vazio = () => ({ type: 'FeatureCollection', features: [] })
 
-/** Cria o mapa. callbacks: onClick(lat, lon), onPhotoClick(props), onLoad(). */
-export function criarMapa(container, metas, { onClick, onPhotoClick, onLoad }) {
+/** Cria o mapa. callbacks: onClick(lat, lon), onLoad(). */
+export function criarMapa(container, metas, { onClick, onLoad }) {
   const bounds = dataBounds(metas)
   const base = new Set(TOGGLEABLE_LAYERS.filter((l) => l.grupo === 'base').map((l) => l.id))
   const baseBounds = dataBounds(metas.filter((m) => base.has(m.layer_name)))
@@ -110,8 +105,6 @@ export function criarMapa(container, metas, { onClick, onPhotoClick, onLoad }) {
   map.on('click', (e) => {
     // pin de foto consome o clique (não abre briefing nem marca rota por baixo)
     if (modo === 'visor') return // minimizado: o clique só expande (app.js)
-    const foto = carregado && map.queryRenderedFeatures(e.point, { layers: [PHOTOS_ID] })[0]
-    if (foto) return onPhotoClick(foto.properties)
     if (modo === 'explorar') marcadorClique.setLngLat(e.lngLat).addTo(map)
     onClick(e.lngLat.lat, e.lngLat.lng)
   })
@@ -125,62 +118,9 @@ export function criarMapa(container, metas, { onClick, onPhotoClick, onLoad }) {
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-width': 4, 'line-color': corPorStatus(SLOPE_COLOR_HEX.seguro) },
     })
-    map.addSource(PHOTOS_ID, { type: 'geojson', data: vazio() })
-    map.addLayer({
-      id: PHOTOS_ID,
-      type: 'circle',
-      source: PHOTOS_ID,
-      paint: { 'circle-radius': 5, 'circle-color': '#f2b33d', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#0a0a0b' },
-    })
-    map.on('mouseenter', PHOTOS_ID, () => (map.getCanvas().style.cursor = 'pointer'))
-    map.on('mouseleave', PHOTOS_ID, () => (map.getCanvas().style.cursor = modo === 'rota' ? 'crosshair' : ''))
-
     carregado = true
     onLoad()
 
-    // trilha do Curiosity (feature 08) -- falha silenciosa, o mapa segue útil sem ela
-    getRoverTrack().then(adicionarTrilha).catch(() => {})
-  })
-}
-
-/** Paradas reais do Curiosity coloridas pela inclinação medida pelo rover
- * (mesmos limites do DTM). Entra desligada, como Relevo/THEMIS. */
-function adicionarTrilha(paradas) {
-  map.addSource('rover_track', {
-    type: 'geojson',
-    data: {
-      type: 'FeatureCollection',
-      features: [
-        { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: paradas.map((s) => [s.lon, s.lat]) } },
-        ...paradas.map((s) => ({
-          type: 'Feature',
-          properties: { slope_status: s.status, tilt: s.tilt, sol: s.sol },
-          geometry: { type: 'Point', coordinates: [s.lon, s.lat] },
-        })),
-      ],
-    },
-  })
-  const visibility = trilhaVisivel ? 'visible' : 'none'
-  map.addLayer({
-    id: TRACK_LINE_ID,
-    type: 'line',
-    source: 'rover_track',
-    filter: ['==', ['geometry-type'], 'LineString'],
-    layout: { visibility },
-    paint: { 'line-color': '#ffffff', 'line-opacity': 0.35, 'line-width': 1 },
-  })
-  map.addLayer({
-    id: TRACK_STOPS_ID,
-    type: 'circle',
-    source: 'rover_track',
-    filter: ['==', ['geometry-type'], 'Point'],
-    layout: { visibility },
-    paint: {
-      'circle-radius': ['match', ['get', 'slope_status'], 'seguro', 3, 6],
-      'circle-color': corPorStatus(SLOPE_COLOR_HEX.seguro),
-      'circle-stroke-color': '#05070a',
-      'circle-stroke-width': 1,
-    },
   })
 }
 
@@ -228,8 +168,7 @@ export const setOrigem = (p) => posicionar(marcadorOrigem, p)
 export const setDestino = (p) => posicionar(marcadorDestino, p)
 
 let marcadoresEscala = []
-/** Paradas intermediárias da rota (não confundir com a trilha do Curiosity,
- * que também usa a palavra "paradas" em outro sentido). Quantidade varia,
+/** Paradas intermediárias da rota. Quantidade varia,
  * então recria os marcadores a cada chamada em vez de reusar um fixo. */
 export function setEscalas(escalas) {
   if (!map) return
@@ -247,27 +186,4 @@ export function setRota(rota) {
       geometry: { type: 'LineString', coordinates: [[t.de[1], t.de[0]], [t.para[1], t.para[0]]] },
     })),
   })
-}
-
-export function setFotos(fotos) {
-  if (!carregado) return
-  map.getSource(PHOTOS_ID).setData({
-    type: 'FeatureCollection',
-    features: fotos.map((p) => ({
-      type: 'Feature',
-      properties: { lat: p.lat, lon: p.lon, sol: p.sol, camera: p.camera, url: p.url },
-      geometry: { type: 'Point', coordinates: [p.lon, p.lat] },
-    })),
-  })
-}
-
-export function setFotosVisiveis(visivel) {
-  if (carregado) setCamadaVisivel(PHOTOS_ID, visivel)
-}
-
-export function setTrilhaVisivel(visivel) {
-  trilhaVisivel = visivel
-  if (!map?.getLayer(TRACK_LINE_ID)) return
-  setCamadaVisivel(TRACK_LINE_ID, visivel)
-  setCamadaVisivel(TRACK_STOPS_ID, visivel)
 }

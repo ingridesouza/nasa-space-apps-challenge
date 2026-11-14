@@ -26,9 +26,7 @@ export const apagarMedicao = (sol) => fetch(`/api/medicao/${sol}`, { method: 'DE
 /** F06. q opcional: {sol, duracao_min}. */
 export const getPrevisao = (q = {}) => get(`/api/previsao?${new URLSearchParams(q)}`)
 export const getNomenclature = () => get('/api/nomenclature')
-export const getRoverTrack = () => get('/api/rover-track')
 export const getLayers = () => get('/layers')
-export const getRoverPhotos = () => get('/api/photos')
 /** paradas: [{lat,lon}, ...] opcional, em ordem -- pontos entre origem e destino. */
 export const getRoute = (o, d, paradas = []) => {
   const params = new URLSearchParams({ origin_lat: o.lat, origin_lon: o.lon, dest_lat: d.lat, dest_lon: d.lon })
