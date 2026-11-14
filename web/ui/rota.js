@@ -1,7 +1,7 @@
 // Feature 02: painel de rota (antes RoutePanel.tsx). Mesmo A* real sobre o DTM,
 // pesos diferentes por tipo (ver api/route_planning.py).
 import { getPrevisao, getRoute } from '../api.js'
-import { coord, esc, num, veredito } from './util.js'
+import { alertasHtml, coord, esc, num, veredito } from './util.js'
 
 const TIPO_LABEL = { mais_segura: 'Mais segura', mais_rapida: 'Mais rápida', mais_ciencia: 'Mais ciência' }
 
@@ -52,6 +52,10 @@ function detalheRota(r) {
       { ok: o2Ok, label: 'O₂ dentro da reserva simulada (20%) só pra ida' },
       { ok: voltaOk, label: 'O₂ também alcança pra voltar (ida + volta)' },
     ])}
+    ${r.alertas?.length > 0 ? `<div class="h2g2-bloco" style="margin-top:var(--s-2)">
+      <span class="h2g2-stat-label">Alertas do agente nesse trecho (feature 08)</span>
+      ${alertasHtml(r.alertas)}
+    </div>` : ''}
     <div class="h2g2-card h2g2-stat-grid" style="margin-top:var(--s-2)">
       <div><span class="h2g2-stat-label">Distância (ida)</span><span class="h2g2-stat-value">${num(r.distancia_m)}m</span></div>
       <div><span class="h2g2-stat-label">Tempo (ida)</span><span class="h2g2-stat-value">~${num(r.tempo_estimado_min)} min</span></div>

@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from agente import AgenteIndisponivel, fontes_do_contexto, montar_contexto, perguntar
-from alertas import alertas_do_ponto, paradas_no_bbox, tempo_e_alertas_do_sol
+from alertas import alertas_da_rota, alertas_do_ponto, paradas_no_bbox, tempo_e_alertas_do_sol
 from conditions import get_cached_conditions
 from db import get_connection
 from mosaics import build_hillshade_png, build_mosaic_png
@@ -235,6 +235,13 @@ def get_route(origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: f
         raise HTTPException(status_code=422, detail=str(e))
     finally:
         conn.close()
+
+    # feature 08: acréscimo ao contrato, nenhuma chave acima muda --
+    # cruza o histórico do rover e o limite de volta à base (mesmas
+    # regras do /api/point) com os pontos de cada variante calculada.
+    for rota in resultado["rotas"]:
+        rota["alertas"] = alertas_da_rota([tuple(p) for p in rota["pontos"]])
+
     return resultado
 
 
