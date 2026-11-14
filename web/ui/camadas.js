@@ -16,7 +16,7 @@ function linha(id, on, rotulo, titulo = '', opacidade = null) {
 export function renderCamadas(el, estado) {
   const planejadas = PLANNED_LAYERS.map((l) => `<span title="${esc(l.motivo)}">${esc(l.label)} (${l.status === 'fora_de_escopo' ? 'fora de escopo' : 'em breve'})</span>`).join(' · ')
   el.innerHTML = `
-    <div class="cam-topo"><span class="eyebrow">Camadas</span>
+    <div class="cam-topo">
       <button type="button" class="ibtn ibtn-sm" data-minimizar title="Minimizar mapa (Esc)">✕</button></div>
     ${TOGGLEABLE_LAYERS.filter((l) => l.grupo !== 'base').map((l) => linha(l.id, estado.camadas[l.id].visible, l.label, '', estado.camadas[l.id].opacity)).join('')}
     <p class="rotulo mono">${planejadas}</p>`

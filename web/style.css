@@ -92,7 +92,15 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
   transition:width .25s ease,height .25s ease,left .25s ease,bottom .25s ease,border-radius .25s ease}
 .mapa-box #mapa{position:absolute;inset:0}
 .mars-tint{position:absolute;inset:0;z-index:1;pointer-events:none;background:#a8613a;mix-blend-mode:color;opacity:.6}
-.mapa-box .maplibregl-marker,.mapa-box .maplibregl-ctrl-bottom-right{z-index:2}
+.mapa-box .maplibregl-marker,.mapa-box .maplibregl-ctrl-bottom-left{z-index:2}
+/* zoom no design do sistema: lado esquerdo, a meia altura (livre de camadas, destino e card de rota) */
+.maplibregl-ctrl-bottom-left{bottom:auto;top:50%;left:20px;transform:translateY(-50%)}
+.maplibregl-ctrl-bottom-left .maplibregl-ctrl{margin:0}
+.maplibregl-ctrl-group{background:rgba(10,10,11,.75)!important;border:1px solid var(--line);border-radius:2px!important;box-shadow:none!important;backdrop-filter:blur(10px);overflow:hidden}
+.maplibregl-ctrl-group button{width:40px!important;height:40px!important;background:none!important;border:0!important;cursor:pointer}
+.maplibregl-ctrl-group button + button{border-top:1px solid var(--line)!important}
+.maplibregl-ctrl-group button:hover{background:rgba(32,56,98,.6)!important}
+.maplibregl-ctrl-group .maplibregl-ctrl-icon{filter:invert(.85)}
 .mapa-box:not(.aberto) #mapa{pointer-events:none}
 .mapa-box .maplibregl-ctrl{display:none}
 .mapa-status{position:absolute;inset:0;display:grid;place-items:center;margin:0;padding:20px;text-align:center;font-size:10px;color:var(--dim)}
@@ -100,7 +108,6 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .mapa-aberto .mapa-box{left:0;bottom:0;width:100%;height:100%;border-radius:0;border:0;box-shadow:none;cursor:default;z-index:10}
 .mapa-aberto .mapa-box #mapa{pointer-events:auto}
 .mapa-aberto .mapa-box .maplibregl-ctrl{display:block}
-.mapa-aberto .maplibregl-ctrl-bottom-right{right:calc(var(--painel-w) + 32px)}
 .mapa-aberto .visor-hud{padding:6px 10px;margin:-6px -10px;background:rgba(10,10,11,.75);border-radius:2px}
 .mapa-aberto .mapa-acoes,.mapa-aberto .flutuante-toggle,.mapa-aberto .pilula ~ .visor-fechar{display:none}
 /* com o mapa aberto, só o card de rota fica por cima; o resto some sem perder o layout */
@@ -108,7 +115,7 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .mapa-aberto #c-status,.mapa-aberto #c-pano,.mapa-aberto #c-fotos,.mapa-aberto .fichas{visibility:hidden}
 
 .camadas{position:absolute;z-index:12;top:72px;left:20px;width:250px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
-.cam-topo{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.cam-topo{display:flex;align-items:center;justify-content:flex-end;margin-bottom:4px}
 .cam-linha{display:grid;grid-template-columns:28px 1fr;align-items:center;column-gap:8px;padding:3px 0}
 .cam-nome{font-size:12px;color:var(--b300);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cam-op{grid-column:2;width:100%;height:14px;margin:0;accent-color:var(--b300)}

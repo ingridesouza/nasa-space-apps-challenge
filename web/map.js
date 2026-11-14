@@ -94,7 +94,7 @@ export function criarMapa(container, metas, { onClick, onLoad }) {
     minZoom: baseBounds ? minZoomToCover(baseBounds, rect.width, rect.height) : undefined,
     attributionControl: false,
   })
-  map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right')
+  map.addControl(new NavigationControl({ showCompass: false }), 'bottom-left')
 
   const dot = document.createElement('div')
   dot.className = 'h2g2-crosshair-dot'
