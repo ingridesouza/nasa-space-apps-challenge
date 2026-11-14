@@ -15,9 +15,10 @@ e [`docs/PITCH.md`](docs/PITCH.md).
 
 | Caminho | O quê |
 |---|---|
-| `api/` | API FastAPI (feature 01 mapa, 02 rota/A*, 08 alertas+trilha do rover). Ver [`api/README.md`](api/README.md) |
+| `api/` | API FastAPI (feature 01 mapa, 02 rota/A*, 08 alertas+trilha do rover) — também serve `web/` na raiz (`/`), mesma origem. Ver [`api/README.md`](api/README.md) |
 | `data-pipeline/` | ETL dos dados reais (Mars Trek, PDS, MMGIS, API de imagens do MSL) — adapters + scripts `fetch_*`/`seed_*`. Ver [`data-pipeline/README.md`](data-pipeline/README.md) |
-| `frontend/` | Mapa React + Vite + MapLibre GL (features 01/02/08 no navegador). Ver [`frontend/README.md`](frontend/README.md) |
+| `web/` | **Frontend atual, HTML/CSS/JS puro** (features 01/02/08) — substitui o `frontend/` React, sem bundler/`npm install`, MapLibre e fontes vendorizados. Ver [`docs/migracao-front-html-puro.md`](docs/migracao-front-html-puro.md) |
+| `frontend/` | Mapa React + Vite + MapLibre GL -- **versão anterior, ainda no repo** (ver nota abaixo). Ver [`frontend/README.md`](frontend/README.md) |
 | `subprojetos/f03-f04-victoria/` | Feature 03 (fotos/panorama no ponto) e 04 (ficha científica) — app própria, HTML/JS puro |
 | `docs/` | Proposta de produto, pitch, docs de feature. Ver [`docs/README.md`](docs/README.md) |
 | `PROXIMOS-PASSOS.md` | Status técnico real de cada fonte de dado e cada feature -- o doc mais honesto do repo sobre o que funciona de verdade |
@@ -26,17 +27,25 @@ e [`docs/PITCH.md`](docs/PITCH.md).
 
 ## Rodar
 
-### API + frontend React (features 01/02/08)
+### API + frontend atual (`web/`, features 01/02/08)
 
 ```bash
 cd api && pip install -r requirements.txt && python -m uvicorn main:app --port 8124
+```
+
+Abrir `http://127.0.0.1:8124/` — a própria API serve o `web/` (mesma
+origem, sem CORS, sem build). Com `make` (Linux/Mac/WSL):
+`make build && make run` — ver `Makefile` na raiz.
+
+### Frontend React (versão anterior, ainda funcional)
+
+```bash
 cd frontend && npm install && npm run dev
 ```
 
-No Windows, sem `make` disponível, use os dois comandos acima direto
-(é como este projeto foi rodado e testado durante o desenvolvimento).
-Com `make` (Linux/Mac/WSL): `make build && make run` (API) `+ make front`
-— ver `Makefile` na raiz.
+Aponta pra mesma API (`VITE_API_BASE_URL`). Mantido rodando em
+paralelo até a decisão de remoção (ver nota abaixo) ser executada de
+verdade.
 
 ### Subprojeto F03/F04 (Victoria)
 
@@ -79,26 +88,31 @@ versão HTML/JS puro do subprojeto: as duas precisam desse preparo
 prévio: o que muda é só a complexidade dessa etapa, não se o sistema
 funciona sem internet depois.
 
-**Gap real, não crítico:** as fontes do app React (`Chakra Petch` etc.)
-carregam via CDN do Google — sem internet, cai pra fonte do sistema,
-não quebra nada. Dá pra auto-hospedar (o subprojeto `f03-f04-victoria`
-já faz isso, dá pra copiar o padrão).
+**Gap que já foi resolvido no frontend atual:** o `web/` (HTML/JS
+puro) auto-hospeda as fontes (`web/fonts/`), copiadas do padrão já
+usado em `subprojetos/f03-f04-victoria`. O `frontend/` React antigo
+ainda carrega via CDN do Google -- sem internet, cai pra fonte do
+sistema (não quebra nada), mas isso só importa enquanto ele continuar
+no ar em paralelo.
 
-## Divergência em aberto: React vs. HTML/JS puro
+## Migração React → HTML/JS puro: feita, mas não finalizada
 
-O [`CLAUDE.md`](CLAUDE.md) (diretriz de arquitetura mais recente do
-time) declara o `frontend/` (React/Vite) como **"legado a migrar"** e
-pede HTML/CSS/JS puro sem framework daqui pra frente, no padrão do
-subprojeto `f03-f04-victoria`. Isso ainda não reflete o estado real do
-projeto: o `frontend/` React é o que está construído, testado e
-funcionando (mapa com tiles reais, rota A*, alertas, trilha do rover)
-— não é legado no sentido de "abandonado", é o core ativo da feature
-01/02 até agora.
+**Atualização (2026-11-14):** a migração pedida pelo [`CLAUDE.md`](CLAUDE.md)
+e planejada em [`docs/migracao-front-html-puro.md`](docs/migracao-front-html-puro.md)
+já aconteceu -- `web/` existe, é servido pela própria API (`/`), e
+reproduz fielmente tudo que estava no React (incluindo o que foi
+construído na mesma sessão: rota "mais ciência", dose de radiação
+real). Testado ao vivo: API serve `/` com `web/` e `/api/route`
+continuam respondendo juntos, sem conflito.
 
-A motivação do `CLAUDE.md` parece ser reduzir a complexidade da etapa
-de **preparo** (zero bundler, zero `npm install`, só abrir um
-`index.html`), não uma falha de funcionamento offline do React (que já
-está confirmado funcionando, ver seção acima). **Essa divergência
-ainda não foi resolvida pelo time** -- decidir se/quando migrar o
-`frontend/` pro padrão HTML/JS puro é uma decisão de produto em
-aberto, não algo que este README resolve sozinho.
+**Mas tem uma imprecisão real que vale registrar**: o doc de migração
+diz que a "fase 5 (remover `frontend/`)" foi feita em 2026-11-14 --
+**isso não é verdade**. Conferido direto no repo: `frontend/` (React)
+ainda existe, intacto, com `node_modules/` e tudo, e continua
+funcionando normalmente apontando pra mesma API. A limpeza foi
+*documentada* como feita, mas não foi *executada*. Enquanto isso não
+for resolvido de propósito (apagar `frontend/`, tirar o CORS, ajustar o
+`Makefile` -- os passos que o próprio doc de migração lista na seção
+5), os dois frontends continuam coexistindo no repo. Não é um
+problema funcional (os dois funcionam, contra a mesma API), só uma
+divergência entre o que o doc afirma e o que de fato está no disco.
