@@ -135,7 +135,7 @@ export interface ElevationProfilePoint {
 }
 
 export interface RouteOption {
-  tipo: 'mais_segura' | 'mais_rapida'
+  tipo: 'mais_segura' | 'mais_rapida' | 'mais_ciencia'
   pontos: [number, number][]
   distancia_m: number
   tempo_estimado_min: number
@@ -147,6 +147,14 @@ export interface RouteOption {
   dose_rad_estimada_ugy: number | null
   perfil_elevacao: ElevationProfilePoint[]
   trechos_risco: RouteSegment[]
+  /** Só presente em `tipo: 'mais_ciencia'` -- o alvo real (feature 4)
+   * que essa variante passa perto, com a medição real do Curiosity
+   * (não mineral "adivinhado" por foto). */
+  alvo_cientifico?: {
+    nome: string
+    medicao_curiosity: string | null
+    fonte_url: string | null
+  }
 }
 
 export interface RouteResponse {
