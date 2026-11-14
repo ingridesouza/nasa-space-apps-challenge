@@ -11,9 +11,18 @@ interface LayerControlPanelProps {
   photosVisible: boolean
   onTogglePhotos: () => void
   photoCount: number
+  roverTrackVisible: boolean
+  onToggleRoverTrack: () => void
 }
 
-export function LayerControlPanel({ map, photosVisible, onTogglePhotos, photoCount }: LayerControlPanelProps) {
+export function LayerControlPanel({
+  map,
+  photosVisible,
+  onTogglePhotos,
+  photoCount,
+  roverTrackVisible,
+  onToggleRoverTrack,
+}: LayerControlPanelProps) {
   const [layerState, setLayerState] = useState(() =>
     Object.fromEntries(TOGGLEABLE_LAYERS.map((l) => [l.id, { visible: l.defaultVisible, opacity: l.defaultOpacity }])),
   )
@@ -133,6 +142,44 @@ export function LayerControlPanel({ map, photosVisible, onTogglePhotos, photoCou
               aria-checked={photosVisible}
               onClick={onTogglePhotos}
               className={`h2g2-switch ${photosVisible ? 'on' : ''}`}
+            >
+              <span />
+            </button>
+          </div>
+        </div>
+
+        <div className={`h2g2-layer-row ${roverTrackVisible ? 'on' : ''}`} style={{ marginTop: 'var(--s-2)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minWidth: 0 }}>
+              <div
+                style={{
+                  width: THUMB_SIZE,
+                  height: THUMB_SIZE,
+                  borderRadius: 'var(--r-1)',
+                  border: '1px solid var(--glass-rim)',
+                  background: 'var(--n900)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  flex: 'none',
+                  color: 'var(--hud-cyan)',
+                  fontSize: 16,
+                }}
+              >
+                〰️
+              </div>
+              <span
+                style={{ fontSize: 'var(--t-small)', color: 'var(--ink)' }}
+                title="Paradas reais do Curiosity, coloridas pela inclinação que o rover mediu no chão (não a do DTM) -- verde seguro, âmbar atenção, vermelho perigo (feature 08)."
+              >
+                Trilha do Curiosity (inclinação medida)
+              </span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={roverTrackVisible}
+              onClick={onToggleRoverTrack}
+              className={`h2g2-switch ${roverTrackVisible ? 'on' : ''}`}
             >
               <span />
             </button>

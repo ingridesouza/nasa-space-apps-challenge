@@ -30,6 +30,9 @@ export default function App() {
   const [photosVisible, setPhotosVisible] = useState(true)
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null)
   const [zoom, setZoom] = useState<number | null>(null)
+  // trilha do Curiosity (feature 08) -- entra desligada, igual
+  // Relevo/THEMIS, até o usuário ligar pelo LayerControlPanel.
+  const [roverTrackVisible, setRoverTrackVisible] = useState(false)
 
   function handlePhotoPinClick(photo: RoverPhotoPin) {
     const idx = photos.findIndex((p) => p.url === photo.url)
@@ -109,6 +112,7 @@ export default function App() {
           photosVisible={photosVisible}
           onPhotoClick={handlePhotoPinClick}
           onZoomChange={setZoom}
+          roverTrackVisible={roverTrackVisible}
         />
       )}
 
@@ -167,6 +171,8 @@ export default function App() {
           photosVisible={photosVisible}
           onTogglePhotos={() => setPhotosVisible((v) => !v)}
           photoCount={photos.length}
+          roverTrackVisible={roverTrackVisible}
+          onToggleRoverTrack={() => setRoverTrackVisible((v) => !v)}
         />
         <ConditionsPanel conditions={conditions} error={conditionsError} />
       </div>
