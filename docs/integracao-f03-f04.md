@@ -102,8 +102,9 @@ O `web/` usa o layout e a estética do front do subprojeto.
 | Mapa | Uma instância MapLibre: círculo no canto inferior esquerdo, expande para tela cheia (⤢) com o seletor de camadas compacto |
 | Posição atual | Rastreador simulado: `GET /api/posicao` devolve a `BASE_LAT_LON` de `api/alertas.py` (parada do sol 4650). Não há base humana em Marte |
 | Rota | Origem sempre a posição atual. "Planejar rota" expande o mapa; destino por clique ou LAT/LON. Ao minimizar, o visor mostra o destino e o card de rota fica recolhido no topo |
-| F05/F06 | Condições medidas viram uma linha do card de status; previsão, janela da EVA e medição do habitat entram no card de rota |
-| Segurança do ponto | Elevação, inclinação, veredito, chance de ≥20°, nome IAU e alertas entram no card de status |
+| Card de status | Só posição (ou destino), nome IAU mais próximo, data e distância da parada. O resto o astronauta em rota já sabe |
+| F05/F06 | Previsão, janela da EVA e medição do habitat ficam no card de rota |
+| HUD | Só o nome do projeto |
 | F07 modo traje | Removido |
 | F08 assistente | Pílula no topo central (tecla /); responde sobre o destino ou a posição |
 | Removidos | Painel do ponto, painel de condições, faixa de previsão, lightbox, `web/f03/` |

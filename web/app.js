@@ -2,15 +2,15 @@
 // que expande; rota (F02 + F06) num card; assistente (F08) no topo.
 // A posição atual vem do rastreador (simulado em /api/posicao) e é a origem da rota.
 import {
-  getConditions, getFichaCientifica, getFotosPerto, getLayers, getNomenclature, getPanorama,
+  getFichaCientifica, getFotosPerto, getLayers, getNomenclature, getPanorama,
   getPoint, getPosicao, getRoverPhotos,
 } from './api.js'
-import { SLOPE_VERDICT, TOGGLEABLE_LAYERS } from './layers.js'
+import { TOGGLEABLE_LAYERS } from './layers.js'
 import * as mapa from './map.js'
 import { iniciarAssistente } from './ui/agente.js'
 import { renderCamadas } from './ui/camadas.js'
 import { iniciarRota } from './ui/rota.js'
-import { esc, nomeMaisProximo, num } from './ui/util.js'
+import { esc, nomeMaisProximo } from './ui/util.js'
 
 const $ = (id) => document.getElementById(id)
 const mobile = () => matchMedia('(max-width:900px)').matches
@@ -29,36 +29,24 @@ const estado = {
   trilhaVisivel: false,
   nFotos: 0,
   nomenclatura: [],
-  cond: null,
 }
 let aguardandoEscala = false
 
-// ---------------- HUD ----------------
-function hud() {
-  const p = estado.posicao
-  $('hud-pos').textContent = p
-    ? `rastreador simulado · ${p.lat.toFixed(6)}° · ${p.lon.toFixed(6)}°E${estado.cond ? ` · sol ${estado.cond.sol}` : ''}`
-    : 'localizando…'
-  $('hud-pos').title = p?.fonte ?? ''
-  $('hud-local').textContent = estado.local?.tipo === 'destino' ? 'visor: destino da rota' : ''
-}
-
 // ---------------- Local (posição ou destino): status, panorama, fotos, ficha ----------------
 let seqLocal = 0
-let ultimo = null // {pano, ponto} do local atual, para redesenhar o status
+let ultimo = null // {pano} do local atual, para redesenhar o status
 
 async function carregarLocal(local) {
   const meu = ++seqLocal
   estado.local = local
-  hud()
   carregando()
   mostrarFicha('carregando')
   const { lat, lon } = local
-  const [pano, fotos, ficha, ponto] = (await Promise.allSettled([
-    getPanorama(lat, lon), getFotosPerto(lat, lon), getFichaCientifica(lat, lon), getPoint(lat, lon),
+  const [pano, fotos, ficha] = (await Promise.allSettled([
+    getPanorama(lat, lon), getFotosPerto(lat, lon), getFichaCientifica(lat, lon),
   ])).map((r) => (r.status === 'fulfilled' ? r.value : null))
   if (meu !== seqLocal) return // outro local já substituiu este
-  ultimo = { pano, ponto }
+  ultimo = { pano }
   mostrarStatus()
   if (pano) mostrarPano(pano)
   else limparPano()
@@ -78,51 +66,17 @@ function carregando() {
 
 function card(id, html) { $(id).innerHTML = html; $(id).hidden = false; $('flutuante').hidden = false }
 
-// ---------------- Status + segurança + condições ----------------
-const GRAVIDADE = ['seguro', 'atencao', 'perigo']
-const ALERTA_COR = { perigo: 'var(--mars2)', atencao: 'var(--amber)', info: 'var(--mut)' }
-
-/** Selo nunca contradiz alerta: vale o pior entre o mapa e o que o rover mediu por perto. */
-function seloDoPonto(statusMapa, alertas) {
-  let status = statusMapa
-  for (const a of alertas) {
-    if (['terreno_historico', 'inclinacao', 'risco_previsto'].includes(a.tipo) && GRAVIDADE.indexOf(a.nivel) > GRAVIDADE.indexOf(status)) status = a.nivel
-  }
-  if (status === 'seguro' && alertas.some((a) => a.tipo === 'sem_historico')) {
-    return { cor: SLOPE_VERDICT.atencao.color, label: 'Não verificado: só mapa de órbita' }
-  }
-  return { cor: SLOPE_VERDICT[status].color, label: SLOPE_VERDICT[status].label }
-}
-
+// ---------------- Status: só o que o astronauta não sabe de cabeça ----------------
 function mostrarStatus() {
   if (!ultimo || !estado.local) return
-  const { pano: p, ponto } = ultimo
+  const { pano: p } = ultimo
   const l = estado.local
   const linhas = [[l.tipo === 'destino' ? 'Destino' : 'Posição atual', `${l.lat.toFixed(6)}° · ${l.lon.toFixed(6)}°E`]]
-  if (ponto) {
-    const rv = ponto.raster_values
-    linhas.push(['Elevação', rv.elevacao_m === null ? 'sem dado (fora do DTM)'
-      : `${rv.elevacao_m.toFixed(1)} m${rv.slope_deg !== null ? ` · ${rv.slope_deg.toFixed(1)}°` : ''}`])
-    if (rv.slope_status) {
-      const s = seloDoPonto(rv.slope_status, ponto.alertas)
-      linhas.push(['Terreno', `● ${s.label}`, s.cor])
-    }
-    const r = ponto.previsao_inclinacao
-    if (r) linhas.push([`Chance ≥${r.limite_deg}°`, `${r.chance_pct}% · estimado`, r.chance_pct >= 20 ? 'var(--amber)' : null,
-      `${r.acima} de ${r.n} paradas do rover com o mapa em ${r.faixa_mapa} · ${r.metodo} · ${r.fonte}`])
-  }
   const perto = nomeMaisProximo(estado.nomenclatura, l.lat, l.lon)
-  if (perto) linhas.push(['Perto de', `${perto.feature.nome} · ${(perto.distance_m / 1000).toFixed(1)} km`, null, `Nome oficial IAU/USGS · ${perto.feature.tipo}`])
-  if (p?.found) {
-    linhas.push(['Sol', p.sol], ['Site · drive', p.rmc.replace('_', ' · ')], ['Data', p.date || '—'],
-      ['Distância da parada', `${p.distancia_m} m`], ['Rumo ponto → parada', `${p.rumo_ponto_para_parada}°`])
-  } else if (p) linhas.push(['Panorama', p.mensagem])
-  const c = estado.cond
-  if (c) linhas.push([`Condições · sol ${c.sol}`, `${num(c.rems.temp_min_c, 0)}° a ${num(c.rems.temp_max_c, 0)} °C · ${num(c.rad.dose_estimada_ugy_por_dia, 0)} µGy/dia`,
-    null, 'medido: REMS (clima) e RAD (radiação) do Curiosity no sol de referência'])
-  for (const a of ponto?.alertas ?? []) linhas.push(['Alerta', `● ${a.mensagem}`, ALERTA_COR[a.nivel], `fonte: ${a.fonte}`])
-  card('c-status', linhas.map(([k, v, cor, titulo]) =>
-    `<div class="kv"${titulo ? ` title="${esc(titulo)}"` : ''}><span>${esc(k)}</span><span${cor ? ` style="color:${cor}"` : ''}>${esc(v)}</span></div>`).join(''))
+  if (perto) linhas.push(['Perto de', `${perto.feature.nome} · ${(perto.distance_m / 1000).toFixed(1)} km`, `Nome oficial IAU/USGS · ${perto.feature.tipo}`])
+  if (p?.found) linhas.push(['Data', p.date || '—'], ['Distância da parada', `${p.distancia_m} m`])
+  card('c-status', linhas.map(([k, v, titulo]) =>
+    `<div class="kv"${titulo ? ` title="${esc(titulo)}"` : ''}><span>${esc(k)}</span><span>${esc(v)}</span></div>`).join(''))
 }
 
 // ---------------- Panorama ----------------
@@ -499,19 +453,16 @@ document.addEventListener('keydown', (e) => {
 iniciarAssistente($('assistente'), $('btn-assistente'), () => estado.local ?? estado.posicao)
 
 // ---------------- Carga inicial ----------------
-hud()
-getConditions().then((c) => { estado.cond = c; hud(); mostrarStatus() }).catch(() => {})
 getNomenclature().then((n) => { estado.nomenclatura = n; mostrarStatus() }).catch(() => {})
 
 getPosicao()
   .then((p) => {
     estado.posicao = { lat: p.lat, lon: p.lon, rotulo: 'a posição atual', fonte: p.rotulo, tipo: 'posicao' }
-    hud()
-    mapa.setOrigem(estado.posicao)
+      mapa.setOrigem(estado.posicao)
     mapa.centrar(estado.posicao)
     return carregarLocal(estado.posicao)
   })
-  .catch((e) => { $('hud-pos').textContent = `sem posição (${e.message})` })
+  .catch((e) => card('c-status', `<p class="vazio erro">Sem posição: ${esc(e.message)}</p>`))
 
 try {
   const metas = await getLayers()
