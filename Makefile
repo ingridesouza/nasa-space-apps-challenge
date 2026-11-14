@@ -16,14 +16,14 @@ build:
 	$(PY) scripts/cache_conditions.py && \
 	$(PY) db/populate_raster_registry.py && \
 	$(PY) db/seed_rover_images.py && \
+	$(PY) scripts/download_rover_photos.py && \
 	$(PY) db/seed_science_targets.py
-	cd frontend && npm install && (test -f .env || cp .env.example .env)
 
 run:
 	cd api && $(PY) -m uvicorn main:app --reload
 
 front:
-	cd frontend && npm run dev
+	@echo "Front servido pela API: rode 'make run' e abra http://localhost:8000"
 
 test:
-	cd api && $(PY) test_alertas.py
+	cd api && $(PY) test_alertas.py && $(PY) test_agente.py && $(PY) test_f03.py
