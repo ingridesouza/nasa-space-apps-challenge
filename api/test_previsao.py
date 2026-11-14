@@ -21,7 +21,8 @@ def _clima_sintetico():
         # dia com pico às 14h (LMST), como o REMS mostra
         hora = {str(h): t + 30 + 30 * math.cos(2 * math.pi * (h - 14) / 24) for h in range(24)}
         out.append({"sol": sol, "ls": round(l, 1), "temp_min_c": t, "temp_max_c": t + 60,
-                    "pressao_pa": 800 + 50 * math.cos(math.radians(l)), "temp_por_hora": hora})
+                    "pressao_pa": 800 + 50 * math.cos(math.radians(l)), "temp_por_hora": hora,
+                    "dose_ugy_dia": 200 - 8 * math.cos(math.radians(l)) - (30 if sol >= 1500 else 0)})
     return out
 
 
@@ -35,6 +36,12 @@ def test_estacao_mais_anomalia_reproduz_o_sintetico():
         assert abs(p[k]["valor"] - real[k]) < 2.0, (k, p[k], real[k])
 
 
+def test_dose_repete_o_ultimo_sol_medido():
+    clima = _clima_sintetico()
+    base = next(c for c in clima if c["sol"] == 1900)
+    assert previsao.prever(clima, 1960, base)["dose_ugy_dia"]["valor"] == round(base["dose_ugy_dia"], 1)
+
+
 def test_sem_ano_anterior_nao_inventa():
     clima = _clima_sintetico()
     base = next(c for c in clima if c["sol"] == 200)  # nada antes de 200 - 100 sols na mesma estação
@@ -46,7 +53,38 @@ def test_janela_eva_pega_as_horas_mais_quentes():
     base = next(c for c in clima if c["sol"] == 1900)
     j = previsao.janela_eva(clima, 1960, base, duracao_min=150)  # 2h30 -> 3 horas
     assert j["horas"] == 3 and j["inicio_lmst"] == "13:00" and j["fim_lmst"] == "16:00", j
-    assert previsao.janela_eva(clima, 1960, {**base, "temp_por_hora": {}}, 60) is None  # sem curva: não inventa
+    # sem curva no sol base (medição do habitat): corrige pela média do dia, janela continua igual
+    j2 = previsao.janela_eva(clima, 1960, {**base, "temp_por_hora": {}}, 150)
+    assert (j2["inicio_lmst"], j2["fim_lmst"]) == ("13:00", "16:00"), j2
+    assert previsao.janela_eva([], 1960, {**base, "temp_por_hora": {}}, 60) is None  # sem histórico: não inventa
+
+
+def test_chance_de_inclinacao_pelo_historico():
+    tab = previsao.tabela_de([(12.0, 16.0), (12.0, 11.0), (13.0, 18.0), (12.5, 9.0), (5.0, 6.0)])
+    r = previsao.risco_inclinacao(12.0, tab)
+    assert (r["acima"], r["n"], r["chance_pct"], r["faixa_mapa"]) == (2, 4, 50, "10–15°")
+    assert previsao.risco_inclinacao(None, tab) is None
+    assert previsao.risco_inclinacao(16.0, tab) is None  # nenhuma parada nessa faixa: não inventa
+
+
+def test_medicao_local_vira_base_e_divergencia_avisa():
+    import json
+    import tempfile
+
+    if previsao.carregar_clima() is None:
+        print("pulado: rodar data-pipeline/scripts/cache_climatologia.py")
+        return
+    with tempfile.TemporaryDirectory() as d:
+        clima_p, locais_p = f"{d}/clima.json", f"{d}/locais.json"
+        Path(clima_p).write_text(json.dumps({"sols": _clima_sintetico()}))
+        normal = next(c for c in _clima_sintetico() if c["sol"] == 1980)
+        m = previsao.registrar_medicao({"sol": 1990, "temp_min_c": normal["temp_min_c"] + 25,
+                                        "temp_max_c": normal["temp_max_c"], "pressao_pa": normal["pressao_pa"]}, locais_p)
+        clima = previsao.carregar_clima(clima_p, locais_p)
+        assert previsao._base_para(clima, 1999)["origem"] == "local"  # o dado do habitat vira a base
+        div = previsao.divergencia(clima, m)
+        assert [x["campo"] for x in div] == ["temp_min_c"] and div[0]["diferenca"] > 20
+        assert previsao.apagar_medicao(1990, locais_p) and previsao.carregar_locais(locais_p) == []
 
 
 def test_backtest_com_dado_real():
@@ -54,6 +92,7 @@ def test_backtest_com_dado_real():
         print("pulado: rodar data-pipeline/scripts/cache_climatologia.py")
         return
     # meio ano marciano à frente: a estação tem que vencer "repetir o último dado"
+    assert previsao.previsao_do_sol(4650)["data_terra"] == "2025-09-04"
     b = previsao.backtest(330)
     for k in ("temp_min_c", "pressao_pa"):
         assert b[k]["erro_medio"] < b[k]["erro_repetindo_ultimo"], (k, b[k])

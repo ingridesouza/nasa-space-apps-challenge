@@ -101,6 +101,12 @@ def _load_array_and_transform(layer_name: str, local_tile_path: str, tipo_acesso
             transform, crs = ds.transform, ds.crs
         return shade, transform, (crs or MARS_GEOGRAPHIC_CRS)
 
+    if tipo_acesso == "risco_derivado":
+        from previsao import grade_risco_rgba
+
+        rgba, transform, crs = grade_risco_rgba(local_tile_path)
+        return rgba, transform, (crs or MARS_GEOGRAPHIC_CRS)
+
     if tipo_acesso == "tiles_wmts":
         georef_path = os.path.join(local_tile_path, "_mosaico_georef.tif")
         if not os.path.exists(georef_path):
@@ -170,11 +176,14 @@ def render_tile(
         src_crs=crs,
         dst_transform=dst_transform,
         dst_crs=crs,
-        resampling=Resampling.cubic,
+        # categórica (risco) não pode misturar cores entre faixas
+        resampling=Resampling.nearest if tipo_acesso == "risco_derivado" else Resampling.cubic,
     )
 
     if array.ndim == 2:
         img = Image.fromarray(destino).convert("L").convert("RGB")
+    elif array.shape[0] == 4:
+        img = Image.fromarray(np.moveaxis(destino, 0, -1), mode="RGBA")
     else:
         img = Image.fromarray(np.moveaxis(destino, 0, -1)).convert("RGB")
 
