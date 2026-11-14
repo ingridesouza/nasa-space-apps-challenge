@@ -210,6 +210,12 @@ export function RoutePanel({ origin, destination, onClose, onReset, onActiveRout
                             />
                           </div>
                         </div>
+                        <div style={{ gridColumn: '1 / -1' }}>
+                          <span className="h2g2-stat-label">Dose de radiação (RAD, real)</span>
+                          <span className="h2g2-stat-value">
+                            {rotaAtiva.dose_rad_estimada_ugy !== null ? `${rotaAtiva.dose_rad_estimada_ugy.toFixed(2)} µGy` : '—'}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="h2g2-card" style={{ marginTop: 'var(--s-2)' }}>

@@ -140,6 +140,11 @@ export interface RouteOption {
   distancia_m: number
   tempo_estimado_min: number
   o2_estimado_l: number
+  /** Dose real de radiação (RAD, mesmo sol de `/api/conditions`)
+   * acumulada pela duração estimada da caminhada -- não varia por
+   * trecho (é leitura por sol, não espacial), `null` se o sol de
+   * referência não estiver cacheado (nunca 0 fingido). */
+  dose_rad_estimada_ugy: number | null
   perfil_elevacao: ElevationProfilePoint[]
   trechos_risco: RouteSegment[]
 }
