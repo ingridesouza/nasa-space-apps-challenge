@@ -349,6 +349,8 @@ def plan_route(
                 )
                 rota_ciencia["alvo_cientifico"] = {
                     "nome": alvo["nome"],
+                    "lat": alvo["lat"],
+                    "lon": alvo["lon"],
                     "medicao_curiosity": alvo["medicao_curiosity"],
                     "fonte_url": alvo["fonte_url"],
                 }

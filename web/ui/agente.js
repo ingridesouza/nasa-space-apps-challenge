@@ -1,5 +1,5 @@
-// F08: assistente sempre à mão (botão no topo ou tecla "/"). Responde sobre o ponto
-// clicado ou, sem ponto, sobre a base. Modelo local: a espera é visível (contador).
+// F08: assistente sempre à mão (pílula no topo ou tecla "/"). Responde sobre o destino
+// ou, sem destino, sobre a posição atual. Modelo local: a espera é visível (contador).
 import { perguntar } from '../api.js'
 import { coord, esc } from './util.js'
 
@@ -24,7 +24,7 @@ function falar(texto) {
 
 /**
  * el: <section id="assistente">; botao: abre/fecha.
- * pontoAtual(): {lat, lon} do ponto clicado, ou null (a API usa a base).
+ * pontoAtual(): {lat, lon, rotulo} do destino ou da posição atual, ou null (a API usa a base).
  */
 export function iniciarAssistente(el, botao, pontoAtual) {
   const historico = [] // {pergunta, sobre, resposta?, fontes?, erro?, segundos}
@@ -33,7 +33,7 @@ export function iniciarAssistente(el, botao, pontoAtual) {
 
   const sobre = () => {
     const p = pontoAtual()
-    return p ? `o ponto clicado (${coord(p)})` : 'a base (nenhum ponto escolhido)'
+    return p ? `${p.rotulo ?? 'o ponto'} (${coord(p)})` : 'a base (nenhum ponto escolhido)'
   }
 
   function render() {

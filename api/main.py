@@ -358,6 +358,15 @@ def delete_medicao(sol: int):
     return {"apagada": sol}
 
 
+@app.get("/api/posicao")
+def get_posicao():
+    # Sem rastreador real: a posição do astronauta é simulada na base
+    # provisória (api/alertas.py), a mesma do limite de 2 km e do assistente.
+    lat, lon = BASE_LAT_LON
+    return {"lat": lat, "lon": lon, "fonte": "simulado",
+            "rotulo": "rastreador simulado: base provisória na parada do Curiosity do sol 4650"}
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}

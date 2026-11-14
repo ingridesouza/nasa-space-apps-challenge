@@ -70,7 +70,7 @@ function buildStyle(metas) {
 
 let map = null
 let carregado = false
-let modo = 'point'
+let modo = 'visor' // 'visor' (círculo) | 'explorar' | 'rota'
 let trilhaVisivel = false
 let marcadorClique, marcadorOrigem, marcadorDestino
 
@@ -83,8 +83,8 @@ function marcador(classe, filho) {
 
 const vazio = () => ({ type: 'FeatureCollection', features: [] })
 
-/** Cria o mapa. callbacks: onClick(lat, lon), onPhotoClick(props), onZoom(z), onLoad(). */
-export function criarMapa(container, metas, { onClick, onPhotoClick, onZoom, onLoad }) {
+/** Cria o mapa. callbacks: onClick(lat, lon), onPhotoClick(props), onLoad(). */
+export function criarMapa(container, metas, { onClick, onPhotoClick, onLoad }) {
   const bounds = dataBounds(metas)
   const base = new Set(TOGGLEABLE_LAYERS.filter((l) => l.grupo === 'base').map((l) => l.id))
   const baseBounds = dataBounds(metas.filter((m) => base.has(m.layer_name)))
@@ -109,22 +109,12 @@ export function criarMapa(container, metas, { onClick, onPhotoClick, onZoom, onL
 
   map.on('click', (e) => {
     // pin de foto consome o clique (não abre briefing nem marca rota por baixo)
+    if (modo === 'visor') return // minimizado: o clique só expande (app.js)
     const foto = carregado && map.queryRenderedFeatures(e.point, { layers: [PHOTOS_ID] })[0]
     if (foto) return onPhotoClick(foto.properties)
-    if (modo === 'point') marcadorClique.setLngLat(e.lngLat).addTo(map)
+    if (modo === 'explorar') marcadorClique.setLngLat(e.lngLat).addTo(map)
     onClick(e.lngLat.lat, e.lngLat.lng)
   })
-
-  // `zoom` dispara dezenas de vezes por segundo -- throttle ~8/s; zoomend garante o valor final
-  let ultimo = 0
-  map.on('zoom', () => {
-    const agora = performance.now()
-    if (agora - ultimo > 120) {
-      ultimo = agora
-      onZoom(map.getZoom())
-    }
-  })
-  map.on('zoomend', () => onZoom(map.getZoom()))
 
   map.on('load', () => {
     map.addSource(ROUTE_ID, { type: 'geojson', data: vazio() })
@@ -143,10 +133,9 @@ export function criarMapa(container, metas, { onClick, onPhotoClick, onZoom, onL
       paint: { 'circle-radius': 5, 'circle-color': '#f2b33d', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#0a0a0b' },
     })
     map.on('mouseenter', PHOTOS_ID, () => (map.getCanvas().style.cursor = 'pointer'))
-    map.on('mouseleave', PHOTOS_ID, () => (map.getCanvas().style.cursor = modo === 'point' ? '' : 'crosshair'))
+    map.on('mouseleave', PHOTOS_ID, () => (map.getCanvas().style.cursor = modo === 'rota' ? 'crosshair' : ''))
 
     carregado = true
-    onZoom(map.getZoom())
     onLoad()
 
     // trilha do Curiosity (feature 08) -- falha silenciosa, o mapa segue útil sem ela
@@ -203,13 +192,27 @@ export function setCamadaOpacidade(id, opacidade) {
   map?.setPaintProperty(id, 'raster-opacity', opacidade)
 }
 
-/** 'point' | 'pick-origin' | 'pick-destination' -- cursor vira mira no modo rota. */
+/** 'visor' (círculo) | 'explorar' | 'rota' -- cursor vira mira no modo rota. */
 export function setModo(novo) {
   modo = novo
   if (!map) return
-  map.getCanvas().style.cursor = modo === 'point' ? '' : 'crosshair'
-  // crosshair antigo do "último ponto" confundia a leitura da rota
-  if (modo !== 'point') marcadorClique.remove()
+  map.getCanvas().style.cursor = modo === 'rota' ? 'crosshair' : ''
+  if (modo !== 'explorar') marcadorClique.remove()
+}
+
+/** Depois de o contêiner mudar de tamanho (círculo <-> tela cheia). */
+export function redimensionar() {
+  map?.resize()
+}
+
+/** Centra no ponto ou, com rota, enquadra a rota inteira. */
+export function centrar(p, rota = null) {
+  if (!map) return
+  const coords = (rota?.trechos_risco ?? []).flatMap((t) => [[t.de[1], t.de[0]], [t.para[1], t.para[0]]])
+  if (coords.length) {
+    const lons = coords.map((c) => c[0]), lats = coords.map((c) => c[1])
+    map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: 24, duration: 0, maxZoom: 18 })
+  } else if (p) map.jumpTo({ center: [p.lon, p.lat], zoom: Math.max(map.getZoom(), 16) })
 }
 
 export function limparPonto() {

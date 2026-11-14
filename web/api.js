@@ -10,6 +10,8 @@ async function get(caminho) {
   return resp.json()
 }
 
+/** Posição atual do astronauta: rastreador simulado na base provisória. */
+export const getPosicao = () => get('/api/posicao')
 export const getPoint = (lat, lon) => get(`/api/point?lat=${lat}&lon=${lon}`)
 export const getConditions = () => get('/api/conditions')
 /** F06: medição do sensor do habitat/traje. 422 traz detail (texto ou lista do pydantic). */
@@ -36,9 +38,9 @@ export const getRoute = (o, d, paradas = []) => {
   }
   return get(`/api/route?${params}`)
 }
-export const mosaicUrl = (layer) => `/mosaics/${layer}.png`
 // F03/F04 (rotas do subprojeto servidas pela mesma API)
 export const getPanorama = (lat, lon) => get(`/panoramas/nearest?lat=${lat}&lon=${lon}`)
+export const getFotosPerto = (lat, lon) => get(`/photos/near?lat=${lat}&lon=${lon}`)
 export const getFichaCientifica = (lat, lon) => get(`/science/card?lat=${lat}&lon=${lon}`)
 
 /** F08: pergunta ao agente local. 503 (modelo fora) traz detail={mensagem, alertas}. */
