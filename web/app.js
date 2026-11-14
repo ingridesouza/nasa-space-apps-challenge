@@ -7,6 +7,7 @@ import { renderCamadas, renderCondicoes, renderHud } from './ui/paineis.js'
 import { renderPrevisao } from './ui/previsao.js'
 import { abrirPonto, fecharPonto } from './ui/ponto.js'
 import { iniciarAssistente } from './ui/agente.js'
+import { iniciarVoz } from './ui/voz.js'
 import { iniciarRota, setSolEva } from './ui/rota.js'
 import { esc } from './ui/util.js'
 
@@ -34,6 +35,18 @@ const hud = () => {
 }
 // F08: assistente responde sobre o ponto aberto ou, sem ponto, sobre a base
 const assistente = iniciarAssistente($('assistente'), $('btn-assistente'), () => estado.ponto)
+// F08 voz: "Guia, rota até …" ou pergunta falada; o ponto aberto é onde o astronauta está
+iniciarVoz($('btn-voz'), $('voz-status'), {
+  pontoAtual: () => estado.ponto,
+  rota: (origem, destino) => {
+    if (!estado.modoRota) alternarRota()
+    return marcarRota(origem, destino)
+  },
+  perguntar: (texto) => {
+    if ($('assistente').hidden) assistente.abrir(true)
+    return assistente.enviar(texto, true)
+  },
+})
 const camadas = () => renderCamadas($('camadas'), { ...estado, nFotos: estado.fotos.length })
 
 // ---- modo rota ----
@@ -69,7 +82,7 @@ function marcarRota(origem, destino) {
   instr.hidden = !estado.modoRota || Boolean(origem && destino)
   instr.classList.toggle('destino', Boolean(origem))
   instr.textContent = !origem ? 'PASSO 1/2 · clique no mapa para marcar a ORIGEM' : 'PASSO 2/2 · clique no mapa para marcar o DESTINO'
-  if (estado.modoRota) atualizarRota(origem, destino, estado.escalas)
+  if (estado.modoRota) return atualizarRota(origem, destino, estado.escalas)
 }
 
 function alternarRota() {

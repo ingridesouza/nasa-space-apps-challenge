@@ -234,5 +234,6 @@ export function iniciarRota(container, callbacks) {
     carregando = false
     cb.onRotaAtiva(rotaAtiva())
     render(origem, destino)
+    return data // F08 voz: o resumo falado sai destes números
   }
 }

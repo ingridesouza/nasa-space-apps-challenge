@@ -13,7 +13,7 @@ const SUGESTOES = [
 const MAX_HISTORICO = 4
 
 /** Voz de saída: só vozes locais do sistema, nunca as de rede (offline). */
-function falar(texto) {
+export function falar(texto) {
   const voz = speechSynthesis.getVoices().find((v) => v.lang.startsWith('pt') && v.localService)
   const u = new SpeechSynthesisUtterance(texto)
   u.lang = 'pt-BR'
@@ -68,7 +68,8 @@ export function iniciarAssistente(el, botao, pontoAtual) {
     if (comFoco) novo.focus()
   }
 
-  async function enviar(pergunta) {
+  /** porVoz: a pergunta veio do microfone, então a resposta também é falada. */
+  async function enviar(pergunta, porVoz = false) {
     if (ocupado || !pergunta.trim()) return
     ocupado = true
     const h = { pergunta: pergunta.trim(), sobre: sobre(), segundos: 0 }
@@ -84,8 +85,10 @@ export function iniciarAssistente(el, botao, pontoAtual) {
     try {
       const r = await perguntar(h.pergunta, p?.lat, p?.lon)
       Object.assign(h, { resposta: r.resposta, fontes: r.fontes })
+      if (porVoz) falar(`Você perguntou: ${h.pergunta} ${r.resposta}`) // repete o que ouviu: erro de transcrição fica audível
     } catch (err) {
       h.erro = err.message
+      if (porVoz) falar('O assistente está fora do ar. Os alertas continuam valendo.')
     } finally {
       clearInterval(relogio)
       h.segundos = Math.round((performance.now() - inicio) / 1000)
@@ -127,5 +130,5 @@ export function iniciarAssistente(el, botao, pontoAtual) {
       abrir(true)
     } else if (e.key === 'Escape' && !el.hidden) abrir(false)
   })
-  return { abrir, render }
+  return { abrir, render, enviar }
 }

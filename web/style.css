@@ -578,6 +578,8 @@ button {
 .h2g2-btn-ass { padding: var(--s-2) var(--s-4); font-size: var(--t-small); cursor: pointer; color: var(--ink); }
 .h2g2-btn-ass.on { color: var(--hud-cyan); border-color: var(--hud-cyan); }
 .h2g2-btn-ass kbd { font-family: var(--font-mono); font-size: var(--t-micro); border: 1px solid var(--glass-rim); border-radius: var(--r-2); padding: 0 4px; margin-left: 4px; color: var(--ink-3); }
+/* F08 voz: linha de estado (ouvindo / transcrevendo / ouvi "…") */
+.h2g2-voz-status { position: absolute; top: 112px; left: 50%; transform: translateX(-50%); max-width: min(90vw, 640px); padding: var(--s-2) var(--s-4); font-size: var(--t-small); text-align: center; color: var(--hud-cyan); border-color: var(--hud-cyan); pointer-events: none; z-index: 5; }
 .h2g2-assistente { position: absolute; top: 76px; left: 50%; transform: translateX(-50%); width: min(620px, calc(100vw - 32px)); max-height: 62vh; overflow-y: auto; padding: var(--s-4); z-index: 5; }
 .h2g2-ass-form { display: flex; gap: var(--s-2); margin: var(--s-2) 0; }
 .h2g2-ass-form input { flex: 1; min-width: 0; padding: var(--s-2) var(--s-3); background: var(--n900); color: var(--ink); border: 1px solid var(--hud-cyan); border-radius: var(--r-2); font: inherit; font-size: var(--t-body); }
