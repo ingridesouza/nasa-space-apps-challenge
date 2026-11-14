@@ -66,8 +66,89 @@ AVISO_AREIA = (
 # real de traje). Velocidade base em terreno plano ~0.8 m/s é a faixa
 # citada em estudos de EVA lunar/Apollo pra caminhada cautelosa com
 # traje pressurizado; cai conforme a inclinação sobe.
+# VELOCIDADE_BASE_M_S: segue sem fonte real confirmada pra caminhada em
+# gravidade marciana (ver levantamento em PROXIMOS-PASSOS.md, seção
+# "Feature 02 (rota)") -- mantido o valor anterior até existir
+# referência melhor.
 VELOCIDADE_BASE_M_S = 0.8
-TAXA_O2_L_POR_MIN = 0.84  # consumo documentado de EVA Apollo em repouso/caminhada leve
+
+# TAXA_O2_L_POR_MIN: taxa metabólica média assumida pra traje de EVA de
+# Marte é 350 W (1194 BTU/hr), NASA, "Mars Exploration Portable Life
+# Support System Schematic Study: Architecture Down-Selection"
+# (ICES-2026-158, NTRS 20260002884) -- valor fixo usado pros estudos de
+# esquemático do PLSS em EVAs de 2 a 8h (não é um número "pra 8h",
+# é usado pra qualquer duração nessa faixa). Convertido pra L/min de O2
+# pela equivalência calórica padrão do O2 (~5 kcal/L = ~20,92 kJ/L):
+#   350 W * 60 s/min / 20920 J/L = ~1.00 L/min
+# Substitui o valor antigo (0.84), que só tinha um comentário vago
+# ("EVA Apollo") sem fonte verificável.
+TAXA_O2_L_POR_MIN = 1.00
+
+# Faixa otimista-pessimista do consumo de O2 por trecho (Fase 1, F02+F08).
+# A velocidade cai com a inclinação do jeito que já era (ver
+# VELOCIDADE_BASE_M_S acima): otimista não reduz, pessimista usa a
+# mesma queda que o módulo já tinha antes dessa fase. O quanto o
+# CONSUMO de O2 por minuto cresce com a inclinação, porém, não é mais
+# um fator arbitrário -- vem da equação de Pandolf (Pandolf, Givoni &
+# Goldman, 1977), na forma que a NASA/JSC usa hoje pra estimar custo
+# metabólico de caminhada em EVA, inclusive pra Marte:
+#   Kim, K.J., Hoffmann, B., Estep, P., Marshall-Goebel, K., Buckland, D.
+#   "Improving Metabolic Workload Estimation Accuracy for Planning and
+#   Analyzing Exploration Traverses". IEEE EMBC 2024. Financiado pelo
+#   NASA Mars Campaign Office. Equação (2) do artigo:
+#     MP = 1.5*W + 2.0*(W+L)*(L/W)^2 + eta*(W+L)*(1.5*V^2 + 0.35*V*G)
+#   W = massa corporal (kg), L = carga externa/traje (kg), V = velocidade
+#   (m/s), G = inclinação em % (100*tan do ângulo do trecho), eta =
+#   coeficiente de terreno (adimensional).
+# Ver PANDOLF_* logo abaixo pra fonte de cada constante usada na equação.
+FATOR_VELOCIDADE_OTIMISTA = 0.0   # otimista: velocidade não cai com a inclinação
+FATOR_VELOCIDADE_PESSIMISTA = 0.6  # pessimista: mesma queda de VELOCIDADE_BASE_M_S de antes
+
+# W (massa corporal, 82 kg = 180 lbm) e L (massa do traje+PLSS, 104 kg
+# = 230 lbm, meta inicial de orçamento de massa pra traje de Marte):
+# NASA, "Mars Suit Mass Considerations" (NTRS 20260003038, ICES 2026).
+# eta=1.0 (asfalto/esteira): Soule & Goldman (1972), valor-base da
+# tabela de terreno usada com a equação de Pandolf -- não variamos eta
+# por pixel, mesma decisão já tomada nesse módulo pra textura do solo
+# (ver AVISO_AREIA: risco de areia é aviso qualitativo, não fator
+# numérico, por falta de dado de textura por pixel pra essa região).
+PANDOLF_MASSA_CORPO_KG = 82.0
+PANDOLF_MASSA_TRAJE_KG = 104.0
+PANDOLF_COEF_TERRENO = 1.0
+PANDOLF_COEF_GRADE = 0.35
+
+
+def _metabolismo_pandolf_w(velocidade_m_s: float, grade_pct: float) -> float:
+    """Taxa metabólica (watts) pela equação de Pandolf -- ver comentário
+    de FATOR_VELOCIDADE_PESSIMISTA acima pra fonte da equação e das
+    constantes PANDOLF_*.
+
+    Limitação conhecida e aceita: a equação não impõe teto de esforço
+    sustentável (VO2 máx). Isso faz o lado "otimista" (velocidade sem
+    redução) poder sair, numa rota real de terreno misto, ABAIXO do
+    antigo `o2_estimado_l` -- não porque suba menos oxigênio por
+    inclinação, mas porque o tempo total de exposição cai mais do que
+    a taxa sobe. É um resultado aceito do modelo, não um bug: o
+    "pessimista" (usado em toda decisão de segurança) continua
+    crescente com a inclinação em qualquer terreno. Corrigir isso
+    exigiria um limite de VO2 máx sustentado -- não impomos um valor
+    sem fonte; ver docs/fontes-de-dados.md."""
+    w, l = PANDOLF_MASSA_CORPO_KG, PANDOLF_MASSA_TRAJE_KG
+    return (
+        1.5 * w
+        + 2.0 * (w + l) * (l / w) ** 2
+        + PANDOLF_COEF_TERRENO
+        * (w + l)
+        * (1.5 * velocidade_m_s**2 + PANDOLF_COEF_GRADE * velocidade_m_s * grade_pct)
+    )
+
+
+# Normaliza a equação de Pandolf pelo caso-base (terreno plano, velocidade
+# base) pra converter em RAZÃO sobre TAXA_O2_L_POR_MIN -- assim a chave
+# antiga o2_estimado_l (que usa só TAXA_O2_L_POR_MIN) não muda, e a razão
+# dá exatamente 1.0 em terreno plano nos dois casos (otimista e
+# pessimista têm a mesma velocidade quando a inclinação é zero).
+_METABOLISMO_BASE_W = _metabolismo_pandolf_w(VELOCIDADE_BASE_M_S, 0.0)
 
 
 class SemCaminhoError(Exception):
@@ -216,6 +297,8 @@ def _monta_rota(tipo: str, caminho_rc, elevacao, slope_deg, transform, pixel_siz
     perfil = [{"distancia_acumulada_m": 0.0, "elevacao_m": float(elevacao[caminho_rc[0]])}]
     trechos_risco = []
     tempo_s = 0.0
+    o2_otimista_l = 0.0
+    o2_pessimista_l = 0.0
     for i in range(1, len(caminho_rc)):
         r1, c1 = caminho_rc[i - 1]
         r2, c2 = caminho_rc[i]
@@ -234,6 +317,28 @@ def _monta_rota(tipo: str, caminho_rc, elevacao, slope_deg, transform, pixel_siz
         # declarado (ver VELOCIDADE_BASE_M_S acima), não sensor real.
         velocidade = VELOCIDADE_BASE_M_S * max(1 - (s / LIMITE_SLOPE_PERIGO_DEG) * 0.6, 0.25)
         tempo_s += d / velocidade
+
+        # Faixa otimista-pessimista do trecho (Fase 1): mesma forma da
+        # velocidade/tempo acima, com os fatores declarados no topo do
+        # arquivo -- ver FATOR_VELOCIDADE_*.
+        velocidade_otimista = VELOCIDADE_BASE_M_S * max(1 - (s / LIMITE_SLOPE_PERIGO_DEG) * FATOR_VELOCIDADE_OTIMISTA, 0.25)
+        velocidade_pessimista = VELOCIDADE_BASE_M_S * max(1 - (s / LIMITE_SLOPE_PERIGO_DEG) * FATOR_VELOCIDADE_PESSIMISTA, 0.25)
+        tempo_min_otimista_trecho = (d / velocidade_otimista) / 60.0
+        tempo_min_pessimista_trecho = (d / velocidade_pessimista) / 60.0
+
+        # Razão da equação de Pandolf (ver _metabolismo_pandolf_w acima)
+        # entre o trecho real (com a inclinação e a velocidade de cada
+        # caso) e o caso-base plano -- é isso que faz a taxa de O2 subir
+        # com a inclinação, com fonte declarada.
+        grade_pct = 100.0 * math.tan(math.radians(s))
+        taxa_o2_otimista = TAXA_O2_L_POR_MIN * (
+            _metabolismo_pandolf_w(velocidade_otimista, grade_pct) / _METABOLISMO_BASE_W
+        )
+        taxa_o2_pessimista = TAXA_O2_L_POR_MIN * (
+            _metabolismo_pandolf_w(velocidade_pessimista, grade_pct) / _METABOLISMO_BASE_W
+        )
+        o2_otimista_l += taxa_o2_otimista * tempo_min_otimista_trecho
+        o2_pessimista_l += taxa_o2_pessimista * tempo_min_pessimista_trecho
 
         perfil.append({
             "distancia_acumulada_m": round(distancia_m, 1),
@@ -263,6 +368,10 @@ def _monta_rota(tipo: str, caminho_rc, elevacao, slope_deg, transform, pixel_siz
         "distancia_m": round(distancia_m, 1),
         "tempo_estimado_min": round(tempo_min, 1),
         "o2_estimado_l": round(o2_l, 2),
+        "o2_estimado_l_faixa": {
+            "otimista": round(o2_otimista_l, 2),
+            "pessimista": round(o2_pessimista_l, 2),
+        },
         "dose_rad_estimada_ugy": dose_rad_ugy,
         "perfil_elevacao": perfil,
         "trechos_risco": trechos_risco,
