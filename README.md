@@ -15,13 +15,13 @@ e [`docs/PITCH.md`](docs/PITCH.md).
 
 | Caminho | O quê |
 |---|---|
-| `api/` | API FastAPI (feature 01 mapa, 02 rota/A*, 08 alertas+trilha do rover). Ver [`api/README.md`](api/README.md) |
+| `api/` | API FastAPI (feature 01 mapa, 02 rota/A*, 08 alertas+trilha do rover) — também serve `web/` na raiz (`/`), mesma origem. Ver [`api/README.md`](api/README.md) |
 | `data-pipeline/` | ETL dos dados reais (Mars Trek, PDS, MMGIS, API de imagens do MSL) — adapters + scripts `fetch_*`/`seed_*`. Ver [`data-pipeline/README.md`](data-pipeline/README.md) |
-| `web/` | Mapa em HTML/CSS/JS puro + MapLibre GL vendorizado (features 01/02/08), servido pela própria API em `/` |
-| `subprojetos/f03-f04-victoria/` | Feature 03 (fotos/panorama no ponto) e 04 (ficha científica) — app própria, HTML/JS puro |
+| `web/` | **Frontend único do projeto**, HTML/CSS/JS puro (features 01 a 08) — sem bundler/`npm install`, MapLibre e fontes vendorizados. `frontend/` React foi removido de verdade em 2026-11-14 (ver nota abaixo). Ver [`docs/migracao-front-html-puro.md`](docs/migracao-front-html-puro.md) |
+| `subprojetos/f03-f04-victoria/` | Feature 03 (fotos/panorama no ponto) e 04 (ficha científica): ETL e dados próprios; a API principal já serve as rotas dele e o `web/` mostra panorama e ficha |
 | `docs/` | Proposta de produto, pitch, docs de feature. Ver [`docs/README.md`](docs/README.md) |
 | `PROXIMOS-PASSOS.md` | Status técnico real de cada fonte de dado e cada feature -- o doc mais honesto do repo sobre o que funciona de verdade |
-| `CLAUDE.md` | Diretrizes de arquitetura pro time |
+| `CLAUDE.md` | Diretrizes de arquitetura pro time -- motivou a migração pro `web/`, ver seção abaixo |
 | `data/local/` | Todo o dado real baixado (tiles, DTM/MOLA, fotos, condições) -- gitignored, gerado pelos scripts de `data-pipeline/` |
 
 ## Rodar
@@ -50,12 +50,16 @@ Ver instruções próprias em `subprojetos/f03-f04-victoria/`.
 | # | Feature | Status |
 |---|---|---|
 | 01 | Mapa hiperlocal em camadas (CTX/HiRISE/Relevo/THEMIS, tiles reais) | ✅ |
-| 02 | Rota inteligente (A* real, mais segura/mais rápida) + indicadores de risco | ✅ MVP — faltam paradas intermediárias e rota "mais ciência" |
-| 03 | Fotos/panorama no ponto | ✅ no subprojeto `f03-f04-victoria` (a integrar com `api/`) |
-| 04 | Ficha científica do ponto | ✅ no subprojeto `f03-f04-victoria` (a integrar com `api/`) |
-| 05 | Painel de condições (REMS/RAD) | ✅ |
-| 08 | Agente local: alertas por regra + trilha do Curiosity (inclinação medida) | ✅ |
-| 06, 07, 09, 10 | Previsão climática, HUD no traje, sync Terra-Marte, perigos colaborativos | não iniciadas |
+| 02 | Rota inteligente (A* real: mais segura/mais rápida/mais ciência) + radiação real + indicadores de risco | ✅ — falta paradas intermediárias e "motivo de cada alerta" por trecho |
+| 03 | Fotos/panorama no ponto | ✅ panorama e fotos na tela principal (fotos ainda da lista antiga, ver raio-x) |
+| 04 | Ficha científica do ponto | ✅ medições reais do PDS (APXS, CheMin, ChemCam) |
+| 05 | Painel de condições (REMS/RAD) | ✅ + hora/estação marciana e alerta de dado antigo |
+| 06 | Previsão climática local | ✅ estação + anomalia, previsto × medido, janela de EVA na rota |
+| 07 | Modo traje (HUD) | 🟡 versão mínima: falta minimapa e trilha de volta |
+| 08 | Agente local: alertas por regra + perguntas (Gemma local) + voz de saída | 🟡 falta microfone e rota no contexto |
+| 09 | Sync Terra-Marte | não iniciada (pitch) |
+
+O que falta, por gravidade: [`docs/raio-x-implementacao.md`](docs/raio-x-implementacao.md).
 
 Detalhe completo, com o que é limitação real de dado (CRISM, AI4Mars)
 vs. o que é só trabalho pendente, em [`PROXIMOS-PASSOS.md`](PROXIMOS-PASSOS.md).
@@ -71,9 +75,25 @@ tempo de execução**, confirmado por auditoria em 2026-11-14 (ver
   rover, e as ~200 fotos, baixadas de verdade pro disco em vez de
   apontar pra `mars.nasa.gov`).
 - Zero chamada de rede em qualquer endpoint da API rodando.
-- O mapa (`web/`) usa só arquivos do repo: MapLibre e fontes
-  vendorizados em `web/lib/` e `web/fonts/`, sem CDN.
+- O frontend (`web/`, HTML/JS puro) vendoriza MapLibre e as fontes
+  (`web/lib/`, `web/fonts/`) -- nada de CDN em tempo de execução, nem
+  `npm install` (não existe mais `package.json` no projeto).
 
 A única etapa que precisa de internet é a **preparação**
-(`pip install` e os scripts de `fetch_*`), feita uma vez, com
-antecedência, igual instalar qualquer software antes de uma missão real.
+(`pip install`, os scripts de `fetch_*` em `make build`) -- acontece
+uma vez, com antecedência, igual instalar qualquer software antes de
+uma missão real.
+
+## Migração React → HTML/JS puro: concluída
+
+**2026-11-14**: a migração pedida pelo [`CLAUDE.md`](CLAUDE.md) e
+planejada em [`docs/migracao-front-html-puro.md`](docs/migracao-front-html-puro.md)
+foi concluída de ponta a ponta -- `web/` é o único frontend do
+projeto agora, servido pela própria API (`/`), e `frontend/` (React)
+foi removido do repositório de verdade (confirmado: não existe mais
+nem em disco nem rastreado pelo git).
+
+Validado ao vivo depois da remoção: `/` serve o `web/`, `/api/route`
+devolve as 3 variantes (incluindo "mais ciência" e radiação real,
+construídas antes da migração), `/api/point` com alertas, `/tiles` e
+`/rover-photos` -- tudo funcionando junto, nada quebrou na troca.
