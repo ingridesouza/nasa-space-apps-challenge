@@ -522,3 +522,19 @@ button {
 .h2g2-lightbox-nav { background: rgba(255, 255, 255, 0.08); border: 1px solid var(--glass-rim); border-radius: 50%; width: 40px; height: 40px; color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer; flex: none; }
 .h2g2-lightbox-legenda { color: var(--ink-2); font-size: var(--t-small); margin-top: var(--s-3); }
 [hidden] { display: none !important; }
+
+/* F03 panorama e F04 Mastcam no painel do ponto; F08 caixa de pergunta */
+.h2g2-pano { width: 100%; height: 200px; border: 1px solid var(--glass-rim); border-radius: var(--r-2); overflow: hidden; margin-bottom: var(--s-1); }
+.h2g2-mastcam { width: 100%; max-height: 160px; object-fit: cover; margin-top: var(--s-2); border-radius: var(--r-2); display: block; }
+.h2g2-agente { display: flex; gap: var(--s-2); }
+.h2g2-agente input { flex: 1; min-width: 0; padding: var(--s-1) var(--s-2); background: var(--n900); color: var(--ink); border: 1px solid var(--glass-rim); border-radius: var(--r-2); font: inherit; font-size: var(--t-small); }
+.h2g2-agente button { padding: var(--s-1) var(--s-2); font-size: var(--t-micro); cursor: pointer; }
+.h2g2-agente-saida { margin-top: var(--s-2); }
+
+/* F07 modo traje: com luva e visor, só mapa, alertas, veredito e pergunta, tudo maior */
+.h2g2-btn-traje { position: absolute; bottom: var(--s-4); left: 50%; transform: translateX(-50%); padding: var(--s-2) var(--s-4); font-size: var(--t-small); cursor: pointer; color: var(--ink); }
+.h2g2-btn-traje[aria-pressed='true'] { color: var(--hud-cyan); border-color: var(--hud-cyan); }
+.traje #camadas, .traje .h2g2-extra { display: none; }
+.traje .h2g2-alerta { font-size: var(--t-body); font-weight: 600; }
+.traje .h2g2-painel-dir { width: 380px; }
+.traje button, .traje input { min-height: 44px; }

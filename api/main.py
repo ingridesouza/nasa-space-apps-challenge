@@ -11,21 +11,25 @@ Testar:
 
 import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
-from alertas import alertas_do_ponto, paradas_no_bbox
+from agente import AgenteIndisponivel, fontes_do_contexto, montar_contexto, perguntar
+from alertas import alertas_do_ponto, paradas_no_bbox, tempo_e_alertas_do_sol
 from conditions import get_cached_conditions
 from db import get_connection
 from mosaics import build_hillshade_png, build_mosaic_png
 from nomenclature import get_cached_nomenclature
+from previsao import previsao_do_sol
 from raster_sampling import sample_all_rasters
 from route_planning import ForaDoGridError, SemCaminhoError, plan_route
+from tempo_marte import sol_msl
 from tile_server import render_tile
 from vector_queries import all_photos, nearby_photos, nearest_science_target
 
@@ -43,16 +47,6 @@ ROVER_PHOTOS_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "local"
 REFERENCE_SOL = 4650
 
 app = FastAPI(title="H2G2 API -- feature 01")
-
-# Frontend roda em porta separada (Vite, :5173) durante o desenvolvimento.
-# Liberado para qualquer origem -- é uma API local de hackathon, sem dado
-# sensível, sem auth.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["GET"],
-    allow_headers=["*"],
-)
 
 if os.path.isdir(ROVER_PHOTOS_DIR):
     app.mount("/rover-photos", StaticFiles(directory=ROVER_PHOTOS_DIR), name="rover-photos")
@@ -141,7 +135,8 @@ def get_conditions(sol: int = REFERENCE_SOL):
             status_code=404,
             detail=f"Sol {sol} não cacheado ainda -- rodar data-pipeline/scripts/cache_conditions.py {sol}",
         )
-    return dados
+    tempo, alertas = tempo_e_alertas_do_sol(sol)
+    return {**dados, "tempo": tempo, "alertas": alertas}
 
 
 @app.get("/api/nomenclature")
@@ -243,9 +238,60 @@ def get_route(origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: f
     return resultado
 
 
+class Pergunta(BaseModel):
+    pergunta: str = Field(min_length=1, max_length=500)
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=360)
+    sol: int = REFERENCE_SOL
+
+
+@app.post("/api/ask")
+def ask(p: Pergunta, request: Request):
+    """Feature 08, fase 2: pergunta em linguagem natural sobre o ponto,
+    respondida pelo modelo local só com o contexto do /api/point."""
+    ponto = get_point(p.lat, p.lon, request)
+    condicoes = get_cached_conditions(p.sol)
+    if condicoes:
+        condicoes["tempo"], condicoes["alertas"] = tempo_e_alertas_do_sol(p.sol)
+        condicoes["previsao_hoje"] = previsao_do_sol(condicoes["tempo"]["sol_agora"])
+    ctx = montar_contexto(ponto, condicoes)
+    try:
+        resposta = perguntar(p.pergunta, ctx)
+    except AgenteIndisponivel as e:
+        # 503 com os alertas: as regras de segurança não dependem do modelo
+        raise HTTPException(status_code=503, detail={"mensagem": str(e), "alertas": ponto["alertas"]})
+    # Perigo é dito por regra, antes da resposta: o modelo de 3B às vezes o omite.
+    perigos = " ".join(a["mensagem"] for a in ponto["alertas"] if a["nivel"] == "perigo")
+    if perigos:
+        resposta = f"Perigo: {perigos} {resposta}"
+    return {"resposta": resposta, "fontes": fontes_do_contexto(ctx), "alertas": ponto["alertas"]}
+
+
+@app.get("/api/previsao")
+def get_previsao(sol: int | None = None, duracao_min: float | None = Query(None, gt=0, le=24 * 60)):
+    """Feature 06: clima previsto para um sol (padrão: o de hoje), offline.
+    Estimativa com faixa e erro medido por backtest -- nunca vira "medido".
+    Com duracao_min (tempo da rota), sugere a melhor janela do dia para a EVA."""
+    prev = previsao_do_sol(sol if sol is not None else sol_msl(datetime.now(timezone.utc)), duracao_min)
+    if prev is None:
+        raise HTTPException(status_code=404, detail="Sem climatologia: rodar data-pipeline/scripts/cache_climatologia.py")
+    return prev
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# F03 (panorama/fotos no ponto) e F04 (ficha) do subprojeto, na mesma origem.
+# shortcut: reaproveita o app e o bundle/ do subprojeto em vez de mover o código pra api/;
+# mover quando o ETL dele for mesclado ao data-pipeline/.
+F03_DIR = Path(__file__).parent.parent / "subprojetos" / "f03-f04-victoria" / "h2g2-f03"
+sys.path.append(str(F03_DIR))  # append: os módulos de api/ continuam com prioridade
+from api.main import app as f03_app  # noqa: E402 -- pacote "api" do subprojeto
+
+F03_ROTAS = {"/panoramas/nearest", "/photos/near", "/science/card", "/orbital/crop", "/bundle"}
+app.router.routes += [r for r in f03_app.routes if r.path in F03_ROTAS]
 
 
 # Front HTML/JS puro (web/) servido pela própria API -- mesma origem, offline.

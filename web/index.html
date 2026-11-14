@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- Front H2G2 em HTML/CSS/JS puro, servido pela API (api/main.py).
-     Única lib: MapLibre GL 6.17.0 vendorizada em lib/maplibre/ (BSD-3). Nada carrega de fora. -->
+     Libs vendorizadas: MapLibre GL 6.17.0 (lib/maplibre/, BSD-3) e Pannellum 2.5.6 (lib/pannellum/, MIT). Nada carrega de fora. -->
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
@@ -8,6 +8,7 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <title>H2G2 · Mapa hiperlocal do boxwork</title>
     <link rel="stylesheet" href="lib/maplibre/maplibre-gl.css" />
+    <link rel="stylesheet" href="lib/pannellum/pannellum.css" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -32,10 +33,13 @@
 
     <button class="h2g2-panel h2g2-mono h2g2-btn-rota" id="btn-rota">◇ planejar rota</button>
     <div class="h2g2-panel h2g2-mono h2g2-instrucao" id="instrucao" hidden></div>
+    <button class="h2g2-panel h2g2-mono h2g2-btn-traje" id="btn-traje" aria-pressed="false">◉ modo traje</button>
 
     <div class="h2g2-panel h2g2-painel-dir" id="ponto" hidden></div>
     <div class="h2g2-panel h2g2-painel-dir" id="rota" hidden></div>
 
+    <!-- Pannellum 2.5.6 (MIT), vendorizado: panorama 360° da F03 no painel do ponto -->
+    <script src="lib/pannellum/pannellum.js"></script>
     <script type="module" src="app.js"></script>
   </body>
 </html>
