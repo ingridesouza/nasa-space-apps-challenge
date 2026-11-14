@@ -16,6 +16,8 @@ Salvador 2026).
 - [`feature-08-plano-implementacao.md`](feature-08-plano-implementacao.md)
   — plano de implementação da feature 08 por fase: arquivos, contratos,
   regras e casos de teste.
+- [`feature-08-voz-plano-execucao.md`](feature-08-voz-plano-execucao.md) — plano de execução
+  da voz: "Guia, rota até…" → Whisper → intenção → confirmação → rota no mapa → resposta falada.
 
 - [`H2G2_NasaSpaceApps_DETON8.pdf`](H2G2_NasaSpaceApps_DETON8.pdf) — plano de produto
   oficial (9 features, fontes, pesquisas de apoio).
