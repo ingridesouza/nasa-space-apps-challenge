@@ -2,49 +2,100 @@
 <!-- Front H2G2 em HTML/CSS/JS puro, servido pela API (api/main.py).
      Libs vendorizadas: MapLibre GL 6.17.0 (lib/maplibre/, BSD-3) e Pannellum 2.5.6 (lib/pannellum/, MIT). Nada carrega de fora. -->
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <title>H2G2 · Mapa hiperlocal do boxwork</title>
-    <link rel="stylesheet" href="lib/maplibre/maplibre-gl.css" />
-    <link rel="stylesheet" href="lib/pannellum/pannellum.css" />
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <div id="mapa"></div>
-    <!-- CTX/HiRISE em Gale só existem em P&B; mix-blend-mode: color troca só o
-         matiz (poeira marciana), nenhum dado científico passa por aqui -->
-    <div class="h2g2-mars-tint" id="tint" hidden></div>
-    <div class="h2g2-mono h2g2-dim h2g2-centro" id="status">carregando camadas da API...</div>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <title>H2G2 · Visor</title>
+  <link rel="stylesheet" href="lib/maplibre/maplibre-gl.css">
+  <link rel="stylesheet" href="lib/pannellum/pannellum.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- VISOR: visão do astronauta (panorama ou foto) -->
+    <main id="visor" class="visor grid-bg">
+      <div id="visor-stage" class="visor-stage">
+        <p id="visor-vazio" class="visor-vazio mono">Abra o panorama (⤢) ou uma foto para ver aqui.</p>
+        <img id="visor-img" class="visor-img" alt="" hidden>
+      </div>
+      <button id="visor-fechar" class="ibtn visor-fechar" type="button" title="Voltar (Esc)" hidden>✕</button>
+    </main>
 
-    <div class="h2g2-vignette"></div>
-    <div class="h2g2-corner h2g2-corner--tl"></div>
-    <div class="h2g2-corner h2g2-corner--tr"></div>
-    <div class="h2g2-corner h2g2-corner--bl"></div>
-    <div class="h2g2-corner h2g2-corner--br"></div>
-
-    <div class="h2g2-panel h2g2-hud" id="hud"></div>
-
-    <div class="h2g2-coluna-esq">
-      <div class="h2g2-panel" id="camadas"></div>
-      <div class="h2g2-panel" id="condicoes"></div>
+    <div class="visor-hud mono">
+      <span class="eyebrow">H2G2</span>
     </div>
 
-    <div class="h2g2-acoes">
-      <button class="h2g2-panel h2g2-mono h2g2-btn-rota" id="btn-rota">◇ planejar rota</button>
-      <button class="h2g2-panel h2g2-mono h2g2-btn-traje" id="btn-traje" aria-pressed="false">◉ modo traje</button>
-      <button class="h2g2-panel h2g2-mono h2g2-btn-ass" id="btn-assistente" aria-expanded="false" aria-controls="assistente" title="Atalho: tecla /">◎ perguntar ao H2G2 <kbd>/</kbd></button>
+    <!-- F08: assistente local -->
+    <button id="btn-assistente" class="pilula frame mono" type="button" aria-expanded="false" aria-controls="assistente">Send your request</button>
+    <section id="assistente" class="card panel assistente" hidden aria-label="Assistente H2G2"></section>
+
+    <!-- MAPA (F01): o mesmo elemento vira círculo (minimizado) ou tela cheia -->
+    <div id="mapa-box" class="mapa-box" title="Expandir mapa">
+      <div id="mapa"></div>
+      <!-- CTX/HiRISE em Gale só existem em P&B; mix-blend-mode: color troca só o matiz
+           (poeira marciana) e preserva a luminância. Nenhum dado científico passa por aqui. -->
+      <div class="mars-tint"></div>
+      <p id="mapa-status" class="mapa-status mono">carregando mapa…</p>
     </div>
-    <section class="h2g2-panel h2g2-assistente" id="assistente" hidden aria-label="Assistente H2G2"></section>
-    <div class="h2g2-panel h2g2-mono h2g2-instrucao" id="instrucao" hidden></div>
-    <section class="h2g2-panel h2g2-previsao" id="previsao" aria-label="Previsão local"></section>
+    <div id="mapa-acoes" class="mapa-acoes">
+      <button id="btn-rota" class="btn btn-red btn-sm" type="button">Planejar rota</button>
+    </div>
+    <div id="camadas" class="card panel camadas" hidden></div>
+    <div id="instrucao" class="instrucao mono" hidden></div>
+    <div id="leitura" class="leitura mono" hidden></div>
 
-    <div class="h2g2-panel h2g2-painel-dir" id="ponto" hidden></div>
-    <div class="h2g2-panel h2g2-painel-dir" id="rota" hidden></div>
+    <form id="coords" class="coords panel frame" autocomplete="off" novalidate hidden>
+      <div class="eyebrow">Destino</div>
+      <label class="campo"><span class="mono">LAT °</span>
+        <input id="lat" class="mono" type="number" step="any" placeholder="-4.808008" required>
+      </label>
+      <label class="campo"><span class="mono">LON °E</span>
+        <input id="lon" class="mono" type="number" step="any" placeholder="137.381004" required>
+      </label>
+      <button class="btn btn-red btn-sm" type="submit">Enviar</button>
+      <p id="coords-msg" class="coords-msg mono" hidden></p>
+    </form>
 
-    <!-- Pannellum 2.5.6 (MIT), vendorizado: panorama 360° da F03 no painel do ponto -->
-    <script src="lib/pannellum/pannellum.js"></script>
-    <script type="module" src="app.js"></script>
-  </body>
+    <!-- BARRAS DA DIREITA: rota e imagens, independentes (cada uma com seu botão de abrir/fechar) -->
+    <div id="flutuante" class="flutuante">
+      <div id="g-rota" class="grupo">
+        <button class="ibtn ibtn-sm grupo-toggle" type="button" data-nome="rota" title="Recolher rota" aria-expanded="true">›</button>
+        <section id="c-rota" class="card panel rota-card" hidden></section>
+      </div>
+
+      <div id="g-imagens" class="grupo">
+        <button class="ibtn ibtn-sm grupo-toggle" type="button" data-nome="imagens" title="Recolher imagens" aria-expanded="true">›</button>
+        <section id="c-status" class="card panel" hidden></section>
+
+        <section id="c-pano" class="card panel" hidden>
+          <div class="pano-slot"><div id="pano"></div>
+            <button id="pano-expandir" class="ibtn ibtn-sm" type="button" title="Expandir no visor">⤢</button>
+          </div>
+          <p id="pano-rotulo" class="rotulo mono"></p>
+        </section>
+
+        <section id="c-fotos" class="card panel" hidden>
+          <div id="fotos" class="fotos"></div>
+          <div id="fotos-nav" class="fotos-nav" hidden>
+            <button type="button" id="fotos-prev" class="fotos-seta" aria-label="Página anterior">‹</button>
+            <span id="fotos-pag" class="fotos-pag"></span>
+            <button type="button" id="fotos-next" class="fotos-seta" aria-label="Próxima página">›</button>
+          </div>
+        </section>
+      </div>
+    </div>
+    <!-- FICHAS (F04): coluna à esquerda da barra, empilha para cima -->
+    <div id="fichas" class="fichas">
+      <details id="c-ficha" class="card panel ficha-card" hidden>
+        <summary><span id="ficha-nome" class="ficha-nome"></span><span id="ficha-tipo" class="tag tag-red"></span></summary>
+        <div id="ficha" class="ficha-body"></div>
+      </details>
+    </div>
+  </div>
+
+  <script src="lib/pannellum/pannellum.js"></script>
+  <script src="card.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
 </html>

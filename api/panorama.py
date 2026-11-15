@@ -10,6 +10,7 @@ from __future__ import annotations
 import io
 import json
 import sqlite3
+import threading
 from functools import lru_cache
 from pathlib import Path
 
@@ -34,10 +35,16 @@ Image.MAX_IMAGE_PIXELS = None
 router = APIRouter()
 
 
-@lru_cache(maxsize=1)
+_local = threading.local()
+
+
 def _conexao() -> sqlite3.Connection:
-    con = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True, check_same_thread=False)
-    con.row_factory = sqlite3.Row
+    # uma conexão por thread: o FastAPI roda rotas síncronas em paralelo, e uma
+    # conexão compartilhada mistura os cursores (consulta vazia -> 503 falso)
+    con = getattr(_local, "con", None)
+    if con is None:
+        con = _local.con = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+        con.row_factory = sqlite3.Row
     return con
 
 

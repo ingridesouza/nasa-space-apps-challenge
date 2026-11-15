@@ -45,8 +45,7 @@ e abrir http://localhost:8000. Não há `npm install` nem build de front.
 
 O `make build` já roda o ETL (`data-pipeline/f03/etl/build.py`). Ele grava as tabelas
 `photos`, `panoramas`, `targets`, `measurements` no `data/local/h2g2.sqlite` e os arquivos em
-`data/local/f03/` (servidos em `/bundle`). O front antigo do F03/F04 fica em
-http://localhost:8000/f03/ até os fronts serem juntados.
+`data/local/f03/` (servidos em `/bundle`).
 
 ## Status por feature
 
