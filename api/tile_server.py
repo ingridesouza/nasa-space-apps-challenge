@@ -107,6 +107,12 @@ def _load_array_and_transform(layer_name: str, local_tile_path: str, tipo_acesso
         rgba, transform, crs = grade_risco_rgba(local_tile_path)
         return rgba, transform, (crs or MARS_GEOGRAPHIC_CRS)
 
+    if tipo_acesso == "termico_escalar":
+        from termico import grade_ti_rgba
+
+        rgba, transform, crs = grade_ti_rgba(local_tile_path)
+        return rgba, transform, (crs or MARS_GEOGRAPHIC_CRS)
+
     if tipo_acesso == "tiles_wmts":
         georef_path = os.path.join(local_tile_path, "_mosaico_georef.tif")
         if not os.path.exists(georef_path):
@@ -176,8 +182,9 @@ def render_tile(
         src_crs=crs,
         dst_transform=dst_transform,
         dst_crs=crs,
-        # categórica (risco) não pode misturar cores entre faixas
-        resampling=Resampling.nearest if tipo_acesso == "risco_derivado" else Resampling.cubic,
+        # categórica (risco) não pode misturar cores entre faixas; térmica mostra a
+        # célula real de 100 m em vez de borrar
+        resampling=Resampling.nearest if tipo_acesso in ("risco_derivado", "termico_escalar") else Resampling.cubic,
     )
 
     if array.ndim == 2:

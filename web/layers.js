@@ -8,7 +8,7 @@ export const TOGGLEABLE_LAYERS = [
   { id: 'ctx_optica', label: 'CTX (contexto, ~10 m)', grupo: 'base', defaultVisible: true, defaultOpacity: 1 },
   { id: 'hirise_optica', label: 'HiRISE (detalhe, ~0,6 m)', grupo: 'base', defaultVisible: true, defaultOpacity: 1 },
   { id: 'relevo_hillshade', label: 'Relevo (hillshade do DTM)', grupo: 'overlay', defaultVisible: false, defaultOpacity: 0.7 },
-  { id: 'themis_termica', label: 'Térmica (THEMIS, ~100 m/px)', grupo: 'overlay', defaultVisible: false, defaultOpacity: 0.6 },
+  { id: 'themis_ti', label: 'Inércia térmica (THEMIS, 100 m)', grupo: 'overlay', defaultVisible: false, defaultOpacity: 0.6 },
   { id: 'risco_previsto', label: 'Risco de inclinação (previsto)', grupo: 'overlay', defaultVisible: false, defaultOpacity: 0.85 },
 ]
 
@@ -30,7 +30,7 @@ export const LAYER_MAXZOOM = {
   hirise_optica: 17, // ~0,64 m/px nos tiles locais (z16 do Mars Trek); o produto tem 25 cm, não baixado
   relevo_hillshade: 14, // ~5.88m/px real do DTM
   ctx_optica: 13, // ~10,2 m/px nos tiles locais (z12 do Mars Trek); o produto tem ~6 m, não baixado
-  themis_termica: 10, // ~100m/px declarado
+  themis_ti: 10, // 100 m/px (célula real; overzoom em nearest)
   risco_previsto: 17, // mesmo DTM; cor por faixa (nearest), não borra
 }
 
@@ -44,3 +44,11 @@ export const SLOPE_VERDICT = {
 /** Mesmas cores em hex -- MapLibre pinta via WebGL e não resolve var()
  * (tem que bater com --verdict-* em style.css). */
 export const SLOPE_COLOR_HEX = { seguro: '#7fe0a8', atencao: '#f2b33d', perigo: '#e8643f' }
+
+/** Legenda da inércia térmica -- mesmas paradas/faixa de api/termico.py
+ * (PARADAS, TI_MIN/TI_MAX). Alta = rocha/solo firme, baixa = material solto. */
+export const TI_LEGENDA = {
+  min: 200,
+  max: 550,
+  gradiente: 'linear-gradient(90deg, rgb(40,30,90) 0%, rgb(60,110,190) 35%, rgb(240,200,70) 65%, rgb(220,70,40) 100%)',
+}

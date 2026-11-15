@@ -26,6 +26,7 @@ from conditions import get_cached_conditions
 from db import get_connection
 from mosaics import build_hillshade_png, build_mosaic_png
 from nomenclature import get_cached_nomenclature
+from termico import inercia_no_ponto
 from previsao import apagar_medicao, previsao_do_sol, registrar_medicao, risco_inclinacao, status_previsto
 from raster_sampling import sample_all_rasters
 from route_planning import ForaDoGridError, SemCaminhoError, plan_route
@@ -71,6 +72,7 @@ def get_point(lat: float, lon: float, request: Request):
         fotos = nearby_photos(conn, lat, lon, base_url=str(request.base_url).rstrip("/"))
         alvo = nearest_science_target(conn, lat, lon)
         rasters = sample_all_rasters(conn, lat, lon)
+        termica = inercia_no_ponto(conn, lat, lon)
     finally:
         conn.close()
 
@@ -83,6 +85,8 @@ def get_point(lat: float, lon: float, request: Request):
         "alertas": alertas_do_ponto(lat, lon, rasters),
         # feature 06: chance de o terreno real passar de 15°, pelo histórico do rover
         "previsao_inclinacao": risco_inclinacao(rasters.get("slope_deg")),
+        # inércia térmica THEMIS (100 m): acréscimo ao contrato
+        "inercia_termica": termica,
     }
 
 

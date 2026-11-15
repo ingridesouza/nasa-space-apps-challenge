@@ -88,3 +88,29 @@ Com a amostra a cada 20 sols, horizontes menores que 20 se comportam como 20. A 
 - Prevê a média da estação, não o tempo do dia. Não prevê tempestade de poeira. Para poeira, o que existe é o alerta de temporada da F08 (Ls 180°–360°).
 - O UV ficou de fora: o sensor degrada com a poeira ao longo da missão, e a série não é comparável entre anos.
 - A amostra a cada 20 sols é um atalho. Um sol a cada 5 daria uma climatologia mais lisa, ao custo de 4 vezes o download.
+
+## Natureza da "previsão" de inclinação (leia antes de citar)
+
+O indicador de inclinação **não é uma previsão do terreno**. É uma **frequência histórica de subestimação do DTM**, calibrada nas paradas do rover. O rótulo "(previsto)" da camada e do painel é herança de nome; o que o número diz de fato é: "em terreno que o mapa dá X–Y°, o rover mediu ≥15° em N% das paradas".
+
+| Faixa do mapa | Paradas | ≥15° medido | Chance | IC 95% (aprox.) |
+|---|---|---|---|---|
+| 0–7° | 110 | 0 | 0% | até ~3% |
+| 7–10° | 105 | 1 | 1% | 0,2–5% |
+| 10–15° | 73 | 20 | 27% | 18–38% |
+| ≥15° | 5 | 4 | 80% | 38–96% |
+
+Valor real: mostra que o DTM de órbita (~5,9 m/px) suaviza as cristas e subestima a inclinação, principalmente na faixa 10–15°. É um achado de calibração, não uma probabilidade de perigo.
+
+**Limites conhecidos:**
+- **Viés de seleção (principal):** o rover só para onde é plano e seguro. A tabela descreve onde ele parou, não o terreno. Encostas evitadas ficam sem cobertura, e o erro vai para o lado perigoso (subestima o risco).
+- **Medida diferente da do astronauta:** `tilt` é a atitude do corpo do rover (roll e pitch, base de ~3 m, inclui subir em pedra), não a inclinação do chão sob uma bota.
+- **Amostra pequena:** a faixa ≥15° tem 5 paradas. "80%" tem IC de 38 a 96%.
+- **Paradas não independentes:** vêm em sequência ao longo da trilha, então o IC real é mais largo.
+- **Sem validação:** não há holdout nem validação cruzada espacial. Os cortes de 20% e 50% são escolha manual.
+- **Zero eventos ≠ risco zero:** "0%" significa menos de ~3%.
+- **Duas implementações de inclinação (não verificado):** a tabela usa `_slope_degrees` ([raster_sampling.py](../api/raster_sampling.py)); a camada pinta com `_slope_grid_deg` ([route_planning.py](../api/route_planning.py)). Se diferirem, as faixas não casam com os pixels.
+
+**Como apresentar:** `confianca: "estimado"` (já é o padrão). Citar como "frequência histórica de subestimação do DTM" e mostrar `n` junto do percentual. Nunca como "previsão de perigo" nem como garantia de segurança.
+
+**Pendências (não feitas):** renomear rótulo/tooltip da camada; mostrar `n` e IC no card; validação cruzada deixando trechos inteiros da trilha de fora; conferir numericamente as duas funções de inclinação.

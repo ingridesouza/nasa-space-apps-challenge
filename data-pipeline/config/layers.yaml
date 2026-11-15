@@ -95,3 +95,17 @@ layers:
       min_lat: -4.8263
       max_lon: 137.4094
       max_lat: -4.7757
+
+  # THEMIS inércia térmica QUANTITATIVA (substitui a Day IR visual) --
+  # CONFIRMADO em 2026-11-14: rasterio lê a janela via /vsicurl/ (o
+  # servidor aceita Range, o .cub inteiro tem 2,5 GB e não é baixado).
+  # Valor real em unidades de TI (J m^-2 K^-1 s^-1/2), 100 m/px,
+  # simplecilíndrica (eqc, R=3396190). Mosaico global multi-ano do USGS.
+  themis_ti:
+    categoria: termica
+    url: "https://asc-astropedia.s3.us-west-2.amazonaws.com/Mars/Odyssey/THEMIS-Global-Thermal-Inertia-Mosaic/Quantitative-32-Bit/THEMIS_TI_Mosaic_Quant_30S120E_100mpp.cub"
+    bbox_teste:
+      min_lon: 137.3586
+      min_lat: -4.8263
+      max_lon: 137.4094
+      max_lat: -4.7757

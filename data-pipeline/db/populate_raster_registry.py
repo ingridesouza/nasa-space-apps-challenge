@@ -116,6 +116,14 @@ CAMADAS = [
         "categoria": "topografica",
         "tipo_acesso": "risco_derivado",
     },
+    {
+        # THEMIS inércia térmica quantitativa (scripts/fetch_themis_ti.py) --
+        # valor real por célula de 100 m; bbox = extensão real do GeoTIFF
+        "layer_name": "themis_ti",
+        "local_tile_path": os.path.join(TILES_DIR, "themis_ti", "ti_100m.tif"),
+        "categoria": "termica",
+        "tipo_acesso": "termico_escalar",
+    },
 ]
 
 
@@ -136,6 +144,13 @@ def main() -> None:
                     status += " (bbox real recalculado a partir dos tiles)"
             except Exception as e:
                 status += f" (AVISO: não recalculei bbox real, usando o pedido -- {e})"
+
+        if camada["tipo_acesso"] == "termico_escalar" and existe:
+            import rasterio
+
+            with rasterio.open(camada["local_tile_path"]) as ds:
+                bbox_camada = (ds.bounds.left, ds.bounds.bottom, ds.bounds.right, ds.bounds.top)
+            status += " (bbox real do GeoTIFF)"
 
         conn.execute(
             """

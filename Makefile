@@ -17,7 +17,7 @@ build:
 	$(PY) scripts/fetch_dtm_test.py && \
 	$(PY) scripts/fetch_ctx_test.py ctx_optica && \
 	$(PY) scripts/fetch_ctx_test.py hirise_optica && \
-	$(PY) scripts/fetch_ctx_test.py themis_termica && \
+	$(PY) scripts/fetch_themis_ti.py && \
 	$(PY) scripts/fetch_nomenclature.py && \
 	$(PY) scripts/fetch_rover_waypoints.py && \
 	$(PY) scripts/cache_conditions.py && \

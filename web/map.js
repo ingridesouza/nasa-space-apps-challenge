@@ -56,9 +56,8 @@ function buildStyle(metas) {
       type: 'raster',
       source: l.id,
       layout: { visibility: l.defaultVisible ? 'visible' : 'none' },
-      paint: { 'raster-opacity': l.defaultOpacity },
-      // overlay some além da resolução real em vez de lavar a HiRISE por baixo
-      ...(l.grupo === 'overlay' ? { maxzoom: LAYER_MAXZOOM[l.id] } : {}),
+      paint: { 'raster-opacity': l.defaultOpacity, ...(l.id === 'themis_ti' ? { 'raster-resampling': 'nearest' } : {}) },
+      // sem maxzoom na layer: o do source (LAYER_MAXZOOM) faz o MapLibre ampliar o último nível
     })
   }
   return { version: 8, sources, layers }

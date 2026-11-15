@@ -389,11 +389,14 @@ async function cliqueNoMapa(lat, lon) {
   el.hidden = false
   el.textContent = `${lat.toFixed(6)}° · ${lon.toFixed(6)}°E · consultando elevação…`
   try {
-    const rv = (await getPoint(lat, lon)).raster_values
+    const ponto = await getPoint(lat, lon)
+    const rv = ponto.raster_values
+    const ti = ponto.inercia_termica
     if (meu !== seqLeitura) return
     el.textContent = `${lat.toFixed(6)}° · ${lon.toFixed(6)}°E · ` + (rv.elevacao_m === null
       ? 'sem elevação (fora do DTM)'
       : `${rv.elevacao_m.toFixed(1)} m${rv.slope_deg !== null ? ` · ${rv.slope_deg.toFixed(1)}°` : ''}`)
+      + (ti ? ` · TI ${ti.valor}` : '')
   } catch (e) {
     if (meu === seqLeitura) el.textContent = `${lat.toFixed(6)}° · ${lon.toFixed(6)}°E · ${e.message}`
   }
