@@ -148,6 +148,12 @@
       "layer": {
        "type": "enum",
        "values": {
+        "insolation": [
+         "sun",
+         "sunlight",
+         "insolation",
+         "lighting"
+        ],
         "relief_hillshade": [
          "relief",
          "hillshade",
@@ -161,6 +167,12 @@
         "predicted_risk": [
          "risk",
          "slope"
+        ],
+        "atmosphere_track": [
+         "atmosphere",
+         "atmospheric",
+         "rems",
+         "weather"
         ]
        }
       }
@@ -179,6 +191,12 @@
       "layer": {
        "type": "enum",
        "values": {
+        "insolation": [
+         "sun",
+         "sunlight",
+         "insolation",
+         "lighting"
+        ],
         "relief_hillshade": [
          "relief",
          "hillshade",
@@ -192,6 +210,12 @@
         "predicted_risk": [
          "risk",
          "slope"
+        ],
+        "atmosphere_track": [
+         "atmosphere",
+         "atmospheric",
+         "rems",
+         "weather"
         ]
        }
       }
@@ -207,6 +231,12 @@
       "layer": {
        "type": "enum",
        "values": {
+        "insolation": [
+         "sun",
+         "sunlight",
+         "insolation",
+         "lighting"
+        ],
         "relief_hillshade": [
          "relief",
          "hillshade",
@@ -220,6 +250,12 @@
         "predicted_risk": [
          "risk",
          "slope"
+        ],
+        "atmosphere_track": [
+         "atmosphere",
+         "atmospheric",
+         "rems",
+         "weather"
         ]
        }
       },
@@ -227,6 +263,81 @@
        "type": "integer",
        "min": 0,
        "max": 100
+      }
+     }
+    },
+    "hour": {
+     "desc": "sets the solar hour of the sun and shade layer (5 to 19)",
+     "spoken": [
+      "solar hour",
+      "sun hour",
+      "solar time",
+      "set hour"
+     ],
+     "args": {
+      "hour": {
+       "type": "integer",
+       "min": 5,
+       "max": 19
+      }
+     }
+    },
+    "hour_preset": {
+     "desc": "sets the sun and shade layer to the current hour or the arrival hour",
+     "spoken": [
+      "sun now",
+      "sun at arrival",
+      "hour now",
+      "current hour",
+      "arrival hour",
+      "solar hour now",
+      "solar hour arrival",
+      "solar time now",
+      "solar time arrival"
+     ],
+     "args": {
+      "moment": {
+       "type": "enum",
+       "values": {
+        "now": [
+         "now",
+         "current"
+        ],
+        "arrival": [
+         "arrival",
+         "arrive",
+         "arriving"
+        ]
+       }
+      }
+     }
+    },
+    "variable": {
+     "desc": "chooses the variable of the atmosphere layer",
+     "spoken": [
+      "variable",
+      "atmosphere variable",
+      "color by",
+      "plot"
+     ],
+     "args": {
+      "variable": {
+       "type": "enum",
+       "values": {
+        "temp_max_c": [
+         "maximum",
+         "max",
+         "high"
+        ],
+        "temp_min_c": [
+         "minimum",
+         "min",
+         "low"
+        ],
+        "pressure_pa": [
+         "pressure"
+        ]
+       }
       }
      }
     }
@@ -363,6 +474,19 @@
       "destination at center",
       "mark destination",
       "destination at crosshair"
+     ],
+     "confirm": true
+    },
+    "here": {
+     "desc": "marks the current position at the map center (the crosshair); new route options start there",
+     "spoken": [
+      "i am here",
+      "here i am",
+      "i m here",
+      "position here",
+      "mark position",
+      "position at center",
+      "position at crosshair"
      ],
      "confirm": true
     },
@@ -667,6 +791,15 @@
       "back",
       "go back",
       "return"
+     ]
+    },
+    "science": {
+     "desc": "opens the science details of the place in the answer",
+     "spoken": [
+      "details",
+      "science details",
+      "open details",
+      "more details"
      ]
     }
    }

@@ -423,12 +423,7 @@ let readoutSeq = 0
 async function mapClick(lat, lon) {
   const p = { lat, lon }
   if (state.map === 'route') {
-    if (awaitingPosition) { // the followed route does not change: only where the new options start from
-      awaitingPosition = false
-      instruction(null)
-      state.position = { lat, lon, label: 'the marked position', source: 'marked on the map', kind: 'position' }
-      return map.setOrigin(state.position)
-    }
+    if (awaitingPosition) return markPosition(lat, lon)
     if (awaitingStop) {
       awaitingStop = false
       instruction(null)
@@ -442,6 +437,14 @@ async function mapClick(lat, lon) {
     return setDestination(p)
   }
   return readPoint(lat, lon) // explore: quick readout of lat, lon and elevation
+}
+
+/** "📍 I am here" (click or voice): the followed route does not change, only where the new options start from. */
+function markPosition(lat, lon) {
+  awaitingPosition = false
+  instruction(null)
+  state.position = { lat, lon, label: 'the marked position', source: 'marked on the map', kind: 'position' }
+  map.setOrigin(state.position)
 }
 
 /** Writes (and returns) lat, lon and elevation of the point in the readout line. */
@@ -478,15 +481,17 @@ $('layers-panel').addEventListener('click', (e) => {
   const c = state.layers[id]
   c.visible = !c.visible
   map.setLayerVisible(id, c.visible)
-  if (id === 'insolation' && c.visible && !state.insolation.started) {
-    // first time: starts at the arrival hour (if there is a route) or the current one
-    const h = arrivalHour(state) ?? state.clock?.ltst
-    if (h !== undefined) state.insolation.hour = quarter(h)
-    state.insolation.started = true
-    updateInsolation()
-  }
+  if (id === 'insolation' && c.visible) startInsolation()
   layers()
 })
+/** First time the sun layer turns on: starts at the arrival hour (if there is a route) or the current one. */
+function startInsolation() {
+  if (state.insolation.started) return
+  const h = arrivalHour(state) ?? state.clock?.ltst
+  if (h !== undefined) state.insolation.hour = quarter(h)
+  state.insolation.started = true
+  updateInsolation()
+}
 // insolation hour: 'change' (slider release), not 'input' -- each hour is a new grid on the server
 // with a destination set, the query already tells whether IT is in sun or shade at the chosen hour
 function updateInsolation() {
@@ -602,7 +607,15 @@ function setLayer(layer, visible, opacity) {
   c.visible = visible
   if (opacity !== undefined) { c.opacity = opacity; map.setLayerOpacity(layer, opacity) }
   map.setLayerVisible(layer, visible)
+  if (layer === 'insolation' && visible) startInsolation()
   layers()
+}
+/** Voice: chosen hour turns the sun layer on (and wins over the automatic first hour). */
+function setInsolationHour(h) {
+  state.insolation.started = true
+  state.insolation.hour = quarter(h)
+  setLayer('insolation', true)
+  updateInsolation()
 }
 register('m-A', {
   expand: () => { if (state.map !== 'viewer') return 'The map is already open.'; openMap('explore') },
@@ -623,6 +636,19 @@ register('m-B', {
   show: ({ layer }) => setLayer(layer, true),
   hide: ({ layer }) => setLayer(layer, false),
   opacity: ({ layer, value }) => setLayer(layer, true, value / 100),
+  hour: ({ hour }) => { setInsolationHour(hour) },
+  hour_preset: ({ moment }) => {
+    const h = moment === 'now' ? state.clock?.ltst : arrivalHour(state)
+    if (h == null) return moment === 'now' ? 'The solar clock has not loaded yet.' : 'There is no route: no arrival hour.'
+    setInsolationHour(h)
+  },
+  variable: ({ variable }) => {
+    const { geo, error } = state.atmosphere
+    if (!geo) return error ? `No atmospheric data: ${error}` : 'The atmospheric data is still loading.'
+    state.atmosphere.variable = variable
+    map.setAtmosphere(geo, variable, true)
+    setLayer('atmosphere_track', true)
+  },
 })
 register('m-C', {
   plan: () => { openMap('route') },
@@ -641,6 +667,11 @@ register('m-C', {
     $('lat').value = c.lat.toFixed(6)
     $('lon').value = c.lon.toFixed(6)
     setDestination(c)
+  },
+  here: () => {
+    const c = map.mapCenter()
+    if (!c) return 'The map has not loaded yet.'
+    markPosition(c.lat, c.lon)
   },
   stop: () => {
     const c = map.mapCenter()
@@ -702,6 +733,11 @@ register('m-F', {
   close: () => { $('c-answer').open = false },
   next: () => changePage($('answer'), 1) || 'Answer card: already on the last page.',
   previous: () => changePage($('answer'), -1) || 'Answer card: already on the first page.',
+  science: () => {
+    const b = $('c-answer').querySelector('[data-science]')
+    if ($('c-answer').hidden || !b) return 'The answer has no science details.'
+    b.click()
+  },
 })
 register('m-G', {
   open: () => { assistant.open(true) },

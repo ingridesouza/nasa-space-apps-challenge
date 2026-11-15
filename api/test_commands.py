@@ -37,6 +37,14 @@ ok("Atlas, zoom in two", "m-A", "zoom_in", {"levels": 2})
 ok("move the map north", "m-A", "move", {"direction": "north"})
 ok("turn on the relief", "m-B", "show", {"layer": "relief_hillshade"})
 ok("Vega opacity risk 40", "m-B", "opacity", {"layer": "predicted_risk", "value": 40})
+ok("Vega, show sun and shade", "m-B", "show", {"layer": "insolation"})  # "shade" alone stays relief
+ok("Vega, show shade", "m-B", "show", {"layer": "relief_hillshade"})
+ok("turn on the atmosphere layer", "m-B", "show", {"layer": "atmosphere_track"})
+ok("Vega, solar hour fourteen", "m-B", "hour", {"hour": 14})
+ok("Vega, solar hour now", "m-B", "hour_preset", {"moment": "now"})  # the longer phrase beats "solar hour"
+ok("Vega, sun at arrival", "m-B", "hour_preset", {"moment": "arrival"})
+ok("Vega, variable pressure", "m-B", "variable", {"variable": "pressure_pa"})
+ok("Vega, plot minimum temperature", "m-B", "variable", {"variable": "temp_min_c"})
 ok("Polaris, fastest route", "m-C", "type", {"type": "fastest"})
 ok("polaris next sol", "m-C", "sol", {"delta": "1"})  # the longer phrase beats "next"
 ok("Orion rotate left 90 degrees", "m-D", "rotate", {"direction": "left", "degrees": 90})
@@ -45,6 +53,8 @@ ok("close the viewer", "m-H", "close")
 ok("Pollux latitude minus 4.808 longitude 137.381", "m-I", "set", {"lat": -4.808, "lon": 137.381})
 ok("Atlas, what is the elevation here", "m-A", "read")
 ok("Polaris, add stop", "m-C", "stop")
+ok("Polaris, I'm here", "m-C", "here")
+ok("Altair, science details", "m-F", "science")
 ok("Polaris, remove stop two", "m-C", "remove_stop", {"n": 2})
 ok("Polaris, sol 1200", "m-C", "go_sol", {"sol": 1200})
 ok("Polaris, oxygen 350", "m-C", "o2", {"liters": 350})
@@ -71,6 +81,10 @@ r = interpret("cancel route", use_model=False)
 assert r["command"]["action"] == "cancel" and r["confirm"] and r["speech"].endswith("Confirm?"), r
 
 # required argument missing: does not guess, asks
+r = interpret("Vega solar hour 23", use_model=False)
+assert r["command"] is None and "outside 5..19" in r["speech"], r
+r = interpret("Polaris, I am here", use_model=False)
+assert r["command"]["action"] == "here" and r["confirm"], r  # moves the route origin: confirms
 r = interpret("turn on the layer", use_model=False)
 assert r["command"] is None and "missing layer" in r["speech"], r
 assert cmd("Pollux set destination") is None  # no coordinate said, no invented coordinate
