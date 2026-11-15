@@ -1,11 +1,11 @@
-"""Script de teste do adaptador ArcGIS ImageServer (DTM HiRISE 1m de Gale).
+"""Test script for the ArcGIS ImageServer adapter (Gale 1m HiRISE DTM).
 
-Uso:
+Usage:
     python scripts/fetch_dtm_test.py
 
-Baixa um recorte real do DEM (`dtm_hirise_1m` em config/layers.yaml) e
-confirma, com rasterio, que os valores são elevação real em metros (não
-uma imagem renderizada) -- esperado: piso da Cratera Gale, por volta de
+Downloads a real crop of the DEM (`dtm_hirise_1m` in config/layers.yaml) and
+confirms, with rasterio, that the values are real elevation in meters (not
+a rendered image) -- expected: the Gale Crater floor, around
 -4500 m.
 """
 
@@ -38,22 +38,22 @@ def main() -> None:
         spatial_ref_wkid=layer_cfg["spatial_ref_wkid"],
     )
 
-    print("[1/3] Buscando metadados do serviço...")
+    print("[1/3] Fetching service metadata...")
     info = adapter.get_service_info()
     print(f"      pixelType={info['pixelType']!r} bandCount={info['bandCount']}")
     print(f"      extent: {info['extent']}")
 
-    bbox = BBox(**layer_cfg["bbox_teste"])
-    print(f"[2/3] Exportando recorte real (512x512) para {bbox}")
+    bbox = BBox(**layer_cfg["test_bbox"])
+    print(f"[2/3] Exporting real crop (512x512) for {bbox}")
     results = adapter.fetch_tiles(bbox=bbox, tile_matrix="512x512", out_dir=out_dir)
     local_path = results[0].local_path
-    print(f"      salvo em {local_path}")
+    print(f"      saved to {local_path}")
 
-    print("[3/3] Validando valores de elevação com rasterio...")
+    print("[3/3] Validating elevation values with rasterio...")
     with rasterio.open(local_path) as ds:
         band = ds.read(1)
         print(f"      crs={ds.crs} shape={ds.shape}")
-        print(f"      elevação min/max: {band.min():.1f} m / {band.max():.1f} m")
+        print(f"      elevation min/max: {band.min():.1f} m / {band.max():.1f} m")
 
 
 if __name__ == "__main__":

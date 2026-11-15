@@ -1,19 +1,19 @@
-"""Adaptador para dados REMS (clima) do PDS Atmospheres Node -- item 7
-da tabela da feature 01.
+"""Adapter for REMS (weather) data from the PDS Atmospheres Node -- item 7
+of the feature 01 table.
 
-Diferente do Mars Trek (raster em tiles), REMS é uma série tabular por
-sol: um sol = uma pasta `SOL<nnnn>/` com uma tabela ENVRDR (ambiental
-calibrada) em texto delimitado por vírgula, com label PDS4 XML que
-descreve as 71 colunas (pressão, temperatura do ar, UV, umidade, etc).
+Unlike Mars Trek (tiled raster), REMS is a tabular series per
+sol: one sol = one `SOL<nnnn>/` folder with an ENVRDR table (calibrated
+environmental) in comma-delimited text, with a PDS4 XML label that
+describes the 71 columns (pressure, air temperature, UV, humidity, etc).
 
-Confirmado em 2026-11-11 contra o sol 4650 real: pressão ~709 Pa,
-temperatura do ar ~-69.5°C (madrugada), valores plausíveis para Marte.
+Confirmed on 2026-11-11 against the real sol 4650: pressure ~709 Pa,
+air temperature ~-69.5°C (pre-dawn), plausible values for Mars.
 
-Estrutura real do arquivo (não documentada publicamente, descoberta
-navegando o diretório):
+Real file structure (not documented publicly, discovered
+by browsing the directory):
   https://atmos.nmsu.edu/PDS/data/PDS4/msl_rems_bundle/data_calibrated/
     SOL_<lo>_<hi>/SOL<sol>/RME_<sclk>RNV<sol>0000000_______P1.{xml,TAB}
-  -- os buckets SOL_<lo>_<hi> cobrem faixas de ~90-135 sols cada.
+  -- the SOL_<lo>_<hi> buckets cover ranges of ~90-135 sols each.
 """
 
 import csv
@@ -24,9 +24,9 @@ import requests
 
 BASE_URL = "https://atmos.nmsu.edu/PDS/data/PDS4/msl_rems_bundle/data_calibrated"
 
-#: colunas mais úteis pro painel de condições (feature 05) -- a tabela
-#: real tem 71 colunas, a maioria incerteza/housekeeping.
-CAMPOS_RELEVANTES = {
+#: most useful columns for the conditions panel (feature 05) -- the real
+#: table has 71 columns, most of them uncertainty/housekeeping.
+RELEVANT_FIELDS = {
     "TIMESTAMP": None,
     "LMST": None,
     "BOOM1_AIR_TEMP": "kelvin",
@@ -38,13 +38,13 @@ CAMPOS_RELEVANTES = {
     "UV_C": "W/m2",
     "UV_ABC": "W/m2",
     "HUMIDITY_CHANNEL_A": "%",
-    "BRIGHTNESS_TEMP_B": "kelvin",  # sensor de solo (GTS), canal B: temperatura do chão
-    "GTS_CONFIDENCE_LEVEL": None,   # 6 bytes "0/1"; vem como número (zeros à esquerda somem)
+    "BRIGHTNESS_TEMP_B": "kelvin",  # ground sensor (GTS), channel B: ground temperature
+    "GTS_CONFIDENCE_LEVEL": None,   # 6 bytes "0/1"; comes as a number (leading zeros are lost)
 }
 
 
 class PDSRemsAdapter:
-    categoria = "atmosferica"
+    category = "atmospheric"
 
     def _find_bucket(self, sol: int) -> str:
         r = requests.get(f"{BASE_URL}/", timeout=20)
@@ -54,23 +54,23 @@ class PDSRemsAdapter:
             lo, hi = (int(v) for v in f.replace("SOL_", "").split("_"))
             if lo <= sol <= hi:
                 return f
-        raise ValueError(f"Nenhum bucket encontrado para o sol {sol}")
+        raise ValueError(f"No bucket found for sol {sol}")
 
     def _find_product_prefix(self, sol: int, bucket: str) -> str:
-        """Acha o nome do produto RNV (ambiental calibrado) daquele sol --
-        o prefixo numérico (spacecraft clock) muda a cada sol."""
+        """Finds the name of the RNV product (calibrated environmental) of that sol --
+        the numeric prefix (spacecraft clock) changes every sol."""
         url = f"{BASE_URL}/{bucket}/SOL{sol:05d}/"
         r = requests.get(url, timeout=20)
         r.raise_for_status()
-        m = re.search(r'href="([^"]+RNV\d+_+P\d)\.TAB"', r.text)  # P1 nos sols novos, P3 nos antigos
+        m = re.search(r'href="([^"]+RNV\d+_+P\d)\.TAB"', r.text)  # P1 on new sols, P3 on old ones
         if not m:
-            raise ValueError(f"Produto RNV não encontrado em {url}")
+            raise ValueError(f"RNV product not found at {url}")
         return m.group(1)
 
     def fetch_sol(self, sol: int) -> dict:
-        """Baixa a tabela ambiental (RNV) de um sol e devolve uma lista
-        de leituras já filtradas pros campos relevantes (seções inválidas
-        do instrumento vêm como -999/-999.00, descartadas aqui)."""
+        """Downloads the environmental table (RNV) of a sol and returns a list
+        of readings already filtered to the relevant fields (invalid
+        instrument sections come as -999/-999.00, discarded here)."""
         bucket = self._find_bucket(sol)
         prefix = self._find_product_prefix(sol, bucket)
         base = f"{BASE_URL}/{bucket}/SOL{sol:05d}/"
@@ -81,13 +81,13 @@ class PDSRemsAdapter:
 
         tab = requests.get(base + prefix + ".TAB", timeout=60)
         text = tab.content.decode("ascii", errors="replace")
-        return {"sol": sol, "product_id": prefix, "leituras": self._ler_linhas(text, names)}
+        return {"sol": sol, "product_id": prefix, "readings": self._read_rows(text, names)}
 
-    def fetch_sol_amostra(self, sol: int, n: int = 180) -> dict:
-        """Igual a fetch_sol, mas baixa só n linhas espalhadas pelo sol num
-        único pedido HTTP com vários Range (~120 KB em vez de ~20 MB). O Apache
-        do PDS devolve o arquivo inteiro acima de 200 faixas (MaxRanges). A
-        tabela é Table_Character: toda linha tem record_length bytes."""
+    def fetch_sol_sample(self, sol: int, n: int = 180) -> dict:
+        """Same as fetch_sol, but downloads only n rows spread over the sol in a
+        single HTTP request with several Ranges (~120 KB instead of ~20 MB). The PDS
+        Apache returns the whole file above 200 ranges (MaxRanges). The
+        table is Table_Character: every row has record_length bytes."""
         bucket = self._find_bucket(sol)
         prefix = self._find_product_prefix(sol, bucket)
         base = f"{BASE_URL}/{bucket}/SOL{sol:05d}/"
@@ -95,33 +95,33 @@ class PDSRemsAdapter:
         xml = requests.get(base + prefix + ".xml", timeout=20).text
         field_blocks = re.findall(r"<Field_Character>.*?</Field_Character>", xml, re.S)
         names = [re.search(r"<name>([^<]+)</name>", f).group(1) for f in field_blocks]
-        tam = int(re.search(r"<record_length[^>]*>(\d+)<", xml).group(1))
+        size = int(re.search(r"<record_length[^>]*>(\d+)<", xml).group(1))
         total = int(re.search(r"<records>(\d+)</records>", xml).group(1))
-        inicios = sorted({i * total // n * tam for i in range(n)})
-        faixas = ",".join(f"{o}-{o + tam - 1}" for o in inicios)
-        tab = requests.get(base + prefix + ".TAB", headers={"Range": f"bytes={faixas}"}, timeout=60)
+        starts = sorted({i * total // n * size for i in range(n)})
+        ranges = ",".join(f"{o}-{o + size - 1}" for o in starts)
+        tab = requests.get(base + prefix + ".TAB", headers={"Range": f"bytes={ranges}"}, timeout=60)
         tab.raise_for_status()
-        # resposta multipart: sobram só as linhas de dado (começam pelo relógio da sonda)
-        linhas = [l for l in tab.content.decode("ascii", errors="replace").splitlines()
-                  if re.match(r"\s*\d+,\"\d{5}M", l)]
-        return {"sol": sol, "product_id": prefix, "leituras": self._ler_linhas("\n".join(linhas), names)}
+        # multipart response: only the data rows remain (they start with the spacecraft clock)
+        rows = [l for l in tab.content.decode("ascii", errors="replace").splitlines()
+                if re.match(r"\s*\d+,\"\d{5}M", l)]
+        return {"sol": sol, "product_id": prefix, "readings": self._read_rows("\n".join(rows), names)}
 
     @staticmethod
-    def _ler_linhas(text: str, names: list[str]) -> list[dict]:
+    def _read_rows(text: str, names: list[str]) -> list[dict]:
         reader = csv.reader(io.StringIO(text), skipinitialspace=True)
-        leituras = []
+        readings = []
         for row in reader:
             row = [v.strip() for v in row]
             full = dict(zip(names, row))
-            leitura = {}
-            for campo in CAMPOS_RELEVANTES:
-                val = full.get(campo, "")
+            reading = {}
+            for field in RELEVANT_FIELDS:
+                val = full.get(field, "")
                 if val in ("-999.00", "-999.000", "-9.990E+02", ""):
-                    leitura[campo] = None
+                    reading[field] = None
                 else:
                     try:
-                        leitura[campo] = float(val)
+                        reading[field] = float(val)
                     except ValueError:
-                        leitura[campo] = val.strip('"')
-            leituras.append(leitura)
-        return leituras
+                        reading[field] = val.strip('"')
+            readings.append(reading)
+        return readings

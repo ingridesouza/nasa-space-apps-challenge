@@ -1,15 +1,15 @@
-"""Adaptador para qualquer produto servido pelo Mars Trek via WMTS
-(CTX, HiRISE, MOLA, THEMIS -- ver feature-01-mapa-hiperlocal-boxwork.md,
-tabela da seção 1, itens 1-4).
+"""Adapter for any product served by Mars Trek via WMTS
+(CTX, HiRISE, MOLA, THEMIS -- see feature-01-mapa-hiperlocal-boxwork.md,
+table in section 1, items 1-4).
 
-Fluxo:
-  1. baixa e parseia o `GetCapabilities` XML do produto
-  2. localiza o template de tile e a definição do TileMatrixSet
-     (nunca chuta `{Style}`/`{TileMatrixSet}`/`{TileMatrix}` -- vem do XML)
-  3. converte lat/lon -> row/col de tile usando a definição do matrix
-  4. baixa os tiles que cobrem o bbox pedido
+Flow:
+  1. downloads and parses the product's `GetCapabilities` XML
+  2. finds the tile template and the TileMatrixSet definition
+     (never guesses `{Style}`/`{TileMatrixSet}`/`{TileMatrix}` -- it comes from the XML)
+  3. converts lat/lon -> tile row/col using the matrix definition
+  4. downloads the tiles covering the requested bbox
 
-Doc oficial: https://trek.nasa.gov/tiles/apidoc/trekAPI.html?body=mars
+Official doc: https://trek.nasa.gov/tiles/apidoc/trekAPI.html?body=mars
 """
 
 import math
@@ -21,15 +21,15 @@ import requests
 
 from .base import BBox, LayerAdapter, TileResult
 
-# Raio equatorial de Marte (IAU), em metros -- usado só para produtos
-# cujo TileMatrixSet está num CRS projetado (TopLeftCorner em metros).
+# Mars equatorial radius (IAU), in meters -- used only for products
+# whose TileMatrixSet is in a projected CRS (TopLeftCorner in meters).
 MARS_RADIUS_M = 3_396_190.0
 
-# Constante OGC para "metros por grau" em CRS geográficos (graus) --
-# confirmada batendo contra o XML real do produto msss_atlas_simp_clon:
-# a convenção de pixel de 0.28mm do WMTS usa o raio médio terrestre
-# (6 371 000 m) mesmo para corpos não-Terra; é um artefato de como o
-# Mars Trek gera seus tile sets "default028mm", não um erro nosso.
+# OGC constant for "meters per degree" in geographic CRSs (degrees) --
+# confirmed against the real XML of the msss_atlas_simp_clon product:
+# the WMTS 0.28mm pixel convention uses the mean Earth radius
+# (6,371,000 m) even for non-Earth bodies; it is an artifact of how
+# Mars Trek generates its "default028mm" tile sets, not our mistake.
 OGC_METERS_PER_DEGREE = (2 * math.pi * 6_371_000.0) / 360.0
 
 NS = {
@@ -42,7 +42,7 @@ NS = {
 class TileMatrix:
     identifier: str
     scale_denominator: float
-    top_left_corner: tuple[float, float]  # (x, y) em metros
+    top_left_corner: tuple[float, float]  # (x, y) in meters
     tile_width: int
     tile_height: int
     matrix_width: int
@@ -50,7 +50,7 @@ class TileMatrix:
 
 
 class MarsTrekWMTSAdapter(LayerAdapter):
-    categoria = "optica"  # sobrescrito por config quando o produto for outro (topografica, termica...)
+    category = "optical"  # overridden by config when the product is another kind (topographic, thermal...)
 
     def __init__(self, product_id: str, region: str = "Mars/EQ", base_url: str = "https://trek.nasa.gov/tiles"):
         self.product_id = product_id
@@ -76,7 +76,7 @@ class MarsTrekWMTSAdapter(LayerAdapter):
 
         layer = root.find(".//wmts:Contents/wmts:Layer", NS)
         if layer is None:
-            raise ValueError(f"Nenhum Layer encontrado em {url} -- produto '{self.product_id}' existe?")
+            raise ValueError(f"No Layer found in {url} -- does product '{self.product_id}' exist?")
 
         style_el = layer.find("wmts:Style/ows:Identifier", NS)
         style = style_el.text if style_el is not None else "default"
@@ -108,8 +108,8 @@ class MarsTrekWMTSAdapter(LayerAdapter):
             scale = float(tm.find("wmts:ScaleDenominator", NS).text)
             top_left_raw = tm.find("wmts:TopLeftCorner", NS).text.split()
             top_left = (float(top_left_raw[0]), float(top_left_raw[1]))
-            # alguns produtos publicam esses campos como float ("2.0")
-            # mesmo sendo inteiros por definição do schema WMTS
+            # some products publish these fields as float ("2.0")
+            # even though they are integers by definition in the WMTS schema
             tile_w = int(float(tm.find("wmts:TileWidth", NS).text))
             tile_h = int(float(tm.find("wmts:TileHeight", NS).text))
             matrix_w = int(float(tm.find("wmts:MatrixWidth", NS).text))
@@ -131,19 +131,19 @@ class MarsTrekWMTSAdapter(LayerAdapter):
 
     @staticmethod
     def _is_degree_based(matrix: TileMatrix) -> bool:
-        """Heurística: TileMatrixSet em CRS geográfico tem TopLeftCorner
-        dentro do range de graus (ex. -180/90); um CRS projetado em
-        metros tem valores na casa dos milhões."""
+        """Heuristic: a TileMatrixSet in a geographic CRS has TopLeftCorner
+        within the degree range (e.g. -180/90); a CRS projected in
+        meters has values in the millions."""
         x, y = matrix.top_left_corner
         return abs(x) <= 180 and abs(y) <= 90
 
     @staticmethod
     def _pixel_span(scale_denominator: float, degree_based: bool) -> float:
-        # 0.28 mm/pixel é a constante padrão do OGC WMTS para converter
-        # escala -> resolução no solo. Em CRS geográfico o resultado
-        # sai em metros e precisa ser convertido de volta pra grau
-        # (ver OGC_METERS_PER_DEGREE); em CRS projetado já fica em
-        # metros, mesma unidade do TopLeftCorner.
+        # 0.28 mm/pixel is the standard OGC WMTS constant to convert
+        # scale -> ground resolution. In a geographic CRS the result
+        # comes out in meters and must be converted back to degrees
+        # (see OGC_METERS_PER_DEGREE); in a projected CRS it is already in
+        # meters, the same unit as TopLeftCorner.
         meters_per_pixel = scale_denominator * 0.00028
         if degree_based:
             return meters_per_pixel / OGC_METERS_PER_DEGREE
@@ -168,24 +168,24 @@ class MarsTrekWMTSAdapter(LayerAdapter):
         return row, col
 
     def bbox_to_tile_range(self, bbox: BBox, matrix: TileMatrix) -> tuple[int, int, int, int]:
-        """Retorna (row_min, row_max, col_min, col_max) cobrindo o bbox."""
-        row_a, col_a = self.lonlat_to_tile(bbox.min_lon, bbox.max_lat, matrix)  # canto NO
-        row_b, col_b = self.lonlat_to_tile(bbox.max_lon, bbox.min_lat, matrix)  # canto SE
+        """Returns (row_min, row_max, col_min, col_max) covering the bbox."""
+        row_a, col_a = self.lonlat_to_tile(bbox.min_lon, bbox.max_lat, matrix)  # NW corner
+        row_b, col_b = self.lonlat_to_tile(bbox.max_lon, bbox.min_lat, matrix)  # SE corner
         row_min, row_max = sorted((row_a, row_b))
         col_min, col_max = sorted((col_a, col_b))
         return row_min, row_max, col_min, col_max
 
     def tile_range_to_bbox(self, row_min: int, row_max: int, col_min: int, col_max: int, matrix: TileMatrix) -> BBox:
-        """Inverso de `bbox_to_tile_range`: bbox geográfico REAL coberto
-        pelo conjunto de tiles baixado (quantizado à grade própria do
-        TileMatrix -- quase sempre MAIOR que o bbox originalmente
-        pedido, já que um tile não pode ser baixado "pela metade").
+        """Inverse of `bbox_to_tile_range`: REAL geographic bbox covered
+        by the downloaded set of tiles (quantized to the TileMatrix's own
+        grid -- almost always LARGER than the originally requested
+        bbox, since a tile cannot be downloaded "by half").
 
-        É este bbox, não o pedido, que precisa ir pro raster_registry:
-        usar o bbox pedido como coordenada de canto do ImageSource no
-        frontend estica/desloca a imagem (cada produto quantiza
-        diferente, então CTX e HiRISE acabavam desalinhados entre si --
-        bug real encontrado em 2026-11-14, não só estético)."""
+        It is this bbox, not the requested one, that must go into raster_registry:
+        using the requested bbox as the ImageSource corner coordinate in the
+        frontend stretches/shifts the image (each product quantizes
+        differently, so CTX and HiRISE ended up misaligned with each other --
+        a real bug found on 2026-11-14, not just cosmetic)."""
         degree_based = self._is_degree_based(matrix)
         pixel_span = self._pixel_span(matrix.scale_denominator, degree_based)
         top_left_x, top_left_y = matrix.top_left_corner
@@ -215,16 +215,16 @@ class MarsTrekWMTSAdapter(LayerAdapter):
         caps = self.get_capabilities()
         matrix = caps["matrices"].get(tile_matrix)
         if matrix is None:
-            disponiveis = ", ".join(sorted(caps["matrices"]))
-            raise ValueError(f"TileMatrix '{tile_matrix}' não existe. Disponíveis: {disponiveis}")
+            available = ", ".join(sorted(caps["matrices"]))
+            raise ValueError(f"TileMatrix '{tile_matrix}' does not exist. Available: {available}")
 
         row_min, row_max, col_min, col_max = self.bbox_to_tile_range(bbox, matrix)
         os.makedirs(out_dir, exist_ok=True)
 
-        # bbox REAL coberto pelo lote de tiles (não o bbox pedido acima --
-        # ver docstring de tile_range_to_bbox) -- é isto que deve virar a
-        # coordenada de canto do mosaico no raster_registry/frontend.
-        cobertura_real = self.tile_range_to_bbox(row_min, row_max, col_min, col_max, matrix)
+        # REAL bbox covered by the batch of tiles (not the bbox requested above --
+        # see the tile_range_to_bbox docstring) -- this is what must become the
+        # mosaic corner coordinate in raster_registry/frontend.
+        real_coverage = self.tile_range_to_bbox(row_min, row_max, col_min, col_max, matrix)
 
         results: list[TileResult] = []
         for row in range(row_min, row_max + 1):
@@ -240,11 +240,11 @@ class MarsTrekWMTSAdapter(LayerAdapter):
                 local_path = os.path.join(out_dir, f"{tile_matrix}_{row}_{col}.png")
                 resp = requests.get(url, timeout=30)
                 if resp.status_code != 200:
-                    continue  # tile fora da cobertura do produto; normal nas bordas
+                    continue  # tile outside the product coverage; normal at the edges
                 with open(local_path, "wb") as f:
                     f.write(resp.content)
                 results.append(
-                    TileResult(row=row, col=col, tile_matrix=tile_matrix, local_path=local_path, bbox=cobertura_real)
+                    TileResult(row=row, col=col, tile_matrix=tile_matrix, local_path=local_path, bbox=real_coverage)
                 )
 
         return results

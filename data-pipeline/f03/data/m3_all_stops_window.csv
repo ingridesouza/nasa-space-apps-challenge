@@ -1,4 +1,4 @@
-site,drive,sol,lat_mmgis,lon_mmgis,lat_places_pc,lat_places_pd,lon_places,dif_pc_graus,dif_pc_m,dif_pd_graus,dif_pd_m,dif_lon_m
+site,drive,sol,lat_mmgis,lon_mmgis,lat_places_pc,lat_places_pd,lon_places,diff_pc_deg,diff_pc_m,diff_pd_deg,diff_pd_m,diff_lon_m
 116,1596,4552,-4.79927,137.383573,-4.79927,-4.855999,137.383573,0.0,0.0,0.056729,3362.659787,0.001541
 116,1806,4554,-4.799714,137.383437,-4.799714,-4.856448,137.383437,0.0,0.000178,0.056734,3362.9682,0.001186
 116,1890,4558,-4.799812,137.383499,-4.799812,-4.856547,137.383499,0.0,0.000296,0.056735,3363.036012,0.00083

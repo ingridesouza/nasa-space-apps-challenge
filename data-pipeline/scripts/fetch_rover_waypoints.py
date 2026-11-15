@@ -1,15 +1,15 @@
-"""Baixa o trajeto oficial do Curiosity (MMGIS) e salva localmente --
-resolve o item 11 da feature 01. Descoberto em 2026-11-13 inspecionando
-as requests de rede de https://science.nasa.gov/mission/msl-curiosity/location-map/
-(a mesma técnica de DevTools usada pro CTX, mas aqui o endpoint já é
-direto, sem precisar de API intermediária).
+"""Downloads Curiosity's official traverse (MMGIS) and saves it locally --
+resolves item 11 of feature 01. Discovered on 2026-11-13 by inspecting
+the network requests of https://science.nasa.gov/mission/msl-curiosity/location-map/
+(the same DevTools technique used for CTX, but here the endpoint is
+direct, with no intermediate API).
 
-Arquivo oficial: https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json
-GeoJSON público, sem autenticação, atualizado com a missão (vai do sol
-3 até o sol mais recente). Cada feature = 1 parada do rover, com
-sol/site/drive/lat/lon/elevação reais.
+Official file: https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json
+Public GeoJSON, no authentication, updated with the mission (from sol
+3 to the latest sol). Each feature = 1 rover stop, with real
+sol/site/drive/lat/lon/elevation.
 
-Uso:
+Usage:
     python scripts/fetch_rover_waypoints.py
 """
 
@@ -27,7 +27,7 @@ OUT_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "local", 
 
 
 def main() -> None:
-    print("Baixando trajeto oficial do Curiosity (MMGIS)...")
+    print("Downloading Curiosity's official traverse (MMGIS)...")
     resp = requests.get(WAYPOINTS_URL, timeout=30)
     resp.raise_for_status()
     data = resp.json()
@@ -39,8 +39,8 @@ def main() -> None:
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         json.dump(waypoints, f, ensure_ascii=False, indent=2)
 
-    print(f"{len(waypoints)} waypoints (sol {waypoints[0]['sol']} a {waypoints[-1]['sol']})")
-    print(f"Salvo em {OUT_PATH}")
+    print(f"{len(waypoints)} waypoints (sol {waypoints[0]['sol']} to {waypoints[-1]['sol']})")
+    print(f"Saved to {OUT_PATH}")
 
 
 if __name__ == "__main__":

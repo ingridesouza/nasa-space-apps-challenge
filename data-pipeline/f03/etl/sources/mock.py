@@ -1,6 +1,6 @@
-"""Fonte de teste: poucas paradas inventadas perto do boxwork, sem imagens.
+"""Test source: a few invented stops near the boxwork, no images.
 
-Serve para rodar o ETL e a API sem internet e sem os arquivos públicos.
+Used to run the ETL and the API without internet and without the public files.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ class MockPhotos:
 
 
 # --------------------------------------------------------------------------- #
-# F04 · ficha científica (valores de exemplo, marcados confidence = "mock")
+# F04 · science card (example values, marked confidence = "mock")
 # --------------------------------------------------------------------------- #
 
 import csv
@@ -49,22 +49,23 @@ from pathlib import Path
 
 from .base import Measurement, OrbitalLabel, Target
 
-_KIND = (("furo", "furo"), ("crista", "crista"), ("hollow", "hollow"),
-         ("contato", "contato"), ("feição", "feição"))
+# the "type" column of m8_targets.csv is curated text in Portuguese: substring -> kind
+_KIND = (("furo", "drill_hole"), ("crista", "ridge"), ("hollow", "hollow"),
+         ("contato", "contact"), ("feição", "feature"))
 _MAST_CREDIT = "NASA/JPL-Caltech/MSSS"
 
 
-def _kind(tipo: str) -> str:
-    t = tipo.lower()
-    return next((v for k, v in _KIND if k in t), "feição")
+def _kind(type_text: str) -> str:
+    t = type_text.lower()
+    return next((v for k, v in _KIND if k in t), "feature")
 
 
 class MockScience:
-    """Os 10 alvos curados na M8 com medições de exemplo.
+    """The 10 targets curated in M8 with example measurements.
 
-    A posição vem da parada citada em `parada_panorama_proxima`; sem parada
-    citada, usa a parada mais próxima em sol. Em ambos os casos é por sol
-    (`pos_quality = "por_sol"`): o vínculo exato é a tarefa 3.
+    The position comes from the stop cited in `nearest_panorama_stop`; with no stop
+    cited, it uses the stop closest in sol. In both cases it is by sol
+    (`pos_quality = "by_sol"`): the exact link is task 3.
     """
 
     def __init__(self, targets_csv: Path):
@@ -79,16 +80,16 @@ class MockScience:
         out = []
         for r in self._rows():
             sol = int(r["sol_ref"])
-            rmc = (r["parada_panorama_proxima"] or "").split(" ")[0]
+            rmc = (r["nearest_panorama_stop"] or "").split(" ")[0]
             p = by_rmc.get(rmc) or min(
                 (s for s in stops if s.sol is not None), key=lambda s: abs(s.sol - sol), default=None)
             if p is None:
                 continue
-            blog = (r["posts_blog"] or "").split(" | ")[0]
+            blog = (r["blog_posts"] or "").split(" | ")[0]
             out.append(Target(
-                id=f"t{int(r['id']):02d}", name=r["alvo"], kind=_kind(r["tipo"]), sol=sol,
-                site=p.site, drive=p.drive, lat=p.lat, lon=p.lon, pos_quality="por_sol",
-                why_it_matters=r["o_que_foi_feito"], safety_note="", blog_url=blog,
+                id=f"t{int(r['id']):02d}", name=r["target"], kind=_kind(r["type"]), sol=sol,
+                site=p.site, drive=p.drive, lat=p.lat, lon=p.lon, pos_quality="by_sol",
+                why_it_matters=r["what_was_done"], safety_note="", blog_url=blog,
                 mastcam_path=r["mastcam_link"], mastcam_credit=_MAST_CREDIT))
         return out
 
@@ -99,13 +100,13 @@ class MockScience:
             if not sol_min <= sol <= sol_max:
                 continue
             tid = f"t{int(r['id']):02d}"
-            # exemplo para a UI: APXS e ChemCam em todo alvo, CheMin só em furo
-            insts = ("APXS", "ChemCam") + (("CheMin",) if _kind(r["tipo"]) == "furo" else ())
+            # example for the UI: APXS and ChemCam on every target, CheMin only on drill holes
+            insts = ("APXS", "ChemCam") + (("CheMin",) if _kind(r["type"]) == "drill_hole" else ())
             for inst in insts:
                 out.append(Measurement(
                     id=f"{tid}_{inst.lower()}", target_id=tid, instrument=inst, sol=sol,
                     site=None, drive=None,
-                    summary=f"[exemplo] {inst}: valores de teste, não são medições reais.",
+                    summary=f"[example] {inst}: test values, not real measurements.",
                     values_json=json.dumps({"mock": True}), confidence="mock",
                     source_url="https://pds-geosciences.wustl.edu/missions/msl/"
                                f"{inst.lower()}.htm", source_file="mock"))
@@ -115,6 +116,6 @@ class MockScience:
 class MockOrbital:
     def sample(self, lat, lon):
         return OrbitalLabel(
-            "sem dado de órbita no mock", "mock",
-            "exemplo: média de uma área de ~18 m",
+            "no orbital data in the mock", "mock",
+            "example: mean of an area of ~18 m",
             "https://ode.rsl.wustl.edu/mars/", "Orbital Data Explorer (CRISM)")

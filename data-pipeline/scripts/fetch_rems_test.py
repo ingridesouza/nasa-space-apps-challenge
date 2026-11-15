@@ -1,12 +1,11 @@
-"""Script de teste do adaptador REMS (clima, PDS Atmospheres Node).
+"""Test script for the REMS adapter (weather, PDS Atmospheres Node).
 
-Uso:
+Usage:
     python scripts/fetch_rems_test.py [sol]
 
-Sem argumento, usa o sol 4650 (mesmo exemplo citado no doc da feature
-01, seção 3.2: "140 m · olhando para NE · sol 4650 · Mastcam"). Baixa a
-tabela ambiental real daquele sol e imprime algumas leituras com valor
-válido (descarta -999 = sem dado).
+Without an argument, uses sol 4650 (same example cited in the feature
+01 doc, section 3.2). Downloads the real environmental table of that sol
+and prints some readings with a valid value (discards -999 = no data).
 """
 
 import os
@@ -24,24 +23,24 @@ def main() -> None:
     sol = int(sys.argv[1]) if len(sys.argv) > 1 else 4650
 
     adapter = PDSRemsAdapter()
-    print(f"[1/2] Buscando tabela ambiental do sol {sol}...")
-    resultado = adapter.fetch_sol(sol)
-    print(f"      product_id: {resultado['product_id']}")
-    print(f"      {len(resultado['leituras'])} leituras no sol")
+    print(f"[1/2] Fetching environmental table for sol {sol}...")
+    result = adapter.fetch_sol(sol)
+    print(f"      product_id: {result['product_id']}")
+    print(f"      {len(result['readings'])} readings on the sol")
 
-    print("[2/2] Primeiras leituras com valor válido de pressão e temperatura:")
+    print("[2/2] First readings with a valid pressure and temperature value:")
     count = 0
-    for leitura in resultado["leituras"]:
-        pressao = leitura.get("BAROCAP_PRESSURE_1")
-        temp = leitura.get("BOOM1_AIR_TEMP")
-        if pressao is not None and temp is not None:
+    for reading in result["readings"]:
+        pressure = reading.get("BAROCAP_PRESSURE_1")
+        temp = reading.get("BOOM1_AIR_TEMP")
+        if pressure is not None and temp is not None:
             temp_c = temp - 273.15
             print(
-                f"      {leitura['LMST']}: "
-                f"pressão={pressao:.2f} Pa | "
-                f"temp_ar={temp_c:.1f}°C | "
-                f"UV_A={leitura.get('UV_A')} | "
-                f"umidade={leitura.get('HUMIDITY_CHANNEL_A')}%"
+                f"      {reading['LMST']}: "
+                f"pressure={pressure:.2f} Pa | "
+                f"air_temp={temp_c:.1f}°C | "
+                f"UV_A={reading.get('UV_A')} | "
+                f"humidity={reading.get('HUMIDITY_CHANNEL_A')}%"
             )
             count += 1
         if count >= 5:

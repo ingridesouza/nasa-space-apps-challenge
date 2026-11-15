@@ -1,13 +1,13 @@
--- Schema do banco local da feature 01 (ver
--- feature-01-mapa-hiperlocal-boxwork.md, seção 3.1).
+-- Local database schema for feature 01 (see
+-- feature-01-mapa-hiperlocal-boxwork.md, section 3.1).
 --
--- Usa o módulo R-Tree nativo do SQLite (sem SpatiaLite/GDAL) para a
--- busca por raio -- mais simples de rodar offline em
--- qualquer máquina do time, sem precisar compilar extensão nenhuma.
+-- Uses SQLite's native R-Tree module (no SpatiaLite/GDAL) for the
+-- radius search -- simpler to run offline on any team
+-- machine, without having to compile any extension.
 
--- Fotos do rover e alvos científicos ficam nas tabelas do F03/F04
--- (photos, panoramas, targets, measurements + R-trees), gravadas neste
--- mesmo banco por data-pipeline/f03/etl/build.py.
+-- Rover photos and science targets live in the F03/F04 tables
+-- (photos, panoramas, targets, measurements + R-trees), written to this
+-- same database by data-pipeline/f03/etl/build.py.
 
 CREATE TABLE IF NOT EXISTS raster_registry (
     layer_name TEXT PRIMARY KEY,
@@ -18,11 +18,13 @@ CREATE TABLE IF NOT EXISTS raster_registry (
     max_lat REAL,
     minzoom INTEGER,
     maxzoom INTEGER,
-    categoria TEXT,
-    -- 'raster_unico': um único arquivo georreferenciado (ex. GeoTIFF do
-    --   DTM) que dá pra abrir direto com rasterio e fazer sampling.
-    -- 'tiles_wmts': pirâmide de tiles PNG/JPG sem georreferência própria
-    --   por arquivo -- serve pra exibir no mapa, não pra sampling de
-    --   valor (precisaria virar um mosaico georreferenciado antes).
-    tipo_acesso TEXT NOT NULL
+    category TEXT,
+    -- 'single_raster': a single georeferenced file (e.g. the DTM GeoTIFF)
+    --   that can be opened directly with rasterio for sampling.
+    -- 'tiles_wmts': pyramid of PNG/JPG tiles with no per-file georeference
+    --   -- it is for display on the map, not for value sampling
+    --   (it would first need to become a georeferenced mosaic).
+    -- derived/scalar layers: 'derived_hillshade', 'derived_risk',
+    --   'thermal_scalar', 'derived_insolation' (see api/tile_server.py).
+    access_type TEXT NOT NULL
 );

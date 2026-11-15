@@ -1,17 +1,17 @@
-"""Busca produtos no índice interno do Mars Trek por palavra-chave, sem
-precisar abrir o navegador e inspecionar o DevTools manualmente.
+"""Searches products in Mars Trek's internal index by keyword, without
+having to open the browser and inspect DevTools manually.
 
-Descoberto em 2026-11-11 inspecionando `jpl/config/config.json` do
-próprio site (`searchAutoLayerItemsUrl`) e confirmado contra uma request
-real do painel de busca (ver PROXIMOS-PASSOS.md).
+Discovered on 2026-11-11 by inspecting the site's own `jpl/config/config.json`
+(`searchAutoLayerItemsUrl`) and confirmed against a real request
+from the search panel (see NEXT-STEPS.md).
 
-Uso:
+Usage:
     python scripts/lookup_mars_trek_product.py "HiRISE Gale"
     python scripts/lookup_mars_trek_product.py "Gale Crater" --details
 
-Sem `--details`, só lista título/instrumento/uuid de cada resultado.
-Com `--details`, também chama `getLayerServices` pra cada um e mostra o
-`layerId`/`endPoint` real (o que vira `product_id` no `layers.yaml`).
+Without `--details`, only lists title/instrument/uuid of each result.
+With `--details`, also calls `getLayerServices` for each one and shows the
+real `layerId`/`endPoint` (what becomes `product_id` in `layers.yaml`).
 """
 
 import argparse
@@ -45,18 +45,18 @@ def layer_services(uuid: str) -> list[dict]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("keyword", help="termo de busca, ex: 'HiRISE Gale'")
-    parser.add_argument("--details", action="store_true", help="também busca os serviços/product_id de cada resultado")
+    parser.add_argument("keyword", help="search term, e.g. 'HiRISE Gale'")
+    parser.add_argument("--details", action="store_true", help="also fetches the services/product_id of each result")
     args = parser.parse_args()
 
     if sys.platform == "win32":
         sys.stdout.reconfigure(encoding="utf-8")
 
     results = search(args.keyword)
-    print(f"{len(results)} resultado(s) para {args.keyword!r}:\n")
+    print(f"{len(results)} result(s) for {args.keyword!r}:\n")
 
     for doc in results:
-        title = doc.get("title", "(sem título)")
+        title = doc.get("title", "(untitled)")
         instrument = doc.get("instrument", "-")
         mission = doc.get("mission", "-")
         uuid = doc.get("item_UUID")

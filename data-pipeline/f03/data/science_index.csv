@@ -1,4 +1,4 @@
-sol,site,drive,instrumento,alvo,arquivo,url,n_obs
+sol,site,drive,instrument,target,file,url,n_obs
 4550,116,1260,APXS,,apb_801438263rwp45501161260_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04550/apb_801438263rwp45501161260_______p1.csv,1
 4550,116,1260,APXS,,apb_801446487rwp45501161260_______p1.csv,https://pds-geosciences.wustl.edu/msl/msl-m-apxs-4_5-rdr-v1/mslapx_1xxx/data/sol04550/apb_801446487rwp45501161260_______p1.csv,1
 4550,116,1260,ChemCam LIBS,Dripping_Springs,CL5_801418231EDR_F1161260CCAM03549M1.DAT,https://pds-geosciences.wustl.edu/msl/msl-m-chemcam-libs-4_5-rdr-v1/mslccm_1xxx/data/sol04550/,10

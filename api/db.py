@@ -1,4 +1,4 @@
-"""Acesso ao banco local compartilhado com data-pipeline/db."""
+"""Access to the local database shared with data-pipeline/db."""
 
 import os
 import sys

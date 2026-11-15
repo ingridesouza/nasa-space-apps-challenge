@@ -27,8 +27,8 @@ Protótipo de apoio a astronauta na cratera Gale (área do Curiosity). Princípi
 
 | Caminho | O quê |
 |---|---|
-| `api/` | API FastAPI (F01–F08). Endpoints em `api/main.py`, lógica em módulos planos; F03 em `panorama.py`, F04 em `ficha.py`; `geo.py` é a única geometria |
-| `data-pipeline/` | ETL: adapters, `db/schema.sql`, scripts `fetch_*`/`seed_*`; `f03/` = ETL do F03/F04 (config, dados de entrada, panoramas). Saída em `data/local/` (ignorado): banco único `h2g2.sqlite` + `f03/` servido em `/bundle` |
+| `api/` | API FastAPI (F01–F08). Endpoints em `api/main.py`, lógica em módulos planos; F03 em `panorama.py`, F04 em `science_card.py`; `geo.py` é a única geometria |
+| `data-pipeline/` | ETL: adapters, `db/schema.sql`, scripts `fetch_*`/`seed_*`; `f03/` = ETL do F03/F04 (config, `data/` de entrada, `panorama_data/`, `collect_panoramas.py`). Saída em `data/local/` (ignorado): banco único `h2g2.sqlite` + `f03/` servido em `/bundle` |
 | `web/` | Front HTML/CSS/JS puro (features 01/02/03/04/05/06/08), servido pela API em `/`: visor em tela cheia, minimapa que expande, card de rota |
 | `docs/` | Proposta, pitch, plano de produto, `feature-NN-*.md` |
 | `subprojetos/f03-f04-victoria/` | Só docs do F03/F04 (código e dados já mesclados em `api/`, `data-pipeline/f03/` e `web/`) |
@@ -42,7 +42,8 @@ Time (raiz): `make build` · `make run` (API :8000) · `make front` · `make tes
 Só o ETL do F03/F04 (a partir de `data-pipeline/f03/`): `../../.venv/bin/python etl/build.py` (o `make build` já roda)
 
 ## Convenções
-- Português em docs, comentários, chaves JSON e commits (imperativo: "Adiciona…", "Corrige…").
+- **Todo código e componente novo em inglês**: nomes de variáveis, funções, classes, arquivos, comentários, chaves JSON, endpoints, colunas SQL, textos da UI e mensagens de erro. Nada de identificador ou texto de interface em português.
+- Docs em `docs/` seguem em português. Commits em inglês, imperativo ("Add…", "Fix…").
 - Campo novo em `/api/point`: acrescentar, nunca renomear/remover chave existente (contrato compartilhado entre features).
 - Doc de feature em `docs/feature-NN-<slug>.md`.
 - Geometria marciana: raio 3 396 190 m; uma única implementação de haversine/bearing por app.

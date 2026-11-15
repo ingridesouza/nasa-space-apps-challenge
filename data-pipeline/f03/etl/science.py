@@ -1,8 +1,8 @@
-"""F04: grava `targets`, `measurements` e `target_rtree` no h2g2.db.
+"""F04: writes `targets`, `measurements` and `target_rtree` into h2g2.sqlite.
 
-Esta etapa só grava o que a ScienceSource devolve (mock ou public) e copia para
-o bundle os arquivos locais que o card usa: fotos Mastcam, recorte CRISM e
-`terrain.geojson` (M6), quando existem.
+This step only writes what the ScienceSource returns (mock or public) and copies
+into the bundle the local files the card uses: Mastcam photos, CRISM crop and
+`terrain.geojson` (M6), when they exist.
 """
 
 from __future__ import annotations
@@ -34,17 +34,17 @@ CREATE VIRTUAL TABLE target_rtree USING rtree(rid, min_lon, max_lon, min_lat, ma
 
 
 def publish(src: Path, dst: Path, schema: str) -> None:
-    """Troca, numa transação só, as tabelas do F03/F04 do banco único `dst`
-    pelas montadas em `src`. As demais tabelas do banco (do time) ficam intactas."""
-    tabelas = re.findall(r"CREATE (?:VIRTUAL )?TABLE (\w+)", schema)
+    """Swaps, in a single transaction, the F03/F04 tables of the single database `dst`
+    for the ones built in `src`. The other tables of the database (the team's) stay intact."""
+    tables = re.findall(r"CREATE (?:VIRTUAL )?TABLE (\w+)", schema)
     dst.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(dst)
     con.execute("ATTACH DATABASE ? AS f", (str(src),))
     con.executescript(
         "BEGIN;\n"
-        + "".join(f"DROP TABLE IF EXISTS main.{t};\n" for t in tabelas)
+        + "".join(f"DROP TABLE IF EXISTS main.{t};\n" for t in tables)
         + schema
-        + "".join(f"INSERT INTO main.{t} SELECT * FROM f.{t};\n" for t in tabelas)
+        + "".join(f"INSERT INTO main.{t} SELECT * FROM f.{t};\n" for t in tables)
         + "COMMIT;"
     )
     con.execute("DETACH DATABASE f")
@@ -58,21 +58,21 @@ def build_science(db, science, stops, cfg) -> tuple[int, int]:
         db.execute(f"INSERT INTO targets ({','.join(d)}) VALUES ({','.join('?' * len(d))})",
                    list(d.values()))
     ids = {t.id for t in targets}
-    n_med = 0
+    n_meas = 0
     for m in science.list_measurements(cfg["sols"]["min"], cfg["sols"]["max"]):
         if m.target_id not in ids:
             continue
         d = asdict(m)
         db.execute(f"INSERT INTO measurements ({','.join(d)}) VALUES ({','.join('?' * len(d))})",
                    list(d.values()))
-        n_med += 1
+        n_meas += 1
     db.execute("DELETE FROM target_rtree")
     db.execute("INSERT INTO target_rtree SELECT rowid, lon, lon, lat, lat FROM targets")
-    return len(targets), n_med
+    return len(targets), n_meas
 
 
 def copy_science_files(cfg, base_dir: Path, bundle: Path) -> list[str]:
-    """Copia para o bundle o que a API serve: Mastcam, CRISM, terreno."""
+    """Copies into the bundle what the API serves: Mastcam, CRISM, terrain."""
     sc, copied = cfg["science"], []
     mast = (base_dir / sc["mastcam_dir"]).resolve()
     if mast.exists():
@@ -92,14 +92,14 @@ def copy_science_files(cfg, base_dir: Path, bundle: Path) -> list[str]:
 
 
 def main() -> int:
-    """Refaz só as tabelas da F04 no banco único (sem rodar o ETL todo)."""
+    """Rebuilds only the F04 tables in the single database (without running the whole ETL)."""
     from etl.sources import make_science_sources
     from etl.sources.base import Position
 
     ap = argparse.ArgumentParser(description=main.__doc__)
     ap.add_argument("--config", default=str(ROOT / "config.yaml"))
-    ap.add_argument("--bundle", help="padrão: paths.bundle do config.yaml")
-    ap.add_argument("--db", help="padrão: paths.db do config.yaml")
+    ap.add_argument("--bundle", help="default: paths.bundle from config.yaml")
+    ap.add_argument("--db", help="default: paths.db from config.yaml")
     args = ap.parse_args()
     cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
     args.bundle = args.bundle or str((ROOT / cfg["paths"]["bundle"]).resolve())
@@ -114,7 +114,7 @@ def main() -> int:
     copy_science_files(cfg, ROOT, Path(args.bundle))
     db.commit()
     db.close()
-    print(f"F04: {n_t} alvos, {n_m} medições (science_source: {cfg['science_source']})")
+    print(f"F04: {n_t} targets, {n_m} measurements (science_source: {cfg['science_source']})")
     return 0
 
 

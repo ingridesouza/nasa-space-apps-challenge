@@ -1,13 +1,13 @@
-"""F04 · tarefa 5: recorte CRISM da janela do boxwork.
+"""F04 · task 5: CRISM crop of the boxwork window.
 
-Baixa uma vez o arquivo SU (parâmetros espectrais de resumo) do produto CRISM
-MTRDR escolhido na busca do Orbital Data Explorer, recorta a janela do boxwork
-(+ margem) e grava `dados/crism_boxwork.json` só com os parâmetros que a ficha
-usa. O SU é binário cru (float32, bandas sequenciais) em projeção equiretangular
-na esfera de 3.396,19 km: basta numpy, sem GDAL.
+Downloads once the SU file (summary spectral parameters) of the CRISM MTRDR
+product chosen in the Orbital Data Explorer search, crops the boxwork window
+(+ margin) and writes `data/crism_boxwork.json` with only the parameters the card
+uses. The SU is raw binary (float32, band sequential) in equirectangular projection
+on the 3,396.19 km sphere: numpy is enough, no GDAL.
 
-Rodar a partir de data-pipeline/f03/:
-    python etl/crism.py            # baixa o SU (~136 MB) para data/local/f03-cache/crism/ se faltar
+Run from data-pipeline/f03/:
+    python etl/crism.py            # downloads the SU (~136 MB) to data/local/f03-cache/crism/ if missing
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ def main() -> int:
     for ext in ("lbl", "hdr", "img"):
         dest = cache / f"{Path(base).name}.{ext}"
         if not dest.exists():
-            print(f"baixando {base}.{ext}", flush=True)
+            print(f"downloading {base}.{ext}", flush=True)
             with requests.get(f"{base}.{ext}", stream=True, timeout=600) as r:
                 r.raise_for_status()
                 with dest.open("wb") as f:
@@ -77,15 +77,15 @@ def main() -> int:
                         for i in range(b.shape[0])]
 
     out = {
-        "produto": c["produto"], "url": c["page_url"], "arquivo": Path(c["su_url"]).name,
+        "product": c["product"], "url": c["page_url"], "file": Path(c["su_url"]).name,
         "res_m": lbl_value(lbl, "MAP_SCALE") * 1000,
         "lon_min": W + c0 * dlon, "lat_max": N - r0 * dlat, "deg_px_lon": dlon, "deg_px_lat": dlat,
-        "rows": r1 - r0, "cols": c1 - c0, "limiares": {k: v[1] for k, v in CRISM_PARAMS.items()},
+        "rows": r1 - r0, "cols": c1 - c0, "thresholds": {k: v[1] for k, v in CRISM_PARAMS.items()},
         "bands": out_bands,
     }
     dest = (ROOT / c["crop_json"]).resolve()
     dest.write_text(json.dumps(out, separators=(",", ":")), encoding="utf-8")
-    print(f"CRISM {c['produto']}: {out['rows']}×{out['cols']} px, ~{out['res_m']:.0f} m/px -> {dest}")
+    print(f"CRISM {c['product']}: {out['rows']}×{out['cols']} px, ~{out['res_m']:.0f} m/px -> {dest}")
     return 0
 
 

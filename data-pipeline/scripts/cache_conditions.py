@@ -1,12 +1,12 @@
-"""Baixa REMS+RAD de um sol e grava um resumo local em JSON --
-`api/conditions.py` lê só esse arquivo (sem chamada de rede a cada
-request, consistente com rodar 100% offline no evento).
+"""Downloads REMS+RAD for a sol and writes a local JSON summary --
+`api/conditions.py` reads only this file (no network call on each
+request, consistent with running 100% offline at the event).
 
-Uso:
+Usage:
     python scripts/cache_conditions.py [sol]
 
-Sem argumento, usa o sol 4650 (mesmo exemplo citado no doc da feature 01
-e já usado nos testes de REMS/RAD).
+Without an argument, uses sol 4650 (same example cited in the feature 01 doc
+and already used in the REMS/RAD tests).
 """
 
 import json
@@ -24,52 +24,52 @@ from adapters.pds_rems import PDSRemsAdapter
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "local", "conditions")
 
 
-def summarize_rems(leituras: list[dict]) -> dict:
-    validas = [l for l in leituras if l.get("BOOM1_AIR_TEMP") is not None and l.get("BAROCAP_PRESSURE_1") is not None]
-    temps_c = [l["BOOM1_AIR_TEMP"] - 273.15 for l in validas]
-    pressoes = [l["BAROCAP_PRESSURE_1"] for l in validas]
-    uvs = [l["UV_A"] for l in validas if l.get("UV_A") is not None]
-    umidades = [l["HUMIDITY_CHANNEL_A"] for l in validas if l.get("HUMIDITY_CHANNEL_A") is not None]
+def summarize_rems(readings: list[dict]) -> dict:
+    valid = [l for l in readings if l.get("BOOM1_AIR_TEMP") is not None and l.get("BAROCAP_PRESSURE_1") is not None]
+    temps_c = [l["BOOM1_AIR_TEMP"] - 273.15 for l in valid]
+    pressures = [l["BAROCAP_PRESSURE_1"] for l in valid]
+    uvs = [l["UV_A"] for l in valid if l.get("UV_A") is not None]
+    humidities = [l["HUMIDITY_CHANNEL_A"] for l in valid if l.get("HUMIDITY_CHANNEL_A") is not None]
 
     return {
         "temp_min_c": round(min(temps_c), 1) if temps_c else None,
         "temp_max_c": round(max(temps_c), 1) if temps_c else None,
-        "pressao_pa": round(sum(pressoes) / len(pressoes), 1) if pressoes else None,
-        "uv_pico": round(max(uvs), 2) if uvs else None,
-        "umidade_pct": round(sum(umidades) / len(umidades), 1) if umidades else None,
-        "n_leituras": len(validas),
+        "pressure_pa": round(sum(pressures) / len(pressures), 1) if pressures else None,
+        "uv_peak": round(max(uvs), 2) if uvs else None,
+        "humidity_pct": round(sum(humidities) / len(humidities), 1) if humidities else None,
+        "n_readings": len(valid),
     }
 
 
-def summarize_rad(leituras: list[dict]) -> dict:
-    doses = [l["dose_e_ugy_por_hora"] for l in leituras if l.get("dose_e_ugy_por_hora") is not None]
-    media = sum(doses) / len(doses) if doses else None
+def summarize_rad(readings: list[dict]) -> dict:
+    doses = [l["dose_e_ugy_per_hour"] for l in readings if l.get("dose_e_ugy_per_hour") is not None]
+    mean = sum(doses) / len(doses) if doses else None
     return {
-        "dose_media_ugy_por_hora": round(media, 2) if media is not None else None,
-        "dose_estimada_ugy_por_dia": round(media * 24, 1) if media is not None else None,
-        "n_leituras": len(doses),
+        "mean_dose_ugy_per_hour": round(mean, 2) if mean is not None else None,
+        "estimated_dose_ugy_per_day": round(mean * 24, 1) if mean is not None else None,
+        "n_readings": len(doses),
     }
 
 
 def main() -> None:
     sol = int(sys.argv[1]) if len(sys.argv) > 1 else 4650
 
-    print(f"[1/2] Baixando REMS do sol {sol}...")
+    print(f"[1/2] Downloading REMS for sol {sol}...")
     rems = PDSRemsAdapter().fetch_sol(sol)
-    rems_resumo = summarize_rems(rems["leituras"])
-    print("     ", rems_resumo)
+    rems_summary = summarize_rems(rems["readings"])
+    print("     ", rems_summary)
 
-    print(f"[2/2] Baixando RAD do sol {sol}...")
+    print(f"[2/2] Downloading RAD for sol {sol}...")
     rad = PDSRadAdapter().fetch_sol(sol)
-    rad_resumo = summarize_rad(rad["leituras"])
-    print("     ", rad_resumo)
+    rad_summary = summarize_rad(rad["readings"])
+    print("     ", rad_summary)
 
     os.makedirs(OUT_DIR, exist_ok=True)
     out_path = os.path.join(OUT_DIR, f"sol_{sol}.json")
     with open(out_path, "w", encoding="utf-8") as f:
-        json.dump({"sol": sol, "rems": rems_resumo, "rad": rad_resumo}, f, ensure_ascii=False, indent=2)
+        json.dump({"sol": sol, "rems": rems_summary, "rad": rad_summary}, f, ensure_ascii=False, indent=2)
 
-    print(f"\nSalvo em {out_path}")
+    print(f"\nSaved to {out_path}")
 
 
 if __name__ == "__main__":
