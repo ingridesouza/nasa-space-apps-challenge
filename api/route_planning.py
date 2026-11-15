@@ -29,6 +29,7 @@ import sqlite3
 import numpy as np
 import rasterio
 
+from alertas import BASE_LAT_LON
 from geo import MARS_METERS_PER_DEGREE, haversine_m
 from vector_queries import todos_alvos_cientificos
 
@@ -288,6 +289,108 @@ def _astar(elevacao, slope_deg, transform, pixel_size_m, origem_rc, destino_rc, 
                 heapq.heappush(aberto, (novo_g + heuristica(*viz), viz))
 
     raise SemCaminhoError("Nenhum caminho possível sem cruzar inclinação >= 20°")
+
+
+def custo_ate_base(conn: sqlite3.Connection) -> dict[tuple[int, int], dict]:
+    """Mapa de custo de volta (Fase 2, F02+F08): Dijkstra a partir da
+    BASE_LAT_LON (api/alertas.py), no mesmo grid e com as mesmas regras
+    de passabilidade do A* (`_astar` acima) -- inclinação >= 20° continua
+    impassável. O custo usado pra escolher o caminho (e pra ordenar a
+    fila do Dijkstra) é o mesmo "custo de risco" da variante "mais_segura"
+    (distância penalizada em trechos de atenção, ver PESO_ATENCAO) --
+    decisão nossa: uma volta de emergência deve ser calculada pelo
+    caminho mais cauteloso, não o mais rápido.
+
+    Devolve um dict {(r, c): {"tempo_volta_s", "o2_volta_l"}} só com os
+    pixels que TÊM caminho até a base -- um pixel sem entrada no dict é
+    "sem volta calculável daqui" (nunca um infinito disfarçado de
+    número). tempo_volta_s e o2_volta_l são acumulados trecho a trecho
+    ao longo do mesmo caminho que o Dijkstra encontrou, com a velocidade
+    e a taxa de O2 PESSIMISTAS (mesmas fórmulas da Fase 1 -- ver
+    FATOR_VELOCIDADE_PESSIMISTA e _metabolismo_pandolf_w) -- é sempre o
+    pior caso que entra numa decisão de segurança.
+
+    Calculado uma vez e cacheado (ver _custo_ate_base_cacheado) porque o
+    DTM e a base não mudam durante a vida do processo: medido no grid
+    real de Gale (512x512px) em 2026-11-14, ~4,2s pra cobrir ~188 mil
+    pixels alcançáveis dos 262 mil do grid -- aceitável por ser pago uma
+    vez só (primeira chamada), nunca por request. Não recortamos o grid
+    ao raio de 2km da regra `volta_base` (api/alertas.py) porque a
+    maior parte do grid real já cai dentro desse raio -- cortar não
+    reduziria o trabalho o bastante pra valer a complexidade."""
+    return _custo_ate_base_cacheado(_dtm_path(conn))
+
+
+@functools.lru_cache(maxsize=1)
+def _custo_ate_base_cacheado(local_tile_path: str) -> dict[tuple[int, int], dict]:
+    elevacao, transform, bounds, nodata = _load_dtm(local_tile_path)
+    pixel_size_deg = abs(transform.a)
+    pixel_size_m = pixel_size_deg * MARS_METERS_PER_DEGREE
+    slope_deg = _slope_grid_deg(elevacao, pixel_size_m)
+    n_rows, n_cols = elevacao.shape
+    peso_atencao = PESO_ATENCAO["mais_segura"]
+
+    def passavel(r, c):
+        return 0 <= r < n_rows and 0 <= c < n_cols and slope_deg[r, c] < LIMITE_SLOPE_PERIGO_DEG
+
+    def custo_risco_aresta(r1, c1, r2, c2, dist_real_m, s):
+        if s >= LIMITE_SLOPE_ATENCAO_DEG:
+            return dist_real_m * peso_atencao
+        return dist_real_m
+
+    base_rc = _latlon_to_rc(transform, *BASE_LAT_LON)
+    if not passavel(*base_rc):
+        base_rc = _snap_para_passavel(*base_rc, n_rows, n_cols, passavel)
+    if base_rc is None:
+        return {}
+
+    custo_risco: dict = {base_rc: 0.0}
+    tempo_volta_s: dict = {base_rc: 0.0}
+    o2_volta_l: dict = {base_rc: 0.0}
+    visitado = set()
+    fila = [(0.0, base_rc)]
+
+    while fila:
+        custo_atual, atual = heapq.heappop(fila)
+        if atual in visitado:
+            continue
+        visitado.add(atual)
+
+        for dr, dc in _VIZINHOS_8:
+            viz = (atual[0] + dr, atual[1] + dc)
+            if viz in visitado or not passavel(*viz):
+                continue
+
+            r1, c1 = atual
+            r2, c2 = viz
+            dist_real_m = pixel_size_m * math.hypot(r2 - r1, c2 - c1)
+            s = max(slope_deg[r1, c1], slope_deg[r2, c2])
+            novo_custo = custo_atual + custo_risco_aresta(r1, c1, r2, c2, dist_real_m, s)
+
+            if novo_custo < custo_risco.get(viz, math.inf):
+                # Mesma fórmula pessimista da Fase 1 (_monta_rota),
+                # aplicada a este trecho -- acumulada só quando o
+                # Dijkstra confirma que ESTE é o melhor caminho até viz,
+                # então tempo/O2 sempre seguem o mesmo caminho do custo.
+                velocidade_pessimista = VELOCIDADE_BASE_M_S * max(
+                    1 - (s / LIMITE_SLOPE_PERIGO_DEG) * FATOR_VELOCIDADE_PESSIMISTA, 0.25
+                )
+                tempo_trecho_s = dist_real_m / velocidade_pessimista
+                grade_pct = 100.0 * math.tan(math.radians(s))
+                taxa_o2_pessimista = TAXA_O2_L_POR_MIN * (
+                    _metabolismo_pandolf_w(velocidade_pessimista, grade_pct) / _METABOLISMO_BASE_W
+                )
+                o2_trecho_l = taxa_o2_pessimista * (tempo_trecho_s / 60.0)
+
+                custo_risco[viz] = novo_custo
+                tempo_volta_s[viz] = tempo_volta_s[atual] + tempo_trecho_s
+                o2_volta_l[viz] = o2_volta_l[atual] + o2_trecho_l
+                heapq.heappush(fila, (novo_custo, viz))
+
+    return {
+        rc: {"tempo_volta_s": round(tempo_volta_s[rc], 1), "o2_volta_l": round(o2_volta_l[rc], 2)}
+        for rc in custo_risco
+    }
 
 
 def _monta_rota(tipo: str, caminho_rc, elevacao, slope_deg, transform, pixel_size_m, dose_rad_ugy_por_hora) -> dict:
