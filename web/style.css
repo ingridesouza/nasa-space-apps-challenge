@@ -346,11 +346,11 @@ html,body,.app{overflow:hidden}
 .page-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:8px}
 .route-card > .page-nav{margin:0 0 10px}
 /* block id (m-A…), small and discreet on top; the spoken name is in the title */
-[data-modal]:not(.frame)::before,.modal-id{content:attr(data-modal);position:absolute;z-index:4;top:2px;left:50%;transform:translateX(-50%);
+[data-modal]:not(.frame)::before,.modal-id{content:attr(data-modal-label);text-transform:uppercase;position:absolute;z-index:4;top:2px;left:50%;transform:translateX(-50%);
   font-family:'JetBrains Mono',monospace;font-size:9px;line-height:1;letter-spacing:.12em;color:var(--dim);opacity:.8;pointer-events:none}
 .map-box[data-modal]::before{top:8px;z-index:3;text-shadow:0 1px 2px #000}
 .viewer[data-modal]::before,.map-open .map-box[data-modal]::before{top:auto;bottom:6px}
-.science-card[data-modal]::before{top:1px}
+.answer-card[data-modal]::before{top:1px}
 /* triggered by a command: the badge lights up for an instant */
 .modal-triggered[data-modal]:not(.frame)::before,.modal-triggered .modal-id{animation:modal-blink .7s ease}
 @keyframes modal-blink{0%,60%{color:var(--b200);opacity:1;text-shadow:0 0 8px var(--hud-cyan)}}

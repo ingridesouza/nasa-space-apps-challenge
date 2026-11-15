@@ -19,7 +19,6 @@ function suggestionHtml(r, sg) {
     ${sg.dust_warning ? `<p class="suggestion-reason">⚠️ ${esc(sg.dust_warning)}</p>` : ''}
     <span class="fl-sec">${LABEL[s.label][0]} Route ${esc(TYPE_LABEL[r.type] ?? r.type)}${r.type === sg.suggested ? ' · suggested' : ''}</span>
     <ul class="suggestion-list">${s.pros.map((x) => li(x, '+')).join('')}${s.cons.map((x) => li(x, '−')).join('')}</ul>
-    <p class="caption mono">${esc(sg.method)} · you decide</p>
   </div>`
 }
 
