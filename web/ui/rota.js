@@ -191,7 +191,8 @@ export function mostrarOpcoes(res, origem) {
 export function rotaParaAgente() {
   const { origem: o, destino: d } = st
   if (!rotaAtiva() || !o || !d) return null
-  return { origin_lat: o.lat, origin_lon: o.lon, dest_lat: d.lat, dest_lon: d.lon, tipo: st.tipo, ...(st.solEva && { sol: st.solEva }) }
+  // opção de replanejamento: a previsão recalcula pelo peso do A* (variante), não pelo id da opção
+  return { origin_lat: o.lat, origin_lon: o.lon, dest_lat: d.lat, dest_lon: d.lon, tipo: rotaAtiva().variante ?? st.tipo, ...(st.solEva && { sol: st.solEva }) }
 }
 
 function render() {

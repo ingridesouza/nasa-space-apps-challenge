@@ -345,6 +345,8 @@ def get_previsao_rota(origin_lat: float, origin_lon: float, dest_lat: float, des
                       tipo: str = "mais_segura", sol: int | None = None):
     """Ferramenta do agente: análise preditiva da rota (terreno pelo histórico do
     Curiosity, clima e janela no sol da EVA, dose prevista). Ver previsao_rota.py."""
+    if tipo not in ("mais_segura", "mais_rapida", "mais_ciencia"):  # mais_suave (opção do replanejamento)
+        tipo = "mais_segura"  # shortcut: previsão pela mais segura, sem o desvio; passar tipos/evitar se divergir muito
     resultado = get_route(origin_lat, origin_lon, dest_lat, dest_lon, [], [])
     rota = next((r for r in resultado["rotas"] if r["tipo"] == tipo), None)
     if rota is None:
@@ -431,16 +433,17 @@ def ask(p: Pergunta, request: Request):
             return f"sem resultado: {e.detail}"
 
     problema = classificar(p.pergunta)
-    if problema and (p.rota or problema in ("poeira", "cansaco")):  # sem rota aberta, só a volta faz sentido
+    if problema and (p.rota or problema in ("poeira", "oxigenio")):  # sem rota aberta, só a volta faz sentido
         try:
             res = get_replanejar(*pos, p.pergunta, *((p.rota.dest_lat, p.rota.dest_lon) if p.rota else (None, None)),
                                  tipo_atual=p.rota.tipo if p.rota else "mais_segura")
             acoes.append({"tipo": "replanejar", "origem": {"lat": pos[0], "lon": pos[1]}, "resultado": res})
             alertas_ferramenta.extend(next(r for r in res["rotas"] if r["tipo"] == res["sugestao"]["sugerida"])["alertas"])
             fontes_ferramenta.append("replanejamento: A* sobre o DTM HiRISE + regra de sugestão H2G2")
-            ctx["buscas"] = [f"PROBLEMA RELATADO: {res['problema_texto']} Opções novas a partir de onde o astronauta está:",
-                             *sugestao_em_texto(res["sugestao"])]
-            ctx.pop("previsao_rota", None)  # a rota aberta deixou de valer: o modelo fala das opções novas
+            # resposta por regra, como o socorro: o e2b ignorava as opções ("não tenho informações sobre
+            # rochas") ou chamava planejar_rota sozinho, e a rota normal apagava as opções na tela
+            return {"resposta": f"{res['problema_texto']} {res['sugestao']['motivo']} As opções estão no mapa; quem decide é você.",
+                    "fontes": fontes_ferramenta, "alertas": ponto["alertas"], "acoes": acoes, "replanejamento": True}
         except HTTPException as e:
             ctx["buscas"] = [f"PROBLEMA RELATADO, mas sem opção de caminho: {e.detail}"]
 

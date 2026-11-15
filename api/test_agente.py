@@ -105,16 +105,22 @@ def test_replanejar_classifica_e_desvia_do_obstaculo():
     from replanejar import classificar
     assert classificar("tem uma rocha grande à frente") == "obstaculo" and classificar("There is a big rock ahead") == "obstaculo"
     assert classificar("está muito íngreme") == "ingreme" and classificar("estou cansado") == "cansaco"
+    assert classificar("meu oxigênio está baixo") == "oxigenio"
     assert classificar("vem poeira") == "poeira" and classificar("aconteceu um problema") == "outro"
     assert classificar("qual o seu nome?") is None
+    assert classificar("apareceu uma cratera enorme na minha frente") == "obstaculo"
+    assert classificar("o que tem na cratera Gale?") is None
+    assert classificar("qual a melhor hora para fazer essa caminhada?") is None
     meio, monte_grande = (-4.80460, 137.38397), (-4.80784, 137.38104)
     r = get_replanejar(*meio, "tem uma rocha grande à frente", *monte_grande)
     ob = r["obstaculo"]
     for x in r["rotas"]:  # nenhuma opção passa por dentro do obstáculo
         assert min(haversine_m(ob["lat"], ob["lon"], *p) for p in x["pontos"]) > ob["raio_m"], x["tipo"]
     assert r["sugestao"]["sugerida"] in [x["tipo"] for x in r["rotas"]]
-    volta = get_replanejar(*meio, "estou cansado")  # sem destino: só voltar à base
+    volta = get_replanejar(*meio, "meu oxigênio está baixo")  # sem destino: só voltar à base
     assert volta["rotas"] and all(x["tipo"].startswith("volta") for x in volta["rotas"])
+    cansado = get_replanejar(*meio, "estou cansado", *monte_grande)  # cansaço não manda voltar
+    assert cansado["rotas"] and all(x["tipo"].startswith("seguir") for x in cansado["rotas"])
 
 
 def test_problema_relatado_com_rota_aberta_vira_acao_replanejar():
@@ -129,6 +135,8 @@ def test_problema_relatado_com_rota_aberta_vira_acao_replanejar():
         agente.OLLAMA_URL = url
         srv.shutdown()
     acao = next(a for a in r["acoes"] if a["tipo"] == "replanejar")
+    assert r["replanejamento"] and r["resposta"].startswith("Obstáculo à frente") and "quem decide é você" in r["resposta"]
+    assert not any(a["tipo"] == "abrir_rota" for a in r["acoes"])  # nada reabre a rota normal por cima das opções
     assert acao["resultado"]["problema"] == "obstaculo" and acao["origem"] == {"lat": -4.80460, "lon": 137.38397}
 
 
