@@ -49,10 +49,26 @@ O foco do H2G2 deixou de ser planejar a rota (não é um "Waze de Marte") e pass
 - Sem pergunta, o cartão mostra a ficha científica do destino da rota (comportamento antigo, `science-card.js` reaproveitado).
 - Tocar numa opção seleciona a variante no card de rota. A decisão é sempre do astronauta.
 - O bloco de voz `m-F` (altair) passou a apontar para `#c-answer`, com o nome "Answer card".
-- O painel do assistente (`m-G`) continua com o histórico e o contador de espera.
+- O painel do assistente (`m-G`, "draco") **não abre mais sozinho**: o astronauta pergunta e vê só o cartão. O painel segue como histórico, aberto por voz.
+- A linha de resposta do modelo tem **1 frase curta** (~15 palavras, `INSTRUCTIONS` em `agent.py`); o detalhe está nos blocos do cartão.
 
 ## Fora desta entrega
 
 - Cartão de **obstáculo** (evento, não pergunta): depende do contrato do replan, que está em outro escopo.
 - Classificação de intenção pelo modelo.
 - Gráficos no cartão, histórico de várias trocas, monitoramento proativo.
+
+## Decisões (15/11/2026)
+
+- Intenção por **palavra-chave** (lista fechada), não pelo modelo: rápida, testável e não depende do Ollama.
+- Linha do modelo em 1 frase; painel do assistente fora do caminho (menos dado na tela).
+- Sem sinônimo "answer" no `m-F` (conflito possível com "answers" do `m-G`) e sem testes novos para `answer_card.py` por enquanto.
+
+## Pendências
+
+- **Inércia térmica:** aparece só como valor, com leitura qualitativa. Não há no repositório (docs nem commits) nenhum corte numérico de classe nem a referência além do nome "Fergason et al. 2006". Sem citação verificada, não existe a regra cruzada "encosta + material solto".
+- **O2 do traje:** o backend não recebe nível nem capacidade; o bloco de recursos lista "Suit oxygen level" como sem dado.
+- **Cartão de obstáculo:** depende do contrato do replan (formato das opções, tempo, inclinação máxima, O2), que está em outro escopo.
+- **Procedimento de emergência:** escrito pela equipe, sem checklist de EVA da NASA como fonte.
+- **Condições REMS/RAD:** a referência (sol 4650) está defasada, então o veredito de ambiente tende a CAUTION.
+- Tocar numa opção de rota só funciona com uma rota aberta.
