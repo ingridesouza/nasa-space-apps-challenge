@@ -189,6 +189,28 @@ def _solar_event_rule(data_sol: int, peak_dose_ugy_per_day: float | None) -> lis
     return [_alert(level, "solar_event", msg, source)]
 
 
+def _dust_storm_rule(data_sol: int) -> list[dict]:
+    """New hazard category, same pattern as _solar_event_rule: replays the
+    REAL 2018 global dust storm measured on the ground by MSL REMS (see
+    dust_storm_events.py for the sol range and the two real sols fetched
+    directly to confirm the signature), instead of simulating a live dust
+    feed (the system is offline, CLAUDE.md). Distinct from the existing
+    DUST_LS seasonal rule below: that one is a generic "dust season"
+    caution for any sol in the right Ls window; this one fires only for
+    the sol range of one specific, confirmed real storm."""
+    import dust_storm_events
+
+    level = dust_storm_events.alert_level(data_sol)
+    if level is None:
+        return []
+    event = dust_storm_events.known_event(data_sol)
+    msg = (f"Global dust storm on record for this sol ({event['date']}): the diurnal "
+           f"temperature range collapses to about {event['diurnal_range_c']:.0f} C "
+           f"(normally about {event['background_diurnal_range_c']:.0f} C) -- airborne dust "
+           "blocks sunlight by day and traps heat by night.")
+    return [_alert(level, "dust_storm_event", msg, event["source"])]
+
+
 def sol_time_and_alerts(
     data_sol: int, now: datetime | None = None, peak_dose_ugy_per_day: float | None = None
 ) -> tuple[dict, list[dict]]:
@@ -213,6 +235,7 @@ def sol_time_and_alerts(
                              f"Dust storm season (Ls {_num(ls_now)}°, higher risk between 180° and 360°).",
                              "Mars24 (Ls, NASA GISS) + seasonal dust pattern from MCS/MRO (NASA/JPL)"))
     alerts += _solar_event_rule(data_sol, peak_dose_ugy_per_day)
+    alerts += _dust_storm_rule(data_sol)
     return time_info, alerts
 
 

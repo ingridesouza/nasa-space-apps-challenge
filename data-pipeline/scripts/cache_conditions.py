@@ -74,8 +74,16 @@ def main() -> None:
     print("     ", rems_summary)
 
     print(f"[2/2] Downloading RAD for sol {sol}...")
-    rad = PDSRadAdapter().fetch_sol(sol)
-    rad_summary = summarize_rad(rad["readings"])
+    try:
+        rad = PDSRadAdapter().fetch_sol(sol)
+        rad_summary = summarize_rad(rad["readings"])
+    except ValueError as e:
+        # Real gap in the archive for this sol (e.g. instrument downtime), not a
+        # bug -- a REMS-only sol is still worth caching (CLAUDE.md: no data,
+        # no number, never block the rest for one missing source).
+        print(f"      RAD not available for sol {sol}: {e}")
+        rad_summary = {"mean_dose_ugy_per_hour": None, "estimated_dose_ugy_per_day": None,
+                       "peak_dose_ugy_per_hour": None, "n_readings": 0}
     print("     ", rad_summary)
 
     os.makedirs(OUT_DIR, exist_ok=True)
