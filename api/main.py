@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 
 from atmosphere import track_geojson
 from insolation import at_point as insolation_at_point, sun_at_hour
+import answer_card
 from agent import (DISTRESS, AgentUnavailable, ask as ask_agent, build_context, context_as_text, context_sources,
                    distress_answer, group_alerts, strip_repeated_danger)
 from alerts import BASE_LAT_LON, point_alerts, route_alerts, sol_time_and_alerts, stops_in_bbox
@@ -390,7 +391,9 @@ def ask(q: Question, request: Request):
     answered by the local model with the /api/point context and local tools."""
     point = get_point(q.lat, q.lon, request)
     if DISTRESS.search(q.question):
-        return {"answer": distress_answer(point, BASE_LAT_LON), "distress": True,
+        answer = distress_answer(point, BASE_LAT_LON)
+        card = answer_card.build(q.question, point, None, None, None, BASE_LAT_LON, intent="distress")
+        return {"answer": answer, "distress": True, "card": {**card, "answer": answer},
                 "sources": ["HiRISE DTM (slope)", "base position (H2G2)"], "alerts": point["alerts"], "actions": []}
     conditions = get_cached_conditions(q.sol)
     if conditions:
@@ -402,6 +405,11 @@ def ask(q: Question, request: Request):
             ctx["route_forecast"] = get_route_forecast(**q.route.model_dump())
         except HTTPException as e:  # no path/outside the map: the agent says there is no forecast
             ctx["route_forecast"] = {"error": e.detail}
+    # answer card: built by rule before the model, so it exists even if the model is down
+    intent = answer_card.classify(q.question)
+    science = (science_card.science_card(lat=q.lat, lon=q.lon, radius=panorama.R_CARD)
+               if intent == "science" else None)
+    card = answer_card.build(q.question, point, conditions, ctx.get("route_forecast"), science, BASE_LAT_LON, intent)
     actions, tool_alerts, tool_sources = [], [], []
 
     def run_tool(name: str, args: dict) -> str:
@@ -441,16 +449,17 @@ def ask(q: Question, request: Request):
         answer = ask_agent(q.question, ctx, run_tool)
     except AgentUnavailable as e:
         # 503 with the alerts: the safety rules do not depend on the model
-        raise HTTPException(status_code=503, detail={"message": str(e), "alerts": point["alerts"]})
+        raise HTTPException(status_code=503, detail={"message": str(e), "alerts": point["alerts"], "card": card})
     # Danger is stated by rule, before the answer: the small model sometimes omits it.
     route_alerts_ = (ctx.get("route_forecast") or {}).get("alerts", []) + tool_alerts
     danger_list = [a for a in group_alerts(point["alerts"] + route_alerts_) if a["level"] == "danger"]
     answer = strip_repeated_danger(answer, danger_list)
+    card["answer"] = answer  # the card shows the danger in its verdict, not repeated in the line
     dangers = " ".join(a["message"] for a in danger_list)
     if dangers:
         answer = f"Danger: {dangers} {answer}"
     return {"answer": answer, "sources": list(dict.fromkeys(context_sources(ctx) + tool_sources)),
-            "alerts": point["alerts"], "actions": actions}
+            "alerts": point["alerts"], "actions": actions, "card": card}
 
 
 AUDIO_LIMIT_BYTES = 60 * RATE_HZ * 4  # 60 s of float32 mono

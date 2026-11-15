@@ -1,5 +1,5 @@
-// F08: assistant history. Questions are asked only by voice (voice.js); this panel opens by itself
-// with the question and shows the answer. Answers about the destination or, with no destination,
+// F08: assistant history. Questions are asked only by voice (voice.js); this panel is the history; it opens only on request.
+// The structured answer is shown by the answer card. Answers about the destination or, with no destination,
 // about the current position. Local model: the wait is visible (counter).
 import { ask } from '../api.js'
 import { goToPage, paginate } from './pages.js'
@@ -22,9 +22,10 @@ export function speak(text) {
  * currentPoint(): {lat, lon, label} of the destination or current position, or null (the API uses the base).
  * currentRoute(): open route (routeForAgent) or null; with it the API runs the route forecast.
  * openRoute({lat, lon}): the agent planned a route (plan_route tool): opens it on the map, without choosing for you.
+ * showCard(item): the structured answer goes to the answer card (ui/answer-card.js), item = {question, card?, answer?, error?, seconds}.
  */
-export function initAssistant(el, currentPoint, currentRoute = () => null, openRoute = () => {}) {
-  const history = [] // {question, about, answer?, sources?, error?, seconds}
+export function initAssistant(el, currentPoint, currentRoute = () => null, openRoute = () => {}, showCard = () => {}) {
+  const history = [] // {question, about, answer?, sources?, card?, error?, seconds}
   let busy = false
   let timer = null
 
@@ -60,26 +61,30 @@ export function initAssistant(el, currentPoint, currentRoute = () => null, openR
     history.length = Math.min(history.length, MAX_HISTORY)
     goToPage(el, 0)
     render()
+    showCard(h)
     const start = performance.now()
     timer = setInterval(() => {
       h.seconds = Math.round((performance.now() - start) / 1000)
       render()
+      if (h === history[0]) showCard(h)
     }, 1000)
     const p = currentPoint()
     try {
       const r = await ask(h.question, p?.lat, p?.lon, currentRoute())
-      Object.assign(h, { answer: r.answer, sources: r.sources })
+      Object.assign(h, { answer: r.answer, sources: r.sources, card: r.card })
       const route = r.actions?.findLast((a) => a.type === 'open_route')
       if (route) openRoute({ lat: route.lat, lon: route.lon })
       if (byVoice) speak(`You asked: ${h.question} ${r.answer}`) // repeats what it heard: a transcription error becomes audible
     } catch (err) {
       h.error = err.message
+      h.card = err.card ?? null
       if (byVoice) speak('The assistant is offline. The alerts still apply.')
     } finally {
       clearInterval(timer)
       h.seconds = Math.round((performance.now() - start) / 1000)
       busy = false
       render()
+      showCard(h)
     }
   }
 

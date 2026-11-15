@@ -64,6 +64,9 @@ export async function ask(question, lat, lon, route = null) { // without lat/lon
     body: JSON.stringify({ question, ...(lat !== undefined && { lat, lon }), ...(route && { route }) }),
   })
   const body = await resp.json().catch(() => null)
-  if (!resp.ok) throw new Error(body?.detail?.message ?? `/api/ask failed: ${resp.status}`)
+  if (!resp.ok) {
+    // model down (503): the rule-built answer card still comes in detail.card
+    throw Object.assign(new Error(body?.detail?.message ?? `/api/ask failed: ${resp.status}`), { card: body?.detail?.card })
+  }
   return body
 }

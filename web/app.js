@@ -8,6 +8,7 @@ import {
 import { TOGGLEABLE_LAYERS } from './layers.js'
 import * as map from './map.js'
 import { initAssistant, speak } from './ui/agent.js'
+import { initAnswerCard } from './ui/answer-card.js'
 import { arrivalHour, renderLayers } from './ui/layers-panel.js'
 import { initRoute, routeForAgent } from './ui/route.js'
 import { initVoice } from './ui/voice.js'
@@ -34,7 +35,7 @@ const state = {
 }
 let awaitingStop = false
 
-// ---------------- Place (position or destination): status, panorama, photos, science card ----------------
+// ---------------- Place (position or destination): status, panorama, photos, answer card ----------------
 let placeSeq = 0
 let last = null // {pano} of the current place, to redraw the status
 
@@ -42,7 +43,7 @@ async function loadPlace(place) {
   const mine = ++placeSeq
   state.place = place
   loading()
-  showScience('loading')
+  answerCard.showPlace('loading')
   const { lat, lon } = place
   const [pano, photos, science] = (await Promise.allSettled([
     getPanorama(lat, lon), getPhotosNear(lat, lon), getScienceCard(lat, lon),
@@ -52,7 +53,7 @@ async function loadPlace(place) {
   map.setPanorama(pano?.found ? pano : null)
   if (pano) showPano(pano)
   else clearPano()
-  showScience(science ?? 'error')
+  answerCard.showPlace(science ?? 'error')
   if (photos) showPhotos(photos)
   else $('c-photos').hidden = true
 }
@@ -65,14 +66,14 @@ function clearBar() {
   clearPano()
   closePhoto()
   map.setPanorama(null)
-  for (const id of ['c-status', 'c-photos', 'c-science']) $(id).hidden = true
+  for (const id of ['c-status', 'c-photos', 'c-answer']) $(id).hidden = true
   collapseGroup('g-images', false)
 }
 
 const samePoint = (a, b) => a && b && a.lat === b.lat && a.lon === b.lon
 
 function loading() {
-  for (const id of ['c-pano', 'c-photos', 'c-science']) $(id).hidden = true
+  for (const id of ['c-pano', 'c-photos', 'c-answer']) $(id).hidden = true
 }
 
 function card(id, html) { $(id).innerHTML = html; $(id).hidden = false }
@@ -134,20 +135,20 @@ function collapseGroup(id, c) {
   t.setAttribute('aria-expanded', String(!c))
   if (id === 'g-route' && !c) requestAnimationFrame(() => paginate($('c-route'))) // hidden, it measured 0 px
   if (id === 'g-images') {
-    $('science-cards').classList.toggle('collapsed', c)
-    if (!c) requestAnimationFrame(() => { viewer?.resize(); placeScienceCards() }) // pannellum measured 0 px while hidden
+    $('answer-cards').classList.toggle('collapsed', c)
+    if (!c) requestAnimationFrame(() => { viewer?.resize(); placeAnswerCards() }) // pannellum measured 0 px while hidden
   }
 }
-// science cards left of the images bar (bottom, CSS); on mobile they sit above the bottom sheet
-function placeScienceCards() {
-  const f = $('science-cards')
+// answer card left of the images bar (bottom, CSS); on mobile it sits above the bottom sheet
+function placeAnswerCards() {
+  const f = $('answer-cards')
   f.style.bottom = mobile() ? innerHeight - $('floating').getBoundingClientRect().top + 8 + 'px' : ''
 }
 {
-  const ro = new ResizeObserver(placeScienceCards)
+  const ro = new ResizeObserver(placeAnswerCards)
   for (const id of ['floating', 'c-route', 'c-status', 'c-pano', 'c-photos']) ro.observe($(id))
-  addEventListener('resize', placeScienceCards)
-  $('floating').addEventListener('scroll', placeScienceCards)
+  addEventListener('resize', placeAnswerCards)
+  $('floating').addEventListener('scroll', placeAnswerCards)
 }
 for (const t of document.querySelectorAll('.group-toggle')) {
   t.addEventListener('click', () => { const g = t.parentElement; collapseGroup(g.id, !g.classList.contains('collapsed')) })
@@ -254,21 +255,17 @@ function closePhoto() {
 function closeViewer() { if (inViewer) collapse(); closePhoto(); viewerInFront(false) }
 $('viewer-close').addEventListener('click', closeViewer)
 
-// ---------------- Science card (F04, science-card.js) ----------------
-function showScience(d, open = false) {
-  const wasOpen = $('c-science').open
-  $('c-science').hidden = false
-  $('c-science').open = open || (d !== 'loading' && wasOpen)
-  const [name, type] = H2G2Card.title(d)
-  $('science-name').textContent = name
-  $('science-type').textContent = type
-  $('science').innerHTML = H2G2Card.html(d)
-  requestAnimationFrame(() => { paginateScience(); placeScienceCards() })
-}
-// F11: card without scrolling, in pages; the list of lines breaks item by item
-const paginateScience = () => paginate($('science'), { sel: ':scope > :not(ul), :scope > ul > li', max: () => innerHeight * 0.42 })
-$('c-science').addEventListener('toggle', () => { if ($('c-science').open) paginateScience() })
-addEventListener('resize', () => { paginateScience(); paginate($('c-route')); paginate($('assistant')) })
+// ---------------- Answer card (F08, ui/answer-card.js; replaced the F04 science card) ----------------
+// structured answer to the question asked during the walk; with no question, the destination science card
+const answerCard = initAnswerCard($('c-answer'), {
+  onRouteType: (type) => {
+    if (!state.route) return
+    collapseGroup('g-route', false)
+    $('c-route').querySelector(`[data-type="${type}"]`)?.click()
+  },
+  onRender: () => placeAnswerCards(),
+})
+addEventListener('resize', () => { answerCard.paginate(); paginate($('c-route')); paginate($('assistant')) })
 
 // ---------------- Map: circle <-> full screen ----------------
 const layers = () => renderLayers($('layers-panel'), state)
@@ -347,7 +344,7 @@ const updateRoute = initRoute($('c-route'), {
   onOpenTarget: async (target) => {
     if (!target?.lat) return
     if (state.map !== 'viewer') await closeMap()
-    getScienceCard(target.lat, target.lon).then((f) => showScience(f, true), () => showScience('error', true))
+    getScienceCard(target.lat, target.lon).then((f) => answerCard.showPlace(f, true), () => answerCard.showPlace('error', true))
   },
 })
 
@@ -548,7 +545,7 @@ document.addEventListener('keydown', (e) => {
 const assistant = initAssistant($('assistant'), () => state.place ?? state.position, routeForAgent, (destination) => {
   state.routeActive = true // same as "Plan route" and the voice route
   return setDestination(destination)
-})
+}, (item) => answerCard.showAnswer(item))
 
 // ---------------- F08: voice ("Hey guide, route to …" or a spoken question) ----------------
 // the route always starts at the current position (tracker); voice only chooses the destination
@@ -559,8 +556,7 @@ initVoice($('btn-voice'), $('voice-status'), {
     return setDestination({ lat: destination.lat, lon: destination.lon })
   },
   ask: (text) => {
-    if ($('assistant').hidden) assistant.open(true)
-    return assistant.send(text, true)
+    return assistant.send(text, true) // the answer card opens by itself; the assistant history stays closed
   },
   execute,
   context,
@@ -677,10 +673,10 @@ register('m-E', {
   expand: () => { collapseGroup('g-images', false) },
 })
 register('m-F', {
-  open: () => { if ($('c-science').hidden) return 'No science card open.'; $('c-science').open = true },
-  close: () => { $('c-science').open = false },
-  next: () => changePage($('science'), 1) || 'Science card: already on the last page.',
-  previous: () => changePage($('science'), -1) || 'Science card: already on the first page.',
+  open: () => { if ($('c-answer').hidden) return 'No answer card open.'; $('c-answer').open = true },
+  close: () => { $('c-answer').open = false },
+  next: () => changePage($('answer'), 1) || 'Answer card: already on the last page.',
+  previous: () => changePage($('answer'), -1) || 'Answer card: already on the first page.',
 })
 register('m-G', {
   open: () => { assistant.open(true) },

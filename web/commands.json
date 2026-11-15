@@ -626,8 +626,8 @@
    "spoken": [
     "altair"
    ],
-   "name": "Science card",
-   "selector": "#c-science",
+   "name": "Answer card",
+   "selector": "#c-answer",
    "synonyms": [
     "science",
     "card",
