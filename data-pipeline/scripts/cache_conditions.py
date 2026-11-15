@@ -53,6 +53,11 @@ def summarize_rad(leituras: list[dict]) -> dict:
 
 def main() -> None:
     sol = int(sys.argv[1]) if len(sys.argv) > 1 else 4650
+    out_path = os.path.join(OUT_DIR, f"sol_{sol}.json")
+    if os.path.exists(out_path):
+        # já em cache: não depende do PDS (arquivos de ~20 MB, conexão instável) a cada make build
+        print(f"Sol {sol} já em {out_path}; pulando download (apague para baixar de novo)")
+        return
 
     print(f"[1/2] Baixando REMS do sol {sol}...")
     rems = PDSRemsAdapter().fetch_sol(sol)
@@ -65,7 +70,6 @@ def main() -> None:
     print("     ", rad_resumo)
 
     os.makedirs(OUT_DIR, exist_ok=True)
-    out_path = os.path.join(OUT_DIR, f"sol_{sol}.json")
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump({"sol": sol, "rems": rems_resumo, "rad": rad_resumo}, f, ensure_ascii=False, indent=2)
 
