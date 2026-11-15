@@ -1,109 +1,964 @@
 {
-  "versao": 1,
-  "nota": "Catálogo único dos blocos do visor e das ações que a voz pode disparar. Lido pelo front (web/ui/comandos.js) e pela API (api/comandos.py). 'falado' = nome no alfabeto fonético, que o Whisper transcreve bem (letra solta não: bê/dê/ê/pê/tê soam iguais). Ação nova: acrescentar aqui e registrar o handler em web/app.js.",
-  "modais": [
-    {
-      "id": "m-A", "falado": ["alfa", "alpha", "alfah"], "nome": "Mapa", "seletor": "#mapa-box",
-      "sinonimos": ["mapa"],
-      "acoes": {
-        "expandir": {"desc": "abre o mapa em tela cheia", "falado": ["expandir", "abrir", "abre", "maximizar", "tela cheia", "explorar"]},
-        "recolher": {"desc": "volta o mapa ao círculo", "falado": ["recolher", "fechar", "fecha", "minimizar", "esconder"]},
-        "aproximar": {"desc": "zoom mais", "falado": ["aproximar", "aproxima", "zoom mais", "mais zoom", "aumentar zoom", "aumenta zoom", "aumentar o zoom", "aumenta o zoom", "ampliar", "chegar perto"],
-          "args": {"niveis": {"tipo": "inteiro", "min": 1, "max": 4, "padrao": 1}}},
-        "afastar": {"desc": "zoom menos", "falado": ["afastar", "afasta", "zoom menos", "menos zoom", "diminuir zoom", "diminui zoom", "diminuir o zoom", "diminui o zoom", "reduzir zoom", "reduzir o zoom"],
-          "args": {"niveis": {"tipo": "inteiro", "min": 1, "max": 4, "padrao": 1}}},
-        "mover": {"desc": "desloca o mapa para um lado", "falado": ["mover", "move", "andar", "anda", "deslocar", "desloca"],
-          "args": {"direcao": {"tipo": "enum", "valores": {"norte": ["norte", "cima"], "sul": ["sul", "baixo"], "leste": ["leste", "direita"], "oeste": ["oeste", "esquerda"]}}}},
-        "centralizar": {"desc": "centra na posição atual ou na rota", "falado": ["centralizar", "centraliza", "centrar", "centra", "onde estou", "minha posicao"]}
-      }
+ "versao": 1,
+ "nota": "Catálogo único dos blocos do visor e das ações que a voz pode disparar. Lido pelo front (web/ui/comandos.js) e pela API (api/comandos.py). 'falado' = nome no alfabeto fonético, que o Whisper transcreve bem (letra solta não: bê/dê/ê/pê/tê soam iguais). Ação nova: acrescentar aqui e registrar o handler em web/app.js.",
+ "modais": [
+  {
+   "id": "m-A",
+   "falado": [
+    "alfa",
+    "alpha",
+    "alfah"
+   ],
+   "nome": "Mapa",
+   "seletor": "#mapa-box",
+   "sinonimos": [
+    "mapa"
+   ],
+   "acoes": {
+    "expandir": {
+     "desc": "abre o mapa em tela cheia",
+     "falado": [
+      "expandir",
+      "abrir",
+      "abre",
+      "maximizar",
+      "tela cheia",
+      "explorar"
+     ]
     },
-    {
-      "id": "m-B", "falado": ["bravo"], "nome": "Camadas", "seletor": "#camadas",
-      "sinonimos": ["camadas", "camada"],
-      "acoes": {
-        "ligar": {"desc": "mostra uma camada", "falado": ["ligar", "liga", "mostrar", "mostra", "ativar", "ativa", "acender", "acende"],
-          "args": {"camada": {"tipo": "enum", "valores": {"relevo_hillshade": ["relevo", "hillshade", "sombra"], "themis_ti": ["inercia", "termica", "themis"], "risco_previsto": ["risco", "inclinacao"]}}}},
-        "desligar": {"desc": "esconde uma camada", "falado": ["desligar", "desliga", "esconder", "esconde", "ocultar", "oculta", "apagar", "apaga", "tirar", "tira"],
-          "args": {"camada": {"tipo": "enum", "valores": {"relevo_hillshade": ["relevo", "hillshade", "sombra"], "themis_ti": ["inercia", "termica", "themis"], "risco_previsto": ["risco", "inclinacao"]}}}},
-        "opacidade": {"desc": "ajusta a opacidade de uma camada (0 a 100 %)", "falado": ["opacidade", "transparencia"],
-          "args": {"camada": {"tipo": "enum", "valores": {"relevo_hillshade": ["relevo", "hillshade", "sombra"], "themis_ti": ["inercia", "termica", "themis"], "risco_previsto": ["risco", "inclinacao"]}},
-                   "valor": {"tipo": "inteiro", "min": 0, "max": 100}}}
-      }
+    "recolher": {
+     "desc": "volta o mapa ao círculo",
+     "falado": [
+      "recolher",
+      "fechar",
+      "fecha",
+      "minimizar",
+      "esconder"
+     ]
     },
-    {
-      "id": "m-C", "falado": ["charlie", "charli", "xarli", "charles"], "nome": "Rota", "seletor": "#c-rota",
-      "sinonimos": ["rota", "trajeto"],
-      "acoes": {
-        "planejar": {"desc": "abre o mapa para escolher o destino", "falado": ["planejar", "planeja", "nova rota", "editar", "edita"]},
-        "tipo": {"desc": "escolhe o tipo de rota", "falado": ["mais segura", "mais rapida", "mais ciencia", "segura", "rapida", "ciencia"],
-          "args": {"tipo": {"tipo": "enum", "valores": {"mais_segura": ["segura"], "mais_rapida": ["rapida"], "mais_ciencia": ["ciencia"]}}}},
-        "sol": {"desc": "muda o sol da janela da EVA", "falado": ["sol seguinte", "proximo sol", "sol anterior", "amanha", "ontem"],
-          "args": {"delta": {"tipo": "enum", "valores": {"1": ["seguinte", "proximo", "amanha"], "-1": ["anterior", "ontem"]}}}},
-        "alvo": {"desc": "abre a ficha do alvo científico no caminho", "falado": ["alvo", "abrir alvo", "ficha do alvo"]},
-        "proxima": {"desc": "próxima página do card", "falado": ["proxima", "proximo", "avancar", "avanca", "seguinte", "passar"]},
-        "anterior": {"desc": "página anterior do card", "falado": ["anterior", "voltar pagina", "volta pagina", "retroceder"]},
-        "recolher": {"desc": "recolhe o card", "falado": ["recolher", "recolhe", "esconder", "esconde", "minimizar"]},
-        "expandir": {"desc": "mostra o card recolhido", "falado": ["expandir", "expande", "mostrar", "mostra", "abrir", "abre"]},
-        "cancelar": {"desc": "apaga a rota", "falado": ["cancelar", "cancela", "apagar", "apaga", "descartar"], "confirmar": true}
+    "aproximar": {
+     "desc": "zoom mais",
+     "falado": [
+      "aproximar",
+      "aproxima",
+      "zoom mais",
+      "mais zoom",
+      "aumentar zoom",
+      "aumenta zoom",
+      "aumentar o zoom",
+      "aumenta o zoom",
+      "ampliar",
+      "chegar perto"
+     ],
+     "args": {
+      "niveis": {
+       "tipo": "inteiro",
+       "min": 1,
+       "max": 4,
+       "padrao": 1
       }
+     }
     },
-    {
-      "id": "m-D", "falado": ["delta"], "nome": "Panorama", "seletor": "#c-pano",
-      "sinonimos": ["panorama", "pano", "360"],
-      "acoes": {
-        "expandir": {"desc": "abre o panorama no visor", "falado": ["expandir", "expande", "abrir", "abre", "tela cheia", "visor"]},
-        "recolher": {"desc": "tira o panorama do visor", "falado": ["recolher", "recolhe", "fechar", "fecha", "sair"]},
-        "girar": {"desc": "gira a vista", "falado": ["girar", "gira", "virar", "vira", "olhar", "olha", "rodar", "roda"],
-          "args": {"direcao": {"tipo": "enum", "valores": {"esquerda": ["esquerda"], "direita": ["direita"], "cima": ["cima"], "baixo": ["baixo"]}},
-                   "graus": {"tipo": "inteiro", "min": 5, "max": 180, "padrao": 45}}},
-        "aproximar": {"desc": "zoom mais", "falado": ["aproximar", "aproxima", "zoom mais", "mais zoom", "aumentar zoom", "aumentar o zoom", "aumenta o zoom"]},
-        "afastar": {"desc": "zoom menos", "falado": ["afastar", "afasta", "zoom menos", "menos zoom", "diminuir zoom", "diminuir o zoom", "diminui o zoom"]}
+    "afastar": {
+     "desc": "zoom menos",
+     "falado": [
+      "afastar",
+      "afasta",
+      "zoom menos",
+      "menos zoom",
+      "diminuir zoom",
+      "diminui zoom",
+      "diminuir o zoom",
+      "diminui o zoom",
+      "reduzir zoom",
+      "reduzir o zoom"
+     ],
+     "args": {
+      "niveis": {
+       "tipo": "inteiro",
+       "min": 1,
+       "max": 4,
+       "padrao": 1
       }
+     }
     },
-    {
-      "id": "m-E", "falado": ["eco", "echo", "eko"], "nome": "Fotos", "seletor": "#c-fotos",
-      "sinonimos": ["fotos", "foto", "imagens", "imagem"],
-      "acoes": {
-        "abrir": {"desc": "abre a foto N da página no visor", "falado": ["abrir", "abre", "ver", "mostrar", "mostra"],
-          "args": {"n": {"tipo": "inteiro", "min": 1, "max": 3, "padrao": 1}}},
-        "proxima": {"desc": "próxima página de fotos", "falado": ["proxima", "proximo", "avancar", "avanca", "seguinte", "passar"]},
-        "anterior": {"desc": "página anterior de fotos", "falado": ["anterior", "voltar", "volta", "retroceder"]}
+    "mover": {
+     "desc": "desloca o mapa para um lado",
+     "falado": [
+      "mover",
+      "move",
+      "andar",
+      "anda",
+      "deslocar",
+      "desloca"
+     ],
+     "args": {
+      "direcao": {
+       "tipo": "enum",
+       "valores": {
+        "norte": [
+         "norte",
+         "cima"
+        ],
+        "sul": [
+         "sul",
+         "baixo"
+        ],
+        "leste": [
+         "leste",
+         "direita"
+        ],
+        "oeste": [
+         "oeste",
+         "esquerda"
+        ]
+       }
       }
+     }
     },
-    {
-      "id": "m-F", "falado": ["foxtrot", "foxtrote", "fox"], "nome": "Ficha científica", "seletor": "#c-ficha",
-      "sinonimos": ["ficha", "cientifica"],
-      "acoes": {
-        "abrir": {"desc": "abre a ficha", "falado": ["abrir", "abre", "expandir", "expande", "mostrar", "mostra", "ler"]},
-        "fechar": {"desc": "fecha a ficha", "falado": ["fechar", "fecha", "recolher", "recolhe", "esconder"]},
-        "proxima": {"desc": "próxima página da ficha", "falado": ["proxima", "proximo", "avancar", "avanca", "seguinte", "passar"]},
-        "anterior": {"desc": "página anterior da ficha", "falado": ["anterior", "voltar", "volta", "retroceder"]}
-      }
+    "centralizar": {
+     "desc": "centra na posição atual ou na rota",
+     "falado": [
+      "centralizar",
+      "centraliza",
+      "centrar",
+      "centra",
+      "onde estou",
+      "minha posicao"
+     ]
     },
-    {
-      "id": "m-G", "falado": ["golf", "golfe"], "nome": "Assistente", "seletor": "#assistente",
-      "sinonimos": ["assistente", "conversa", "respostas", "historico"],
-      "acoes": {
-        "abrir": {"desc": "abre o painel de perguntas", "falado": ["abrir", "abre", "mostrar", "mostra"]},
-        "fechar": {"desc": "fecha o painel de perguntas", "falado": ["fechar", "fecha", "esconder", "esconde", "sair"]},
-        "proxima": {"desc": "resposta seguinte (mais antiga)", "falado": ["proxima", "proximo", "avancar", "avanca", "seguinte", "passar"]},
-        "anterior": {"desc": "resposta anterior (mais nova)", "falado": ["anterior", "voltar", "volta", "retroceder"]}
-      }
-    },
-    {
-      "id": "m-H", "falado": ["hotel"], "nome": "Visor", "seletor": "#visor",
-      "sinonimos": ["visor", "tela"],
-      "acoes": {
-        "fechar": {"desc": "tira foto ou panorama do visor", "falado": ["fechar", "fecha", "limpar", "limpa", "sair", "voltar"]}
-      }
-    },
-    {
-      "id": "m-I", "falado": ["india", "indya"], "nome": "Destino por coordenadas", "seletor": "#coords",
-      "sinonimos": ["coordenadas", "coordenada", "destino"],
-      "acoes": {
-        "definir": {"desc": "define o destino por latitude e longitude (°E)", "falado": ["definir", "define", "destino", "latitude", "coordenadas"],
-          "args": {"lat": {"tipo": "numero", "min": -90, "max": 90}, "lon": {"tipo": "numero", "min": -180, "max": 360}}, "confirmar": true}
-      }
+    "ler": {
+     "desc": "lê lat, lon e elevação no centro do mapa (a mira)",
+     "falado": [
+      "ler",
+      "leitura",
+      "ler centro",
+      "elevacao",
+      "altitude",
+      "o que tem aqui"
+     ]
     }
-  ]
+   }
+  },
+  {
+   "id": "m-B",
+   "falado": [
+    "bravo"
+   ],
+   "nome": "Camadas",
+   "seletor": "#camadas",
+   "sinonimos": [
+    "camadas",
+    "camada"
+   ],
+   "acoes": {
+    "ligar": {
+     "desc": "mostra uma camada",
+     "falado": [
+      "ligar",
+      "liga",
+      "mostrar",
+      "mostra",
+      "ativar",
+      "ativa",
+      "acender",
+      "acende"
+     ],
+     "args": {
+      "camada": {
+       "tipo": "enum",
+       "valores": {
+        "relevo_hillshade": [
+         "relevo",
+         "hillshade",
+         "sombra"
+        ],
+        "themis_ti": [
+         "inercia",
+         "termica",
+         "themis"
+        ],
+        "risco_previsto": [
+         "risco",
+         "inclinacao"
+        ]
+       }
+      }
+     }
+    },
+    "desligar": {
+     "desc": "esconde uma camada",
+     "falado": [
+      "desligar",
+      "desliga",
+      "esconder",
+      "esconde",
+      "ocultar",
+      "oculta",
+      "apagar",
+      "apaga",
+      "tirar",
+      "tira"
+     ],
+     "args": {
+      "camada": {
+       "tipo": "enum",
+       "valores": {
+        "relevo_hillshade": [
+         "relevo",
+         "hillshade",
+         "sombra"
+        ],
+        "themis_ti": [
+         "inercia",
+         "termica",
+         "themis"
+        ],
+        "risco_previsto": [
+         "risco",
+         "inclinacao"
+        ]
+       }
+      }
+     }
+    },
+    "opacidade": {
+     "desc": "ajusta a opacidade de uma camada (0 a 100 %)",
+     "falado": [
+      "opacidade",
+      "transparencia"
+     ],
+     "args": {
+      "camada": {
+       "tipo": "enum",
+       "valores": {
+        "relevo_hillshade": [
+         "relevo",
+         "hillshade",
+         "sombra"
+        ],
+        "themis_ti": [
+         "inercia",
+         "termica",
+         "themis"
+        ],
+        "risco_previsto": [
+         "risco",
+         "inclinacao"
+        ]
+       }
+      },
+      "valor": {
+       "tipo": "inteiro",
+       "min": 0,
+       "max": 100
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "m-C",
+   "falado": [
+    "charlie",
+    "charli",
+    "xarli",
+    "charles"
+   ],
+   "nome": "Rota",
+   "seletor": "#c-rota",
+   "sinonimos": [
+    "rota",
+    "trajeto"
+   ],
+   "acoes": {
+    "planejar": {
+     "desc": "abre o mapa para escolher o destino",
+     "falado": [
+      "planejar",
+      "planeja",
+      "nova rota",
+      "editar",
+      "edita"
+     ]
+    },
+    "tipo": {
+     "desc": "escolhe o tipo de rota",
+     "falado": [
+      "mais segura",
+      "mais rapida",
+      "mais ciencia",
+      "segura",
+      "rapida",
+      "ciencia"
+     ],
+     "args": {
+      "tipo": {
+       "tipo": "enum",
+       "valores": {
+        "mais_segura": [
+         "segura"
+        ],
+        "mais_rapida": [
+         "rapida"
+        ],
+        "mais_ciencia": [
+         "ciencia"
+        ]
+       }
+      }
+     }
+    },
+    "sol": {
+     "desc": "muda o sol da janela da EVA",
+     "falado": [
+      "sol seguinte",
+      "proximo sol",
+      "sol anterior",
+      "amanha",
+      "ontem"
+     ],
+     "args": {
+      "delta": {
+       "tipo": "enum",
+       "valores": {
+        "1": [
+         "seguinte",
+         "proximo",
+         "amanha"
+        ],
+        "-1": [
+         "anterior",
+         "ontem"
+        ]
+       }
+      }
+     }
+    },
+    "alvo": {
+     "desc": "abre a ficha do alvo científico no caminho",
+     "falado": [
+      "alvo",
+      "abrir alvo",
+      "ficha do alvo"
+     ]
+    },
+    "proxima": {
+     "desc": "próxima página do card",
+     "falado": [
+      "proxima",
+      "proximo",
+      "avancar",
+      "avanca",
+      "seguinte",
+      "passar"
+     ]
+    },
+    "anterior": {
+     "desc": "página anterior do card",
+     "falado": [
+      "anterior",
+      "voltar pagina",
+      "volta pagina",
+      "retroceder"
+     ]
+    },
+    "recolher": {
+     "desc": "recolhe o card",
+     "falado": [
+      "recolher",
+      "recolhe",
+      "esconder",
+      "esconde",
+      "minimizar"
+     ]
+    },
+    "expandir": {
+     "desc": "mostra o card recolhido",
+     "falado": [
+      "expandir",
+      "expande",
+      "mostrar",
+      "mostra",
+      "abrir",
+      "abre"
+     ]
+    },
+    "cancelar": {
+     "desc": "apaga a rota",
+     "falado": [
+      "cancelar",
+      "cancela",
+      "apagar",
+      "apaga",
+      "descartar"
+     ],
+     "confirmar": true
+    },
+    "destino_centro": {
+     "desc": "define o destino no centro do mapa (a mira)",
+     "falado": [
+      "destino aqui",
+      "destino no centro",
+      "marcar destino",
+      "destino na mira"
+     ],
+     "confirmar": true
+    },
+    "parada": {
+     "desc": "adiciona uma parada no centro do mapa (a mira)",
+     "falado": [
+      "parada",
+      "adicionar parada",
+      "adiciona parada",
+      "escala"
+     ]
+    },
+    "remover_parada": {
+     "desc": "remove a parada N",
+     "falado": [
+      "remover parada",
+      "remove parada",
+      "tirar parada",
+      "tira parada",
+      "apagar parada"
+     ],
+     "args": {
+      "n": {
+       "tipo": "inteiro",
+       "min": 1,
+       "max": 10
+      }
+     }
+    },
+    "ir_sol": {
+     "desc": "muda a janela da EVA para o sol N",
+     "falado": [
+      "sol"
+     ],
+     "args": {
+      "sol": {
+       "tipo": "inteiro",
+       "min": 1,
+       "max": 20000
+      }
+     }
+    },
+    "o2": {
+     "desc": "ajusta a capacidade de O₂ do traje (litros)",
+     "falado": [
+      "oxigenio",
+      "o2",
+      "capacidade",
+      "traje"
+     ],
+     "args": {
+      "litros": {
+       "tipo": "inteiro",
+       "min": 1,
+       "max": 5000
+      }
+     }
+    },
+    "medicao": {
+     "desc": "registra a medição do habitat (sol, mínima, máxima, pressão e, se disser, dose), nessa ordem",
+     "falado": [
+      "medicao",
+      "registrar medicao",
+      "registra medicao",
+      "salvar medicao"
+     ],
+     "args": {
+      "sol": {
+       "tipo": "numero",
+       "min": 1,
+       "max": 20000
+      },
+      "minima": {
+       "tipo": "numero",
+       "min": -150,
+       "max": 50
+      },
+      "maxima": {
+       "tipo": "numero",
+       "min": -150,
+       "max": 50
+      },
+      "pressao": {
+       "tipo": "numero",
+       "min": 0,
+       "max": 2000
+      },
+      "dose": {
+       "tipo": "numero",
+       "min": 0,
+       "max": 10000,
+       "opcional": true
+      }
+     },
+     "confirmar": true
+    },
+    "apagar_medicao": {
+     "desc": "apaga a medição do habitat do sol mostrado",
+     "falado": [
+      "apagar medicao",
+      "apaga medicao",
+      "remover medicao"
+     ],
+     "confirmar": true
+    }
+   }
+  },
+  {
+   "id": "m-D",
+   "falado": [
+    "delta"
+   ],
+   "nome": "Panorama",
+   "seletor": "#c-pano",
+   "sinonimos": [
+    "panorama",
+    "pano",
+    "360"
+   ],
+   "acoes": {
+    "expandir": {
+     "desc": "abre o panorama no visor",
+     "falado": [
+      "expandir",
+      "expande",
+      "abrir",
+      "abre",
+      "tela cheia",
+      "visor"
+     ]
+    },
+    "recolher": {
+     "desc": "tira o panorama do visor",
+     "falado": [
+      "recolher",
+      "recolhe",
+      "fechar",
+      "fecha",
+      "sair"
+     ]
+    },
+    "girar": {
+     "desc": "gira a vista",
+     "falado": [
+      "girar",
+      "gira",
+      "virar",
+      "vira",
+      "olhar",
+      "olha",
+      "rodar",
+      "roda"
+     ],
+     "args": {
+      "direcao": {
+       "tipo": "enum",
+       "valores": {
+        "esquerda": [
+         "esquerda"
+        ],
+        "direita": [
+         "direita"
+        ],
+        "cima": [
+         "cima"
+        ],
+        "baixo": [
+         "baixo"
+        ]
+       }
+      },
+      "graus": {
+       "tipo": "inteiro",
+       "min": 5,
+       "max": 180,
+       "padrao": 45
+      }
+     }
+    },
+    "aproximar": {
+     "desc": "zoom mais",
+     "falado": [
+      "aproximar",
+      "aproxima",
+      "zoom mais",
+      "mais zoom",
+      "aumentar zoom",
+      "aumentar o zoom",
+      "aumenta o zoom"
+     ]
+    },
+    "afastar": {
+     "desc": "zoom menos",
+     "falado": [
+      "afastar",
+      "afasta",
+      "zoom menos",
+      "menos zoom",
+      "diminuir zoom",
+      "diminuir o zoom",
+      "diminui o zoom"
+     ]
+    },
+    "centralizar": {
+     "desc": "vira a vista para a direção do ponto",
+     "falado": [
+      "centralizar",
+      "centraliza",
+      "direcao do ponto",
+      "olhar ponto",
+      "olha ponto"
+     ]
+    }
+   }
+  },
+  {
+   "id": "m-E",
+   "falado": [
+    "eco",
+    "echo",
+    "eko"
+   ],
+   "nome": "Fotos",
+   "seletor": "#c-fotos",
+   "sinonimos": [
+    "fotos",
+    "foto",
+    "imagens",
+    "imagem"
+   ],
+   "acoes": {
+    "abrir": {
+     "desc": "abre a foto N da página no visor",
+     "falado": [
+      "abrir",
+      "abre",
+      "ver",
+      "mostrar",
+      "mostra"
+     ],
+     "args": {
+      "n": {
+       "tipo": "inteiro",
+       "min": 1,
+       "max": 3,
+       "padrao": 1
+      }
+     }
+    },
+    "proxima": {
+     "desc": "próxima página de fotos",
+     "falado": [
+      "proxima",
+      "proximo",
+      "avancar",
+      "avanca",
+      "seguinte",
+      "passar"
+     ]
+    },
+    "anterior": {
+     "desc": "página anterior de fotos",
+     "falado": [
+      "anterior",
+      "voltar",
+      "volta",
+      "retroceder"
+     ]
+    },
+    "recolher": {
+     "desc": "recolhe a barra de imagens",
+     "falado": [
+      "recolher",
+      "recolhe",
+      "esconder",
+      "esconde",
+      "minimizar",
+      "fechar",
+      "fecha"
+     ]
+    },
+    "expandir": {
+     "desc": "mostra a barra de imagens recolhida",
+     "falado": [
+      "expandir",
+      "expande"
+     ]
+    }
+   }
+  },
+  {
+   "id": "m-F",
+   "falado": [
+    "foxtrot",
+    "foxtrote",
+    "fox"
+   ],
+   "nome": "Ficha científica",
+   "seletor": "#c-ficha",
+   "sinonimos": [
+    "ficha",
+    "cientifica"
+   ],
+   "acoes": {
+    "abrir": {
+     "desc": "abre a ficha",
+     "falado": [
+      "abrir",
+      "abre",
+      "expandir",
+      "expande",
+      "mostrar",
+      "mostra",
+      "ler"
+     ]
+    },
+    "fechar": {
+     "desc": "fecha a ficha",
+     "falado": [
+      "fechar",
+      "fecha",
+      "recolher",
+      "recolhe",
+      "esconder"
+     ]
+    },
+    "proxima": {
+     "desc": "próxima página da ficha",
+     "falado": [
+      "proxima",
+      "proximo",
+      "avancar",
+      "avanca",
+      "seguinte",
+      "passar"
+     ]
+    },
+    "anterior": {
+     "desc": "página anterior da ficha",
+     "falado": [
+      "anterior",
+      "voltar",
+      "volta",
+      "retroceder"
+     ]
+    }
+   }
+  },
+  {
+   "id": "m-G",
+   "falado": [
+    "golf",
+    "golfe"
+   ],
+   "nome": "Assistente",
+   "seletor": "#assistente",
+   "sinonimos": [
+    "assistente",
+    "conversa",
+    "respostas",
+    "historico"
+   ],
+   "acoes": {
+    "abrir": {
+     "desc": "abre o painel de perguntas",
+     "falado": [
+      "abrir",
+      "abre",
+      "mostrar",
+      "mostra"
+     ]
+    },
+    "fechar": {
+     "desc": "fecha o painel de perguntas",
+     "falado": [
+      "fechar",
+      "fecha",
+      "esconder",
+      "esconde",
+      "sair"
+     ]
+    },
+    "proxima": {
+     "desc": "resposta seguinte (mais antiga)",
+     "falado": [
+      "proxima",
+      "proximo",
+      "avancar",
+      "avanca",
+      "seguinte",
+      "passar"
+     ]
+    },
+    "anterior": {
+     "desc": "resposta anterior (mais nova)",
+     "falado": [
+      "anterior",
+      "voltar",
+      "volta",
+      "retroceder"
+     ]
+    },
+    "ouvir": {
+     "desc": "lê em voz alta a resposta da página atual",
+     "falado": [
+      "ouvir",
+      "repetir",
+      "repete",
+      "ler",
+      "leia",
+      "fala de novo"
+     ]
+    }
+   }
+  },
+  {
+   "id": "m-H",
+   "falado": [
+    "hotel"
+   ],
+   "nome": "Visor",
+   "seletor": "#visor",
+   "sinonimos": [
+    "visor",
+    "tela"
+   ],
+   "acoes": {
+    "fechar": {
+     "desc": "tira foto ou panorama do visor",
+     "falado": [
+      "fechar",
+      "fecha",
+      "limpar",
+      "limpa",
+      "sair",
+      "voltar"
+     ]
+    }
+   }
+  },
+  {
+   "id": "m-I",
+   "falado": [
+    "india",
+    "indya"
+   ],
+   "nome": "Destino por coordenadas",
+   "seletor": "#coords",
+   "sinonimos": [
+    "coordenadas",
+    "coordenada",
+    "destino"
+   ],
+   "acoes": {
+    "definir": {
+     "desc": "define o destino por latitude e longitude (°E)",
+     "falado": [
+      "definir",
+      "define",
+      "destino",
+      "latitude",
+      "coordenadas"
+     ],
+     "args": {
+      "lat": {
+       "tipo": "numero",
+       "min": -90,
+       "max": 90
+      },
+      "lon": {
+       "tipo": "numero",
+       "min": -180,
+       "max": 360
+      }
+     },
+     "confirmar": true
+    }
+   }
+  },
+  {
+   "id": "m-J",
+   "falado": [
+    "juliet",
+    "juliete",
+    "julieta"
+   ],
+   "nome": "Status",
+   "seletor": "#c-status",
+   "sinonimos": [
+    "status",
+    "aviso",
+    "erro"
+   ],
+   "acoes": {
+    "ler": {
+     "desc": "lê o aviso em voz alta",
+     "falado": [
+      "ler",
+      "leia",
+      "ouvir",
+      "repetir",
+      "o que diz"
+     ]
+    }
+   }
+  },
+  {
+   "id": "sis",
+   "falado": [
+    "sistema"
+   ],
+   "nome": "Sistema",
+   "seletor": null,
+   "sinonimos": [],
+   "nota": "sem bloco na tela: ações globais (teclado Esc, voz, ajuda)",
+   "acoes": {
+    "voltar": {
+     "desc": "fecha o que está por cima (igual ao Esc)",
+     "falado": [
+      "esc",
+      "escape",
+      "fechar tudo",
+      "sair de tudo"
+     ]
+    },
+    "silencio": {
+     "desc": "para de falar",
+     "falado": [
+      "silencio",
+      "calar",
+      "cala",
+      "parar de falar",
+      "para de falar",
+      "quieto",
+      "chega"
+     ]
+    },
+    "microfone": {
+     "desc": "desliga o microfone mãos-livres (religar: segure espaço ou clique em voz)",
+     "falado": [
+      "desligar microfone",
+      "desliga microfone",
+      "mutar",
+      "mudo"
+     ]
+    },
+    "ajuda": {
+     "desc": "diz os blocos abertos e o que dá para pedir",
+     "falado": [
+      "ajuda",
+      "comandos",
+      "quais comandos",
+      "o que posso",
+      "blocos"
+     ]
+    }
+   }
+  }
+ ]
 }

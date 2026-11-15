@@ -22,17 +22,21 @@ comando ─▶ web/ui/comandos.js valida no catálogo ─▶ handler registrado 
 
 | Id | Fala | Bloco | Ações |
 |---|---|---|---|
-| m-A | Alfa | Mapa | expandir, recolher, aproximar, afastar, mover, centralizar |
+| m-A | Alfa | Mapa | expandir, recolher, aproximar, afastar, mover, centralizar, ler (elevação na mira) |
 | m-B | Bravo | Camadas | ligar, desligar, opacidade |
-| m-C | Charlie | Rota | planejar, tipo, sol, alvo, próxima, anterior, recolher, expandir, cancelar* |
-| m-D | Delta | Panorama | expandir, recolher, girar, aproximar, afastar |
-| m-E | Eco | Fotos | abrir N, próxima, anterior |
+| m-C | Charlie | Rota | planejar, destino_centro*, parada, remover_parada, tipo, sol, ir_sol, o2, medicao*, apagar_medicao*, alvo, próxima, anterior, recolher, expandir, cancelar* |
+| m-D | Delta | Panorama | expandir, recolher, girar, aproximar, afastar, centralizar (direção do ponto) |
+| m-E | Eco | Fotos (e barra de imagens) | abrir N, próxima, anterior, recolher, expandir |
 | m-F | Foxtrot | Ficha científica | abrir, fechar, próxima, anterior |
-| m-G | Golf | Assistente | abrir, fechar, próxima, anterior |
+| m-G | Golf | Assistente | abrir, fechar, próxima, anterior, ouvir |
 | m-H | Hotel | Visor | fechar |
 | m-I | Índia | Destino por coordenadas | definir lat/lon* |
+| m-J | Juliet | Status (avisos) | ler |
+| `sis` | Sistema | sem bloco na tela | voltar (Esc), silêncio, microfone (desliga), ajuda |
 
-\* pede "Confirma?" antes.
+\* pede "Confirma?" antes, repetindo os valores ouvidos.
+
+Clique no mapa vira **mira**: o centro do mapa. "Alfa, ler", "Charlie, destino aqui" e "Charlie, parada" usam a mira; o astronauta move o mapa por voz ("Alfa, mover norte") até o ponto.
 
 ## Decisões
 
@@ -49,6 +53,15 @@ comando ─▶ web/ui/comandos.js valida no catálogo ─▶ handler registrado 
 
 1. Acrescentar a ação ao bloco em `web/comandos.json` (desc, frases faladas, args).
 2. Registrar o handler em `web/app.js`. `api/test_comandos.py` falha se faltar handler.
+
+## Fora da voz (de propósito)
+
+| Item | Por quê |
+|---|---|
+| Religar o microfone | Com o mãos-livres desligado ninguém ouve o pedido: religa segurando espaço ou clicando em "voz" |
+| Arrastar o panorama, slider de opacidade | Cobertos por girar e opacidade com valor |
+| Campo de texto do assistente | É a entrada alternativa à voz, não um alvo dela |
+| Links de fonte na ficha (`card.js`, `target=_blank`) | Abrem URL externa: violam a regra offline. Pendência anterior ao F11 |
 
 ## Pendente
 

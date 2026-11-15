@@ -9,8 +9,8 @@ export async function iniciarComandos() {
   const cat = await fetch('comandos.json').then((r) => r.json())
   modais = Object.fromEntries(cat.modais.map((m) => [m.id, m]))
   for (const m of cat.modais) {
-    const el = document.querySelector(m.seletor)
-    if (!el) continue
+    const el = m.seletor && document.querySelector(m.seletor)
+    if (!el) continue // "sis": ações globais, sem bloco na tela
     el.dataset.modal = m.id
     el.dataset.modalTitulo = `${m.id} · ${m.falado[0]} · ${m.nome}`
     // .frame já usa ::before/::after nos cantos: o selo entra como elemento
@@ -26,10 +26,17 @@ export function registrar(id, acoes) {
 const visivel = (el) => el && !el.hidden && el.getClientRects().length > 0
 
 export function abertos() {
-  return Object.values(modais).filter((m) => visivel(document.querySelector(m.seletor))).map((m) => m.id)
+  return Object.values(modais).filter((m) => m.seletor && visivel(document.querySelector(m.seletor))).map((m) => m.id)
 }
 
 export const contexto = () => ({ abertos: abertos(), foco })
+
+/** Ajuda falada: blocos abertos e as ações de cada um. */
+export function descreverAbertos() {
+  const ids = abertos()
+  if (!ids.length) return 'Nenhum bloco aberto. Diga, por exemplo: Alfa, expandir.'
+  return 'Blocos abertos: ' + ids.map((i) => `${modais[i].falado[0]}, ${modais[i].nome}: ${Object.keys(modais[i].acoes).join(', ').replaceAll('_', ' ')}`).join('. ') + '.'
+}
 
 /** → {ok, texto}. Valida contra o catálogo antes de chamar o handler. */
 export async function executar(cmd) {
@@ -50,7 +57,7 @@ export async function executar(cmd) {
 }
 
 function piscar(m) {
-  const el = document.querySelector(m.seletor)
+  const el = m.seletor && document.querySelector(m.seletor)
   if (!el) return
   el.classList.remove('modal-acionado')
   void el.offsetWidth

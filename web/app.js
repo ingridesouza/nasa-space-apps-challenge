@@ -7,11 +7,11 @@ import {
 } from './api.js'
 import { TOGGLEABLE_LAYERS } from './layers.js'
 import * as mapa from './map.js'
-import { iniciarAssistente } from './ui/agente.js'
+import { falar, iniciarAssistente } from './ui/agente.js'
 import { renderCamadas } from './ui/camadas.js'
 import { iniciarRota } from './ui/rota.js'
 import { iniciarVoz } from './ui/voz.js'
-import { contexto, executar, iniciarComandos, registrar } from './ui/comandos.js'
+import { contexto, descreverAbertos, executar, iniciarComandos, registrar } from './ui/comandos.js'
 import { mudarPagina, paginar } from './ui/paginas.js'
 import { esc } from './ui/util.js'
 
@@ -391,7 +391,11 @@ async function cliqueNoMapa(lat, lon) {
     msg(null)
     return definirDestino(p)
   }
-  // explorar: leitura rápida de lat, lon e elevação
+  return lerPonto(lat, lon) // explorar: leitura rápida de lat, lon e elevação
+}
+
+/** Escreve (e devolve) lat, lon e elevação do ponto na linha de leitura. */
+async function lerPonto(lat, lon) {
   const meu = ++seqLeitura
   const el = $('leitura')
   el.hidden = false
@@ -408,6 +412,7 @@ async function cliqueNoMapa(lat, lon) {
   } catch (e) {
     if (meu === seqLeitura) el.textContent = `${lat.toFixed(6)}° · ${lon.toFixed(6)}°E · ${e.message}`
   }
+  return el.textContent
 }
 
 // ---------------- Camadas (delegação: o HTML é refeito a cada render) ----------------
@@ -427,10 +432,13 @@ $('camadas').addEventListener('input', (e) => {
 })
 
 // ---------------- Teclado ----------------
-document.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape' || !$('assistente').hidden) return // Esc do assistente é dele
+function voltar() {
   if (estado.mapa !== 'visor') fecharMapa()
   else fecharVisor()
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || !$('assistente').hidden) return // Esc do assistente é dele
+  voltar()
 })
 
 // ---------------- F08: assistente ----------------
@@ -460,6 +468,13 @@ iniciarVoz($('btn-voz'), $('voz-status'), {
 // ---------------- F11: ações de cada bloco (catálogo em comandos.json) ----------------
 const viewerAtivo = () => viewerFundo ?? viewer
 const clicar = (sel) => { const b = $('c-rota').querySelector(sel); if (!b) return false; b.click() }
+/** Campo do card de rota que só reage a 'change' (rota.js). */
+function preencher(sel, valor) {
+  const i = $('c-rota').querySelector(sel)
+  if (!i) return 'Esse campo só aparece com a rota calculada.'
+  i.value = valor
+  i.dispatchEvent(new Event('change', { bubbles: true }))
+}
 function ligarCamada(camada, visivel, opacidade) {
   const c = estado.camadas[camada]
   c.visible = visivel
@@ -474,6 +489,13 @@ registrar('m-A', {
   afastar: ({ niveis }) => { mapa.zoom(-niveis) },
   mover: ({ direcao }) => { mapa.mover(direcao) },
   centralizar: () => { mapa.centrar(estado.destino ?? estado.posicao, estado.rota) },
+  ler: async () => {
+    const c = mapa.centro()
+    if (!c) return 'Mapa ainda não carregou.'
+    if (estado.mapa === 'visor') abrirMapa('explorar')
+    $('leitura').hidden = false
+    falar((await lerPonto(c.lat, c.lon)).replaceAll('·', ',').replace('°E', ' graus leste'))
+  },
 })
 registrar('m-B', {
   ligar: ({ camada }) => ligarCamada(camada, true),
@@ -490,6 +512,38 @@ registrar('m-C', {
   recolher: () => { colapsarGrupo('g-rota', true) },
   expandir: () => { colapsarGrupo('g-rota', false) },
   cancelar: () => { if (!estado.rotaAtiva) return 'Não há rota.'; cancelarRota() },
+  destino_centro: () => {
+    const c = mapa.centro()
+    if (!c) return 'Mapa ainda não carregou.'
+    if (estado.mapa !== 'rota') abrirMapa('rota')
+    $('lat').value = c.lat.toFixed(6)
+    $('lon').value = c.lon.toFixed(6)
+    definirDestino(c)
+  },
+  parada: () => {
+    const c = mapa.centro()
+    if (!estado.destino) return 'Defina o destino antes da parada.'
+    if (!c) return 'Mapa ainda não carregou.'
+    estado.escalas.push(c)
+    mapa.setEscalas(estado.escalas)
+    atualizarRota(estado.posicao, estado.destino, estado.escalas)
+  },
+  remover_parada: ({ n }) => {
+    if (!estado.escalas[n - 1]) return `Não há parada ${n}.`
+    estado.escalas.splice(n - 1, 1)
+    mapa.setEscalas(estado.escalas)
+    atualizarRota(estado.posicao, estado.destino, estado.escalas)
+  },
+  ir_sol: ({ sol }) => preencher('[data-sol-eva]', sol),
+  o2: ({ litros }) => preencher('[data-campo="capacidade-o2"]', litros),
+  medicao: ({ sol, minima, maxima, pressao, dose }) => {
+    const f = $('c-rota').querySelector('form[data-medir]')
+    if (!f) return 'Abra uma rota com previsão carregada para registrar a medição.'
+    Object.entries({ sol: Math.round(sol), temp_min_c: minima, temp_max_c: maxima, pressao_pa: pressao, dose_ugy_dia: dose ?? '' })
+      .forEach(([k, v]) => { f.elements[k].value = v })
+    f.requestSubmit()
+  },
+  apagar_medicao: () => clicar('[data-apagar-medicao]'),
 })
 registrar('m-D', {
   expandir: () => { if (!viewer) return 'Sem panorama aqui.'; if (!noVisor) expandir() },
@@ -502,6 +556,7 @@ registrar('m-D', {
   },
   aproximar: () => { const v = viewerAtivo(); if (!v) return 'Sem panorama aqui.'; v.setHfov(v.getHfov() - 15) },
   afastar: () => { const v = viewerAtivo(); if (!v) return 'Sem panorama aqui.'; v.setHfov(v.getHfov() + 15) },
+  centralizar: () => { const v = viewerAtivo(); if (!v) return 'Sem panorama aqui.'; v.setYaw(cfgPano.yaw) },
 })
 registrar('m-E', {
   abrir: ({ n }) => {
@@ -517,6 +572,8 @@ registrar('m-E', {
     if (fotosPag === 0) return 'Fotos: já está na primeira página.'
     fotosPag--; renderFotos(-1)
   },
+  recolher: () => { colapsarGrupo('g-imagens', true) },
+  expandir: () => { colapsarGrupo('g-imagens', false) },
 })
 registrar('m-F', {
   abrir: () => { if ($('c-ficha').hidden) return 'Sem ficha aberta.'; $('c-ficha').open = true },
@@ -529,6 +586,11 @@ registrar('m-G', {
   fechar: () => { assistente.abrir(false) },
   proxima: () => mudarPagina($('assistente'), 1) || 'Assistente: não há resposta mais antiga.',
   anterior: () => mudarPagina($('assistente'), -1) || 'Assistente: já está na mais nova.',
+  ouvir: () => {
+    const b = $('assistente').querySelector('.h2g2-ass-item:not(.pag-fora) [data-ouvir]')
+    if (!b) return 'Não há resposta para ouvir.'
+    b.click()
+  },
 })
 registrar('m-H', {
   fechar: () => { if ($('visor-fechar').hidden) return 'O visor já está vazio.'; fecharVisor() },
@@ -540,6 +602,15 @@ registrar('m-I', {
     $('lon').value = lon
     $('coords').requestSubmit()
   },
+})
+registrar('m-J', {
+  ler: () => { if ($('c-status').hidden) return 'Não há aviso.'; falar($('c-status').textContent.trim()) },
+})
+registrar('sis', {
+  voltar: () => { if (!$('assistente').hidden) assistente.abrir(false); else voltar() },
+  silencio: () => { speechSynthesis.cancel() },
+  microfone: () => { if ($('btn-voz').getAttribute('aria-pressed') !== 'true') return 'Microfone já está desligado.'; $('btn-voz').click() },
+  ajuda: () => { falar(descreverAbertos()) },
 })
 iniciarComandos().catch((e) => console.warn('catálogo de comandos indisponível:', e))
 

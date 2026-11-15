@@ -19,7 +19,7 @@ def ok(texto, alvo, acao, args=None, **kw):
 
 
 # catálogo: ids únicos e na sequência m-A, m-B…; todo bloco tem nome falado e ação
-ids = [m["id"] for m in CATALOGO["modais"]]
+ids = [m["id"] for m in CATALOGO["modais"] if m["seletor"]]  # "sis" não tem bloco na tela
 assert ids == [f"m-{chr(65 + i)}" for i in range(len(ids))], ids
 assert all(m["falado"] and m["acoes"] for m in CATALOGO["modais"])
 
@@ -43,6 +43,22 @@ ok("Delta gira para a esquerda 90 graus", "m-D", "girar", {"direcao": "esquerda"
 ok("Eco abre a segunda", "m-E", "abrir", {"n": 2})
 ok("fecha o visor", "m-H", "fechar")
 ok("India latitude menos 4,808 longitude 137,381", "m-I", "definir", {"lat": -4.808, "lon": 137.381})
+ok("Alfa, qual a elevação aqui", "m-A", "ler")
+ok("Charlie, adicionar parada", "m-C", "parada")
+ok("Charlie, remover parada dois", "m-C", "remover_parada", {"n": 2})
+ok("Charlie, sol 1200", "m-C", "ir_sol", {"sol": 1200})
+ok("Charlie, oxigênio 350", "m-C", "o2", {"litros": 350})
+ok("Charlie, registrar medição sol 4600 menos 80 menos 10 870", "m-C", "medicao",
+   {"sol": 4600.0, "minima": -80.0, "maxima": -10.0, "pressao": 870.0})  # dose é opcional
+ok("Charlie, apagar medição", "m-C", "apagar_medicao")
+ok("Delta, olhar para o ponto", "m-D", "centralizar")
+ok("recolher imagens", "m-E", "recolher")
+ok("Golf, repete", "m-G", "ouvir")
+ok("Juliet, ler", "m-J", "ler")
+ok("silêncio", "sis", "silencio")
+ok("fechar tudo", "sis", "voltar")
+ok("desligar microfone", "sis", "microfone")
+ok("ajuda", "sis", "ajuda")
 
 # "aproxima" não pode virar "próxima página" (casamento exato vem antes do aproximado)
 ok("Delta aproxima", "m-D", "aproximar")
@@ -61,6 +77,9 @@ assert r["comando"]["acao"] == "cancelar" and r["confirmar"] and r["fala"].endsw
 r = interpretar("liga a camada", usar_modelo=False)
 assert r["comando"] is None and "falta camada" in r["fala"], r
 assert cmd("India definir destino") is None  # sem coordenada dita, nada de coordenada inventada
+
+r = interpretar("Charlie, registrar medição sol 4600 menos 80 menos 10 870", usar_modelo=False)
+assert "sol 4600, minima -80, maxima -10, pressao 870. Confirma?" in r["fala"], r["fala"]
 
 # pergunta não é comando
 assert interpretar("qual a temperatura hoje?", usar_modelo=False) == {"comando": None, "origem": None, "confirmar": False, "fala": None}

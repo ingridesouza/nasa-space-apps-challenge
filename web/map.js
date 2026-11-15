@@ -202,6 +202,13 @@ export function mover(direcao) {
   map.panBy([dx * c.clientWidth / 3, dy * c.clientHeight / 3], { duration: 300 })
 }
 
+/** F11 voz: centro do mapa (a mira), para ler ou marcar sem clique. */
+export function centro() {
+  if (!map) return null
+  const c = map.getCenter()
+  return { lat: c.lat, lon: c.lng }
+}
+
 export function limparPonto() {
   marcadorClique?.remove()
 }

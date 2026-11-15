@@ -103,6 +103,8 @@ def _args(modal: dict, acao: str, texto: str, p: list[str]) -> tuple[dict, str |
             v = numeros.pop(0) if numeros else None
         if v is None:
             v = s.get("padrao")
+        if v is None and s.get("opcional"):
+            continue
         if v is None:
             return args, nome
         args[nome] = v
@@ -120,6 +122,8 @@ def validar(cmd: dict) -> dict:
     dados, args = cmd.get("args") or {}, {}
     for nome, s in acao.get("args", {}).items():
         v = dados.get(nome, s.get("padrao"))
+        if v is None and s.get("opcional"):
+            continue
         if v is None:
             raise ValueError(f"falta {nome}")
         if s["tipo"] == "enum":
@@ -139,7 +143,10 @@ def _resposta(cmd: dict, origem: str) -> dict:
     acao = modal["acoes"][cmd["acao"]]
     confirmar = bool(acao.get("confirmar"))
     nome = f"{modal['falado'][0].capitalize()}, {modal['nome']}"
-    fala = f"Entendi: {nome}, {acao['desc']}. Confirma?" if confirmar else f"{nome}: {acao['desc']}."
+    # na confirmação os valores são repetidos: número mal ouvido fica audível antes de valer
+    valores = ", ".join(f"{k} {v:g}" if isinstance(v, float) else f"{k} {v}" for k, v in cmd["args"].items())
+    fala = (f"Entendi: {nome}, {acao['desc']}{f': {valores}' if valores else ''}. Confirma?"
+            if confirmar else f"{nome}: {acao['desc']}.")
     return {"comando": cmd, "origem": origem, "confirmar": confirmar, "fala": fala}
 
 
