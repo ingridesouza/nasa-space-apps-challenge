@@ -1,7 +1,7 @@
 """Feature 08, voz: testes com assert (python test_voz.py), sem o modelo."""
 
 from medir_voz import erro_palavras
-from voz import escolher_idioma, interpretar, palavras
+from voz import escolher_idioma, falas, interpretar, palavras
 
 assert palavras("Guia, rota até Altadena!") == ["guia", "rota", "ate", "altadena"]
 assert erro_palavras("Guia, rota até a base.", "guia rota ate a base") == (0, 5)
@@ -9,13 +9,16 @@ assert erro_palavras("rota até a base", "rota até base") == (1, 4)       # pal
 assert erro_palavras("rota até a base", "nota até a casa") == (2, 4)     # duas trocadas
 assert erro_palavras("sim", "") == (1, 1)                                # nada ouvido
 
-assert escolher_idioma({"pt": 0.134, "en": 0.217, "es": 0.141}) == "pt"  # indeciso: português
+assert escolher_idioma({"pt": 0.134, "en": 0.217, "es": 0.141}) == "en"  # indeciso: inglês
 assert escolher_idioma({"pt": 0.05, "en": 0.9}) == "en"                  # inglês claro
-assert escolher_idioma({}) == "pt"
+assert escolher_idioma({"pt": 0.8, "en": 0.1}) == "pt"                   # português claro: segue a fala
+assert escolher_idioma({"es": 0.7, "pt": 0.2}) == "es"                   # outro idioma também
+assert escolher_idioma({}) == "en"
+assert falas("pt")["base"] == "a base" and falas("es") == falas("en")    # sem fala em espanhol: inglês
 
 # nomes reais dos alvos do banco (science_targets)
 BASE = {"nome": "a base", "lat": -4.8069, "lon": 137.3798, "chaves": {"base", "habitat"}, "base": True}
-PONTO = {"nome": "o ponto marcado", "lat": -4.80, "lon": 137.38, "chaves": {"ponto", "marcado"}}
+PONTO = {"nome": "o ponto marcado", "lat": -4.80, "lon": 137.38, "chaves": {"ponto", "marcado", "marked", "point"}}  # igual a destinos_por_voz
 DESTINOS = [BASE, PONTO] + [{"nome": n, "lat": 0, "lon": 0} for n in (
     "Cristas de boxwork — cimentação por sulfato", "Altadena — furo de perfuração #43",
     "Totoral / Sillar — crista vs. depressão")]
@@ -50,4 +53,15 @@ assert ok("Guia, posso subir aqui com segurança?", "pergunta")["pergunta"] == "
 assert ok("Guia quanta radiação vou receber hoje", "pergunta")["pergunta"] == "quanta radiação vou receber hoje"
 assert ok("Ei guia, rota até a base", "rota", "a base")["ativado"]
 assert ok("A guia, posso subir aqui?", "pergunta")["pergunta"] == "posso subir aqui?"
+# inglês: mesmos comandos
+ok("Hey guide, route to Altadena", "rota", "Altadena — furo de perfuração #43")
+ok("Hey guide, take me to the boxwork ridges", "rota", "Cristas de boxwork — cimentação por sulfato")
+ok("Guide, I want to go back.", "rota", "a base")                              # volta sem destino = base
+ok("Hey guide, route to the marked point", "rota", "o ponto marcado")
+ok("Hey guide, I fell in a hole near the ridge", "pergunta")                   # "hole" não vira volta à base
+ok("Yes.", "sim", exigir_ativacao=False)
+ok("Yeah, confirm", "sim", exigir_ativacao=False)
+ok("No, cancel.", "nao", exigir_ativacao=False)
+assert ok("Hey guide, how much radiation will I get today?", "pergunta")["pergunta"] == "how much radiation will I get today?"
+ok("I talked to the guide yesterday", "nenhuma")                               # "guide" depois da 3ª palavra
 print("test_voz: ok")

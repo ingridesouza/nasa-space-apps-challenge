@@ -57,7 +57,7 @@ def sugerir(rotas: list[dict], agora: datetime | None = None) -> dict:
         r["sugestao"] = _avaliar(r, rotas)
     ordem = sorted(rotas, key=lambda r: r["sugestao"].pop("_chave"))
     melhor = ordem[0]
-    s, nome = melhor["sugestao"], NOME.get(melhor["tipo"], melhor["tipo"])
+    s, nome = melhor["sugestao"], melhor.get("titulo") or NOME.get(melhor["tipo"], melhor["tipo"])  # titulo: replanejar.py
     if s["rotulo"] == "ok":
         motivo = f"Sugiro a rota {nome}: " + (s["pros"][0]["texto"] if s["pros"] else "sem trecho de risco") + "."
     else:

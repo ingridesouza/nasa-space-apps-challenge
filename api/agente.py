@@ -15,49 +15,66 @@ from geo import bearing, compass, haversine_m
 from previsao_rota import FAIXAS_CHANCE
 
 OLLAMA_URL = os.environ.get("H2G2_OLLAMA_URL", "http://127.0.0.1:11434")
-# gemma4:e4b tem tool calling nativo, mas precisa de Ollama novo (0.12.11 do Fedora nem carrega o modelo):
-# H2G2_MODELO=gemma4:e4b. O gemma3:4b não tem ferramentas: perguntar() cai sozinho no modo só contexto.
-MODELO = os.environ.get("H2G2_MODELO", "gemma3:4b")
+# gemma4:e2b: o único com 6/6 em medir_agente.py (tool calling + idioma + nunca "seguro").
+# Precisa de Ollama novo (0.12.11 do Fedora nem carrega o gemma4). Modelo sem ferramentas (gemma3:4b)
+# também serve: perguntar() cai sozinho no modo só contexto.
+MODELO = os.environ.get("H2G2_MODELO", "gemma4:e2b")
 TIMEOUT_S = 120  # CPU (i5-8600) pode levar dezenas de segundos na primeira chamada
 
-INSTRUCOES = """Você é o H2G2, assistente de um astronauta na cratera Gale, em Marte.
-Responda em português, em no máximo 3 frases curtas, para ser lida em voz alta.
-Use SOMENTE os dados do CONTEXTO abaixo. Cite a fonte e o sol quando houver.
-Se o contexto não tiver o dado pedido, responda exatamente: "Não sei: não tenho esse dado aqui."
-Nunca invente número, nome ou posição. Nunca diga que um lugar é seguro só porque não há alerta.
-Não repita os alertas PERIGO: o sistema já os fala antes da sua resposta. Nunca contradiga, crie ou cancele um alerta.
-Se houver PREVISÃO DA ROTA, use-a para perguntas sobre a rota: diga que é estimativa pelo histórico
-e dê o porquê (trecho, chance, distância do início). Se perguntarem qual rota pegar, repita a SUGESTÃO DO SISTEMA
-com o porquê, sem trocar a ordem. Nunca escolha nem aprove a rota por conta própria: quem decide é o astronauta.
-PONTO é onde o astronauta está agora; a PREVISÃO DA ROTA vale para o caminho inteiro. Não misture os dois na mesma frase."""
+INSTRUCOES = """You are H2G2, the assistant of an astronaut in Gale Crater, on Mars.
+Answer in at most 3 short sentences, to be read aloud, in the language requested at the end of the message.
+The data below is in Portuguese: translate it when answering in English, without changing any number.
+Use ONLY the data in the CONTEXTO below. Cite the source (instrument or file, never a tool name) and the sol when there is one.
+If the CONTEXTO does not have the requested data, say only: "Não sei: não tenho esse dado aqui." (in English: "I don't know: I don't have that data here.")
+Never invent a number, name or position. Never say a place is safe just because there is no alert.
+Do not repeat the PERIGO alerts: the system already speaks them before your answer. Never contradict, create or cancel an alert.
+If there is a PREVISÃO DA ROTA, use it for questions about the route: say it is an estimate from history
+and give the reason (segment, chance, distance from the start). If asked which route to take, repeat the SUGESTÃO DO SISTEMA
+with its reason, without changing the order. Never choose or approve a route on your own: the astronaut decides.
+PONTO is where the astronaut is now; the PREVISÃO DA ROTA applies to the whole path. Do not mix the two in the same sentence."""
 
 
 # Pedido de socorro não passa pelo modelo: resposta por regra, na hora, só com dado do mapa.
 # por extenso: a resposta é falada ("O" vira "ó" na voz)
 RUMO_FALADO = {"N": "norte", "NE": "nordeste", "L": "leste", "SE": "sudeste", "S": "sul", "SO": "sudoeste", "O": "oeste", "NO": "noroeste"}
 # "cai" sem acento fica de fora ("a temperatura cai?").
-SOCORRO = re.compile(r"\b(caí|caindo|cair|socorro|buraco|pres[oa]|machuc\w*|emerg[eê]ncia|acidente|escorreg\w*|atolad[oa])\b", re.I)
+# gás tóxico em Marte só é risco se entrar no traje (vazamento): é emergência, não previsão de rota.
+# "gás" sozinho fica de fora ("que gás tem na atmosfera?").
+# Inglês: "help" e "falling" ficam de fora ("can you help me plan…", "the temperature is falling").
+SOCORRO = re.compile(r"\b(caí|caindo|cair|socorro|pres[oa]|machuc\w*|emerg[eê]ncia|acidente|escorreg\w*|atolad[oa]"
+                     r"|vaza\w*|g[aá]s(\s+\w+)?\s+t[oó]xic\w*"
+                     r"|fell|mayday|sos|stuck|trapped|hurt|injur\w*|emergency|accident|slipp\w*|leak\w*"
+                     r"|toxic(\s+\w+)?\s+gas)\b", re.I)
+RUMO_FALADO_EN = {"N": "north", "NE": "northeast", "L": "east", "SE": "southeast", "S": "south", "SO": "southwest", "O": "west", "NO": "northwest"}
 
 
-def resposta_de_socorro(ponto: dict, base: tuple[float, float]) -> str:
-    """Procedimento fixo + posição, chão e caminho de volta. shortcut: procedimento escrito pelo time,
-    sem fonte NASA citada; trocar pelo checklist de EVA quando houver."""
+def resposta_de_socorro(ponto: dict, base: tuple[float, float], idioma: str = "pt") -> str:
+    """Procedimento fixo + posição, chão e caminho de volta. Português ou inglês (outro idioma: inglês).
+    shortcut: procedimento escrito pelo time, sem fonte NASA citada; trocar pelo checklist de EVA quando houver."""
+    pt = idioma == "pt"
     lat, lon = ponto["point"]["lat"], ponto["point"]["lon"]
     r = ponto["raster_values"]
-    frases = ["Pare e não se mova até checar o traje.", f"Você está em lat {lat:.5f}, lon {lon:.5f}."]
+    frases = ["Pare e não se mova até checar o traje." if pt else "Stop and do not move until you check your suit.",
+              f"{'Você está em' if pt else 'You are at'} lat {lat:.5f}, lon {lon:.5f}."]
     if r.get("slope_deg") is None:
-        frases.append("Não tenho a inclinação deste local.")
-    else:
+        frases.append("Não tenho a inclinação deste local." if pt else "I don't have the slope for this spot.")
+    elif pt:
         frases.append(f"O chão aqui tem {r['slope_deg']:.0f}° pelo mapa"
                       + (": acima de 20°, não tente subir sozinho." if r.get("slope_status") == "perigo" else "."))
+    else:
+        frases.append(f"The ground here is {r['slope_deg']:.0f}° on the map"
+                      + (": above 20°, do not try to climb alone." if r.get("slope_status") == "perigo" else "."))
     frases += [a["mensagem"] for a in agrupar_alertas(ponto["alertas"]) if a["nivel"] == "perigo"]
-    frases.append(f"A base fica a {round(haversine_m(lat, lon, *base))} m, direção {RUMO_FALADO[compass(bearing(lat, lon, *base))]}.")
-    frases.append("Avise a base agora.")
+    dist, rumo = round(haversine_m(lat, lon, *base)), compass(bearing(lat, lon, *base))
+    frases.append(f"A base fica a {dist} m, direção {RUMO_FALADO[rumo]}." if pt
+                  else f"The base is {dist} m away, heading {RUMO_FALADO_EN[rumo]}.")
+    frases.append("Avise a base agora." if pt else "Tell the base now.")
     return " ".join(frases)
 
 
 def tirar_perigo_repetido(resposta: str, perigos: list[dict]) -> str:
     """O sistema já fala o perigo antes da resposta; o modelo de 4B às vezes o copia mesmo proibido."""
+    resposta = re.sub(r"^\s*(H2G2|English|Inglês|Português|Portuguese)\s*[:,]\s*", "", resposta)  # o e2b às vezes rotula a fala
     for a in perigos:
         resposta = re.sub(rf"(perigo:\s*)?{re.escape(a['mensagem'])}(\s*\(fonte: {re.escape(a['fonte'])}\))?\s*",
                           "", resposta, flags=re.I)
@@ -65,30 +82,50 @@ def tirar_perigo_repetido(resposta: str, perigos: list[dict]) -> str:
 
 
 INSTRUCOES_FERRAMENTAS = """
-Você tem ferramentas para buscar dado que NÃO está no CONTEXTO: outro ponto, os alvos científicos, uma rota até um destino.
-Para ir a um alvo: chame listar_alvos_cientificos e depois planejar_rota com a lat/lon exata do alvo da lista.
-Nunca invente coordenada. Ao explicar uma rota, repita a sugestão do sistema com o porquê; quem decide é o astronauta."""
+You have tools to fetch data that is NOT in the CONTEXTO: another point, the science targets, a route to a destination.
+To go to a target: call listar_alvos_cientificos, then planejar_rota with the exact lat/lon of the target from the list.
+Never invent a coordinate. When explaining a route, repeat the system's suggestion with its reason; the astronaut decides."""
 
 FERRAMENTAS = [
     {"type": "function", "function": {
         "name": "listar_alvos_cientificos",
-        "description": "Alvos científicos reais medidos pelo Curiosity perto do boxwork: nome, lat, lon e o que foi medido.",
+        "description": "Real science targets measured by Curiosity near the boxwork: name, lat, lon and what was measured.",
         "parameters": {"type": "object", "properties": {}}}},
     {"type": "function", "function": {
         "name": "consultar_ponto",
-        "description": "Inclinação, elevação, alertas e alvo científico de um ponto do mapa.",
+        "description": "Slope, elevation, alerts and science target of a point on the map.",
         "parameters": {"type": "object", "required": ["lat", "lon"], "properties": {
-            "lat": {"type": "number", "description": "latitude em graus"},
-            "lon": {"type": "number", "description": "longitude leste em graus"}}}}},
+            "lat": {"type": "number", "description": "latitude in degrees"},
+            "lon": {"type": "number", "description": "east longitude in degrees"}}}}},
     {"type": "function", "function": {
         "name": "planejar_rota",
-        "description": "Calcula as rotas da posição atual do astronauta até o destino e devolve a ordem sugerida com o porquê. A rota abre no mapa.",
+        "description": "Computes the routes from the astronaut's current position to the destination and returns the suggested order with the reason. The route opens on the map.",
         "parameters": {"type": "object", "required": ["dest_lat", "dest_lon"], "properties": {
-            "dest_lat": {"type": "number", "description": "latitude do destino"},
-            "dest_lon": {"type": "number", "description": "longitude leste do destino"}}}}},
+            "dest_lat": {"type": "number", "description": "destination latitude"},
+            "dest_lon": {"type": "number", "description": "destination east longitude"}}}}},
 ]
 MAX_RODADAS = 3  # sem limite, um modelo pequeno pode chamar ferramenta em loop
 _ollama_sem_ferramentas = False  # Ollama antigo recusa `tools` (ex.: 0.12.11 com gemma4): cai no modo só contexto
+
+
+# O idioma vem de regra, não do modelo: pedir "responda no idioma da pergunta" ao e2b falhou
+# ("qual o seu nome?" voltou em inglês). Palavras curtas e comuns bastam para pt × en.
+PALAVRAS_EN = {"the", "what", "which", "how", "where", "is", "are", "you", "your", "i", "my", "me", "to", "can",
+               "should", "take", "safe", "here", "and", "why", "do", "it", "of", "who"}
+PALAVRAS_PT = {"o", "a", "os", "as", "que", "qual", "quais", "como", "onde", "é", "você", "seu", "sua", "eu",
+               "meu", "minha", "não", "para", "pra", "de", "do", "da", "por", "quem", "posso", "aqui"}
+
+
+def idioma_da_pergunta(pergunta: str) -> str:
+    """"en" ou "pt" (empate fica em pt, o idioma do Whisper por padrão)."""
+    palavras = re.findall(r"[a-zà-ú]+", pergunta.lower())
+    en, pt = sum(p in PALAVRAS_EN for p in palavras), sum(p in PALAVRAS_PT for p in palavras)
+    return "en" if en > pt else "pt"
+
+
+def sem_url(texto: str) -> str:
+    """URL do PDS vira "PDS": o modelo não lê link em voz alta se não recebe link."""
+    return re.sub(r"https?://[^\s,)]+", "PDS", texto)
 
 
 class AgenteIndisponivel(Exception):
@@ -125,7 +162,7 @@ def contexto_em_texto(ctx: dict) -> str:
     linhas += [f"- {a['nivel'].upper()}: {a['mensagem']} (fonte: {a['fonte']})" for a in ctx["alertas"]] or ["- nenhum (isso NÃO quer dizer seguro)"]
     t = ctx["terreno"]
     linhas.append(f"PONTO: lat {ctx['ponto']['lat']}, lon {ctx['ponto']['lon']}")
-    linhas.append(f"INCLINAÇÃO DO MAPA: {t.get('slope_deg')}° ({t.get('slope_status')}) · elevação {t.get('elevacao_m')} m (fonte: DTM HiRISE)"
+    linhas.append(f"INCLINAÇÃO DO MAPA: {t.get('slope_deg')}° ({t.get('slope_status')}) · elevação {round(t['elevacao_m']) if t.get('elevacao_m') is not None else 'sem dado'} m (fonte: DTM HiRISE)"
                   if t.get("slope_deg") is not None else "INCLINAÇÃO DO MAPA: sem dado")
     pi = ctx.get("previsao_inclinacao")
     if pi:
@@ -151,6 +188,8 @@ def contexto_em_texto(ctx: dict) -> str:
                           + (f", radiação {pv['dose_ugy_dia']['valor']} µGy por dia" if pv.get("dose_ugy_dia") else ""))
     else:
         linhas.append("CONDIÇÕES AMBIENTAIS: sem dado")
+    if ctx.get("buscas"):  # o sistema já buscou por regra (alvo citado, rota pedida): o modelo pequeno erra a ferramenta
+        linhas += ["BUSCADO PELO SISTEMA PARA ESTA PERGUNTA (use isto primeiro):", *ctx["buscas"]]
     linhas += rota_em_texto(ctx.get("previsao_rota"))
     return "\n".join(linhas)
 
@@ -170,6 +209,18 @@ def agrupar_alertas(alertas: list[dict]) -> list[dict]:
 FAIXA_TEXTO = {"alta": "chance alta (≥50%)", "media": "chance média (20–49%)", "baixa": "chance baixa (<20%)", "sem_dado": "sem dado"}
 
 
+ROTULO_TEXTO = {"ok": "sem risco no mapa", "atencao": "atenção", "perigo": "perigo"}
+
+
+def sugestao_em_texto(sg: dict) -> list[str]:
+    """Sugestão de sugestao_rotas.py. "variante X, rótulo Y": com "rota X: atencao" o modelo chamou a rota de "atencao"."""
+    out = [f"SUGESTÃO DO SISTEMA (regra fixa, não sua; quem decide é o astronauta): {sg['motivo']}"]
+    out += [f"- variante {r['tipo']}, rótulo {ROTULO_TEXTO[r['rotulo']]}: {r['por_que']}" for r in sg["resumo"]]
+    if sg["aviso_poeira"]:
+        out.append(f"- {sg['aviso_poeira']} (fonte: Mars24 + MCS/MRO, NASA)")
+    return out
+
+
 def rota_em_texto(pr: dict | None) -> list[str]:
     """Seção da ferramenta "prever rota" (previsao_rota.py). Nada quando não há rota aberta."""
     if pr is None:
@@ -177,12 +228,8 @@ def rota_em_texto(pr: dict | None) -> list[str]:
     if "erro" in pr:
         return [f"PREVISÃO DA ROTA: sem previsão ({pr['erro']})"]
     out = []
-    sg = pr.get("sugestao")
-    if sg:  # as outras variantes também: sem isso o modelo não sabe comparar
-        out.append(f"SUGESTÃO DO SISTEMA (regra fixa, não sua; quem decide é o astronauta): {sg['motivo']}")
-        out += [f"- rota {r['tipo']}: {r['rotulo']} ({r['por_que']})" for r in sg["resumo"]]
-        if sg["aviso_poeira"]:
-            out.append(f"- {sg['aviso_poeira']} (fonte: Mars24 + MCS/MRO, NASA)")
+    if pr.get("sugestao"):  # as outras variantes também: sem isso o modelo não sabe comparar
+        out += sugestao_em_texto(pr["sugestao"])
     t = pr["terreno"]
     m = t["metros_por_chance"]
     out += [f"PREVISÃO DA ROTA ABERTA {pr['tipo']} PARA O SOL {pr['sol_eva']} (ESTIMADA pelo histórico da NASA, não medida):",
@@ -215,7 +262,9 @@ def rota_em_texto(pr: dict | None) -> list[str]:
 def _chat(mensagens: list[dict], com_ferramentas: bool) -> dict:
     corpo = {"model": MODELO, "stream": False,
              "keep_alive": -1,  # o padrão (5 min) descarregava o gemma; recarregar junto do Whisper estourava a RAM
-             "options": {"temperature": 0}, "messages": mensagens}
+             "think": False,  # gemma4 pensa por padrão: resposta curta falada não precisa, e custa segundos
+             "options": {"temperature": 0, "num_ctx": 8192},  # o padrão do gemma4 (131k) gasta RAM à toa
+             "messages": mensagens}
     if com_ferramentas:
         corpo["tools"] = FERRAMENTAS
     req = urllib.request.Request(f"{OLLAMA_URL}/api/chat", data=json.dumps(corpo).encode(),
@@ -224,12 +273,16 @@ def _chat(mensagens: list[dict], com_ferramentas: bool) -> dict:
         return json.load(r)["message"]
 
 
-def perguntar(pergunta: str, ctx: dict, executar=None) -> str:
-    """executar(nome, args) -> texto: roda uma ferramenta (vem de main.py). Sem ele, só o contexto."""
+def perguntar(pergunta: str, ctx: dict, executar=None, idioma: str | None = None) -> str:
+    """executar(nome, args) -> texto: roda uma ferramenta (vem de main.py). Sem ele, só o contexto.
+    idioma: o que o Whisper detectou na fala; sem ele, adivinha pelas palavras (só en/pt)."""
     global _ollama_sem_ferramentas
+    idioma = idioma or idioma_da_pergunta(pergunta)
     com_ferramentas = executar is not None and not _ollama_sem_ferramentas
     mensagens = [{"role": "system", "content": INSTRUCOES + (INSTRUCOES_FERRAMENTAS if com_ferramentas else "")},
-                 {"role": "user", "content": f"CONTEXTO:\n{contexto_em_texto(ctx)}\n\nPERGUNTA: {pergunta}"}]
+                 {"role": "user", "content": f"CONTEXTO:\n{sem_url(contexto_em_texto(ctx))}\n\nPERGUNTA: {pergunta}\n\n"
+                  + {"en": "ANSWER IN ENGLISH.", "pt": "RESPONDA EM PORTUGUÊS."}.get(
+                      idioma, f"ANSWER IN THE LANGUAGE OF THE QUESTION (ISO code {idioma}).")}]
     try:
         for _ in range(MAX_RODADAS):
             try:
@@ -241,11 +294,15 @@ def perguntar(pergunta: str, ctx: dict, executar=None) -> str:
                 mensagens[0]["content"] = INSTRUCOES
                 msg = _chat(mensagens, False)
             if not msg.get("tool_calls"):
-                return msg["content"].strip()
+                if msg["content"].strip():
+                    return msg["content"].strip()
+                break  # vazio depois de usar ferramenta (visto no e2b e no granite4): pede o texto sem ferramentas
             mensagens.append(msg)
             for c in msg["tool_calls"]:
                 f = c["function"]
-                mensagens.append({"role": "tool", "tool_name": f["name"], "content": executar(f["name"], f.get("arguments") or {})})
-        return _chat(mensagens, False)["content"].strip()  # rodadas esgotadas: responde com o que já buscou
+                mensagens.append({"role": "tool", "tool_name": f["name"], "content": sem_url(executar(f["name"], f.get("arguments") or {}))})
+        final = _chat(mensagens, False)["content"].strip()  # rodadas esgotadas ou vazio: responde com o que já buscou
+        return final or ("Não sei: não tenho esse dado aqui." if idioma == "pt"
+                         else "I don't know: I don't have that data here.")
     except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError) as e:
         raise AgenteIndisponivel(f"agente local indisponível ({MODELO} em {OLLAMA_URL}): {e}") from e

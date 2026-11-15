@@ -9,7 +9,7 @@ import { TOGGLEABLE_LAYERS } from './layers.js'
 import * as mapa from './map.js'
 import { iniciarAssistente } from './ui/agente.js'
 import { renderCamadas } from './ui/camadas.js'
-import { iniciarRota, rotaParaAgente } from './ui/rota.js'
+import { iniciarRota, mostrarOpcoes, rotaParaAgente } from './ui/rota.js'
 import { iniciarVoz } from './ui/voz.js'
 import { esc } from './ui/util.js'
 
@@ -28,6 +28,7 @@ const estado = {
   camadas: Object.fromEntries(TOGGLEABLE_LAYERS.map((l) => [l.id, { visible: l.defaultVisible, opacity: l.defaultOpacity }])),
 }
 let aguardandoEscala = false
+let aguardandoPosicao = false // "📍 estou aqui": o próximo clique vira a posição do astronauta (sem GPS)
 
 // ---------------- Local (posição ou destino): status, panorama, fotos, ficha ----------------
 let seqLocal = 0
@@ -258,7 +259,7 @@ function abrirMapa(modo) {
 
 function fecharMapa() {
   estado.mapa = 'visor'
-  aguardandoEscala = false
+  aguardandoEscala = aguardandoPosicao = false
   document.body.classList.remove('mapa-aberto')
   $('mapa-box').title = 'Expandir mapa'
   for (const id of ['camadas', 'coords', 'leitura']) $(id).hidden = true
@@ -280,9 +281,13 @@ $('btn-rota').addEventListener('click', () => abrirMapa('rota'))
 // ---------------- Rota ----------------
 const atualizarRota = iniciarRota($('c-rota'), {
   onCancelar: cancelarRota,
-  onRotaAtiva: (r) => {
+  onRotaAtiva: (r, outras = []) => {
     estado.rota = r
-    mapa.setRota(r)
+    if (r?.titulo) { // opção de replanejamento: a bandeira acompanha o fim da opção escolhida
+      estado.destino = { lat: r.pontos.at(-1)[0], lon: r.pontos.at(-1)[1] }
+      mapa.setDestino(estado.destino)
+    }
+    mapa.setRota(r, outras)
     if (r && estado.mapa === 'visor') mapa.centrar(null, r)
     // rota calculada: a barra abre com panorama, fotos e ficha do DESTINO (não da origem)
     if (r && estado.destino && !mesmoPonto(estado.local, estado.destino)) {
@@ -293,6 +298,11 @@ const atualizarRota = iniciarRota($('c-rota'), {
     if (estado.mapa !== 'rota') abrirMapa('rota')
     aguardandoEscala = true
     instrucao('clique no mapa para adicionar a PARADA')
+  },
+  onMarcarPosicao: () => {
+    if (estado.mapa !== 'rota') abrirMapa('rota')
+    aguardandoPosicao = true
+    instrucao('clique no mapa ONDE VOCÊ ESTÁ')
   },
   onRemoverEscala: (i) => {
     estado.escalas.splice(i, 1)
@@ -321,7 +331,7 @@ function definirDestino(p) {
 
 function cancelarRota() {
   Object.assign(estado, { rotaAtiva: false, destino: null, escalas: [], rota: null })
-  aguardandoEscala = false
+  aguardandoEscala = aguardandoPosicao = false
   mapa.setDestino(null)
   mapa.setEscalas([])
   mapa.setRota(null)
@@ -372,6 +382,12 @@ let seqLeitura = 0
 async function cliqueNoMapa(lat, lon) {
   const p = { lat, lon }
   if (estado.mapa === 'rota') {
+    if (aguardandoPosicao) { // a rota seguida não muda: só de onde as opções novas vão sair
+      aguardandoPosicao = false
+      instrucao(null)
+      estado.posicao = { lat, lon, rotulo: 'a posição marcada', fonte: 'marcada no mapa', tipo: 'posicao' }
+      return mapa.setOrigem(estado.posicao)
+    }
     if (aguardandoEscala) {
       aguardandoEscala = false
       instrucao(null)
@@ -424,22 +440,33 @@ document.addEventListener('keydown', (e) => {
 })
 
 // ---------------- F08: assistente ----------------
-const assistente = iniciarAssistente($('assistente'), () => estado.local ?? estado.posicao, rotaParaAgente, (destino) => {
-  estado.rotaAtiva = true // igual ao "Planejar rota" e à rota por voz
-  return definirDestino(destino)
-})
+/** Rota pedida por voz ou planejada pelo agente: abre o mapa no modo rota, como o botão
+ * "Planejar rota" -- só definir o destino deixava a rota escondida no minimapa do visor. */
+function abrirRotaAte(destino) {
+  if (estado.mapa !== 'rota') abrirMapa('rota')
+  estado.rotaAtiva = true
+  return definirDestino({ lat: destino.lat, lon: destino.lon })
+}
+
+/** Problema relatado no meio da rota: o card mostra as opções novas; a bandeira vai pro fim da sugerida. */
+function mostrarReplanejamento(res, origem) {
+  if (estado.mapa !== 'rota') abrirMapa('rota')
+  estado.rotaAtiva = true
+  $('c-rota').hidden = false
+  mostrarOpcoes(res, origem)
+}
+
+const assistente = iniciarAssistente($('assistente'), () => estado.local ?? estado.posicao, rotaParaAgente, abrirRotaAte, mostrarReplanejamento,
+  () => estado.posicao)
 
 // ---------------- F08: voz ("Ei guia, rota até …" ou pergunta falada) ----------------
 // a rota sempre sai da posição atual (rastreador); a voz só escolhe o destino
 iniciarVoz($('btn-voz'), $('voz-status'), {
   pontoAtual: () => estado.posicao,
-  rota: (_origem, destino) => {
-    estado.rotaAtiva = true // igual ao "Planejar rota"
-    return definirDestino({ lat: destino.lat, lon: destino.lon })
-  },
-  perguntar: (texto) => {
+  rota: (_origem, destino) => abrirRotaAte(destino),
+  perguntar: (texto, idioma) => {
     if ($('assistente').hidden) assistente.abrir(true)
-    return assistente.enviar(texto, true)
+    return assistente.enviar(texto, true, idioma)
   },
 })
 

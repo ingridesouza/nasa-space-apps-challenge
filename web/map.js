@@ -9,6 +9,7 @@ const CENTRO_INICIAL = [137.384, -4.801]
 const ZOOM_INICIAL = 15 // começa no nível da HiRISE
 
 const ROUTE_ID = 'h2g2-route-line'
+const ROUTE_ALT_ID = 'h2g2-route-alt' // outras variantes: tracejadas, por baixo da ativa
 
 const corPorStatus = (padrao) => [
   'match', ['get', 'slope_status'],
@@ -145,6 +146,14 @@ export function criarMapa(container, metas, { onClick, onLoad, onFechar }) {
   })
 
   map.on('load', () => {
+    map.addSource(ROUTE_ALT_ID, { type: 'geojson', data: vazio() })
+    map.addLayer({
+      id: ROUTE_ALT_ID,
+      type: 'line',
+      source: ROUTE_ALT_ID,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-width': 3, 'line-color': '#e2e2e6', 'line-opacity': 0.75, 'line-dasharray': [1.5, 2] },
+    })
     map.addSource(ROUTE_ID, { type: 'geojson', data: vazio() })
     map.addLayer({
       id: ROUTE_ID,
@@ -216,8 +225,17 @@ export function setEscalas(escalas) {
   marcadoresEscala = escalas.map((p) => marcador('h2g2-route-marker h2g2-route-marker--escala').setLngLat([p.lon, p.lat]).addTo(map))
 }
 
-export function setRota(rota) {
+/** rota: a variante ativa (cor por inclinação); outras: as demais variantes, tracejadas. */
+export function setRota(rota, outras = []) {
   if (!carregado) return
+  map.getSource(ROUTE_ALT_ID).setData({
+    type: 'FeatureCollection',
+    features: outras.map((r) => ({
+      type: 'Feature',
+      properties: { tipo: r.tipo },
+      geometry: { type: 'LineString', coordinates: r.pontos.map(([lat, lon]) => [lon, lat]) },
+    })),
+  })
   map.getSource(ROUTE_ID).setData({
     type: 'FeatureCollection',
     features: (rota?.trechos_risco ?? []).map((t) => ({

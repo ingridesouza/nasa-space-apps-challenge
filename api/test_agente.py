@@ -1,7 +1,7 @@
 """Testes do agente local (feature 08, fase 2).
 
 Rodar: make test   (ou: cd api && python test_agente.py)
-Os testes com modelo só rodam se o Ollama estiver no ar com o gemma3:4b."""
+Os testes com modelo só rodam se o Ollama estiver no ar com o modelo de agente.MODELO (gemma4:e2b)."""
 
 import json
 import sys
@@ -48,12 +48,95 @@ def test_socorro_responde_por_regra_sem_modelo():
         agente.OLLAMA_URL = url
     assert r["socorro"] and r["resposta"].startswith("Pare") and "A base fica a" in r["resposta"], r
     assert not agente.SOCORRO.search("a temperatura cai à noite?")
+    assert agente.SOCORRO.search("apareceu um gás muito tóxico")  # frase da demo (test_voz.py)
+    assert agente.SOCORRO.search("acho que tem gás tóxico entrando") and agente.SOCORRO.search("o traje está vazando")
+    assert not agente.SOCORRO.search("que gás tem na atmosfera?")
+    # inglês: a voz manda o idioma do Whisper, e o procedimento sai nele
+    url, agente.OLLAMA_URL = agente.OLLAMA_URL, "http://127.0.0.1:9"
+    try:
+        r = ask(Pergunta(pergunta="I fell and my suit is leaking", idioma="en", lat=SOL_4309[0], lon=SOL_4309[1]), Req())
+    finally:
+        agente.OLLAMA_URL = url
+    assert r["socorro"] and r["resposta"].startswith("Stop") and "The base is" in r["resposta"], r
+    assert agente.SOCORRO.search("I have a toxic gas warning") and agente.SOCORRO.search("mayday")
+    assert not agente.SOCORRO.search("the temperature is falling") and not agente.SOCORRO.search("can you help me plan a route?")
+
+
+def test_idioma_da_pergunta():
+    assert agente.idioma_da_pergunta("qual o seu nome?") == "pt"
+    assert agente.idioma_da_pergunta("Which route should I take, and why?") == "en"
+    assert agente.idioma_da_pergunta("Me leva até o alvo Altadena.") == "pt"
+    assert agente.idioma_da_pergunta("Who is the president of Brazil?") == "en"
+
+
+def test_alvo_citado_por_nome_e_pedido_de_caminho():
+    from db import get_connection
+    from vector_queries import todos_alvos_cientificos
+    from voz import destino_citado, pede_caminho
+    alvos = todos_alvos_cientificos(get_connection())
+    nome = lambda t: (destino_citado(t, alvos) or {}).get("nome")  # noqa: E731
+    assert nome("eu quero estudar o nevado Sarjama e mostra as opções de caminho") == "Nevado Sajama"
+    assert nome("o que foi medido no alvo Altadena?") == "Altadena"
+    assert nome("onde fica o monte grande e qual rota é mais segura?") == "Monte Grande"
+    assert nome("a inclinação aqui é muito grande?") is None  # "grande" sozinho não é o Monte Grande
+    assert pede_caminho("como eu chego até ele?") and pede_caminho("how do I get there?")
+    assert not pede_caminho("o que foi medido no alvo Altadena?")
+    from voz import pede_alvo_perto
+    assert pede_alvo_perto("Which science target is closest to me?") and pede_alvo_perto("qual o alvo mais perto daqui?")
+    assert not pede_alvo_perto("estou perto da base?")
+    assert agente.sem_url("SiO2 41% (https://pds-geosciences.wustl.edu/a/b_p1.csv, sol 4634)") == "SiO2 41% (PDS, sol 4634)"
+
+
+def test_rota_ate_alvo_citado_sai_por_regra():
+    srv, pedidos = _ollama_falso([{"role": "assistant", "content": "Sugiro a mais segura."}])
+    url, agente.OLLAMA_URL = agente.OLLAMA_URL, f"http://127.0.0.1:{srv.server_port}"
+    try:
+        r = ask(Pergunta(pergunta="quero estudar o nevado Sarjama, como eu chego lá?"), Req())
+    finally:
+        agente.OLLAMA_URL = url
+        srv.shutdown()
+    assert r["acoes"] and abs(r["acoes"][0]["lat"] - -4.80801) < 1e-4, r["acoes"]  # Nevado Sajama
+    assert "ALVO CITADO: Nevado Sajama" in pedidos[0]["messages"][1]["content"]
+
+
+def test_replanejar_classifica_e_desvia_do_obstaculo():
+    from geo import haversine_m
+    from main import get_replanejar
+    from replanejar import classificar
+    assert classificar("tem uma rocha grande à frente") == "obstaculo" and classificar("There is a big rock ahead") == "obstaculo"
+    assert classificar("está muito íngreme") == "ingreme" and classificar("estou cansado") == "cansaco"
+    assert classificar("vem poeira") == "poeira" and classificar("aconteceu um problema") == "outro"
+    assert classificar("qual o seu nome?") is None
+    meio, monte_grande = (-4.80460, 137.38397), (-4.80784, 137.38104)
+    r = get_replanejar(*meio, "tem uma rocha grande à frente", *monte_grande)
+    ob = r["obstaculo"]
+    for x in r["rotas"]:  # nenhuma opção passa por dentro do obstáculo
+        assert min(haversine_m(ob["lat"], ob["lon"], *p) for p in x["pontos"]) > ob["raio_m"], x["tipo"]
+    assert r["sugestao"]["sugerida"] in [x["tipo"] for x in r["rotas"]]
+    volta = get_replanejar(*meio, "estou cansado")  # sem destino: só voltar à base
+    assert volta["rotas"] and all(x["tipo"].startswith("volta") for x in volta["rotas"])
+
+
+def test_problema_relatado_com_rota_aberta_vira_acao_replanejar():
+    from main import RotaDaPergunta
+    srv, _ = _ollama_falso([{"role": "assistant", "content": "Sugiro o desvio seguro."}])
+    url, agente.OLLAMA_URL = agente.OLLAMA_URL, f"http://127.0.0.1:{srv.server_port}"
+    rota = RotaDaPergunta(origin_lat=-4.80460, origin_lon=137.38397, dest_lat=-4.80784, dest_lon=137.38104)
+    try:
+        r = ask(Pergunta(pergunta="tem uma rocha grande à frente", lat=-4.80784, lon=137.38104,  # lat/lon = destino aberto
+                         pos_lat=-4.80460, pos_lon=137.38397, rota=rota), Req())
+    finally:
+        agente.OLLAMA_URL = url
+        srv.shutdown()
+    acao = next(a for a in r["acoes"] if a["tipo"] == "replanejar")
+    assert acao["resultado"]["problema"] == "obstaculo" and acao["origem"] == {"lat": -4.80460, "lon": 137.38397}
 
 
 def test_tira_perigo_que_o_modelo_repetiu():
     a = {"mensagem": "Inclinação de 37,8° neste ponto.", "fonte": "DTM HiRISE (Mars Trek)"}
     r = "PERIGO: Inclinação de 37,8° neste ponto. (fonte: DTM HiRISE (Mars Trek)) Não sei: não tenho esse dado aqui."
     assert agente.tirar_perigo_repetido(r, [a]) == "Não sei: não tenho esse dado aqui."
+    assert agente.tirar_perigo_repetido("English: The closest target is Mojo.", []) == "The closest target is Mojo."
 
 
 def test_sugestao_ordena_por_risco_e_nao_esconde_rota():
@@ -113,7 +196,7 @@ def test_ferramenta_planejar_rota_abre_rota_e_fala_perigo():
     assert pedidos[0]["tools"] and pedidos[1]["messages"][-1]["role"] == "tool"
     assert "SUGESTÃO DO SISTEMA" in pedidos[1]["messages"][-1]["content"]
     assert r["acoes"] == [{"tipo": "abrir_rota", "lat": SOL_4309[0], "lon": SOL_4309[1]}]
-    assert r["resposta"].startswith("Perigo:"), r["resposta"]  # perigo da rota planejada vem por regra
+    assert r["resposta"].startswith("Danger:"), r["resposta"]  # perigo da rota planejada vem por regra, no idioma da pergunta
 
 
 def test_ollama_sem_tools_cai_no_modo_contexto():

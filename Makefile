@@ -1,13 +1,15 @@
 PY := $(CURDIR)/.venv/bin/python
 # Agente local (feature 08): o modelo fica no pacote offline, não no git (3,3 GB > limite do GitHub).
 # Copiar data/local/ inteiro leva junto o modelo; o binário do ollama se instala uma vez.
-# Gemma 3 4B (Google)
-# venceu o Llama 3.2 3B nas mesmas perguntas (achou o alvo e a previsão; o Llama errou as duas).
-MODELO := gemma3:4b
+# Gemma 4 E2B (Google): 6/6 em make agente-medir, com tool calling; e4b, granite4 e phi4-mini fizeram 2/6
+# (sem chamar a ferramenta ou dizendo "seguro"). Precisa de Ollama novo (o 0.12.11 do Fedora não carrega o gemma4).
+MODELO := gemma4:e2b
+# Ollama instalado no usuário (~/.local/ollama, release oficial) vem antes do do sistema, se existir.
+export PATH := $(HOME)/.local/ollama/bin:$(PATH)
 export OLLAMA_MODELS := $(CURDIR)/data/local/ollama
 OLLAMA_SOBE = command -v ollama >/dev/null && (curl -s localhost:11434 >/dev/null || (ollama serve >/dev/null 2>&1 &))
 
-.PHONY: build run front test voz-gravar voz-medir
+.PHONY: build run front test voz-gravar voz-medir agente-medir
 
 build:
 	test -x $(PY) || python3 -m venv .venv
@@ -46,3 +48,6 @@ voz-gravar:
 
 voz-medir:
 	cd api && $(PY) medir_voz.py large-v3 turbo
+
+agente-medir:
+	cd api && $(PY) medir_agente.py gemma4:e2b granite4 phi4-mini

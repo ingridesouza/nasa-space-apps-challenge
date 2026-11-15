@@ -33,8 +33,9 @@ make build   # uma vez, com internet: dependências + dados reais em data/local/
 make run     # API e mapa em http://localhost:8000
 ```
 
-Agente local (`/api/ask`): instale o [Ollama](https://ollama.com) uma vez. O `make build`
-baixa o modelo `gemma3:4b` (3,3 GB) para `data/local/ollama/`, e o `make run` sobe o
+Agente local (`/api/ask`): instale o [Ollama](https://ollama.com) uma vez, versão recente
+(o Gemma 4 não carrega no 0.12.x; sem `sudo`, extrair a release oficial em `~/.local/ollama`, que o Makefile
+usa primeiro). O `make build` baixa o modelo `gemma4:e2b` (4,6 GB) para `data/local/ollama/`, e o `make run` sobe o
 Ollama lendo dessa pasta. O modelo fica fora do git (passa do limite do GitHub). Levar o pacote para outra máquina
 ainda não funciona só copiando `data/local/` (ver item 5 de `docs/raio-x-implementacao.md`).
 

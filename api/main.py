@@ -22,24 +22,26 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from agente import (SOCORRO, AgenteIndisponivel, agrupar_alertas, contexto_em_texto, fontes_do_contexto, montar_contexto,
-                    perguntar, resposta_de_socorro, tirar_perigo_repetido)
+from agente import (SOCORRO, AgenteIndisponivel, agrupar_alertas, contexto_em_texto, fontes_do_contexto, idioma_da_pergunta, montar_contexto,
+                    perguntar, resposta_de_socorro, sugestao_em_texto, tirar_perigo_repetido)
 from alertas import BASE_LAT_LON, alertas_da_rota, alertas_do_ponto, paradas_no_bbox, tempo_e_alertas_do_sol
 from conditions import get_cached_conditions
 from db import get_connection
+from geo import haversine_m
 from mosaics import build_hillshade_png, build_mosaic_png
 from nomenclature import get_cached_nomenclature
 from previsao_rota import prever_rota
 from previsao import apagar_medicao, previsao_do_sol, registrar_medicao, risco_inclinacao, status_previsto
 from raster_sampling import sample_all_rasters
 from route_planning import ForaDoGridError, SemCaminhoError, plan_route
+from replanejar import classificar, opcoes
 from sugestao_rotas import sugerir
 from tempo_marte import sol_msl
 from tile_server import render_tile
 from vector_queries import all_photos, nearby_photos, nearest_science_target, todos_alvos_cientificos
 import ficha
 import panorama
-from voz import MODELO, MODELO_CONFIRMACAO, TAXA_HZ, _modelo, interpretar, transcrever
+from voz import MODELO, MODELO_CONFIRMACAO, TAXA_HZ, _modelo, destino_citado, falas, interpretar, pede_alvo_perto, pede_caminho, transcrever
 
 # Sol de referência da missão -- dado real cacheado (não é "hoje",
 # é o mesmo sol usado nos testes de REMS/RAD, ver PROXIMOS-PASSOS.md).
@@ -240,6 +242,31 @@ def get_tile(layer_name: str, z: int, x: int, y: int):
     return Response(content=png_bytes, media_type="image/png")
 
 
+def enriquecer_rotas(rotas: list[dict]) -> None:
+    """Chance prevista por trecho (F06) e alertas do agente por ponto (F08), em cada rota."""
+    # feature 06: cada trecho ganha a chance prevista e o status que a considera
+    for rota in rotas:
+        for t in rota["trechos_risco"]:
+            risco = risco_inclinacao(t["slope_deg"])
+            t["chance_pct"] = risco["chance_pct"] if risco else None
+            t["status_previsto"] = status_previsto(t["slope_status"], risco)
+        rota["trechos_risco_previsto"] = sum(t["status_previsto"] != t["slope_status"] for t in rota["trechos_risco"])
+
+    # feature 08: acréscimo ao contrato, nenhuma chave acima muda --
+    # cruza o histórico do rover e o limite de volta à base (mesmas
+    # regras do /api/point) com os pontos de cada variante calculada.
+    # distancia_m (acima do início, não do destino) vem do mesmo
+    # perfil_elevacao do gráfico -- é o "em que trecho" que faltava:
+    # sem isso, o alerta valia pra rota inteira, não pra um ponto dela.
+    for rota in rotas:
+        alertas = alertas_da_rota([tuple(p) for p in rota["pontos"]])
+        perfil = rota["perfil_elevacao"]
+        for alerta in alertas:
+            alerta["distancia_m"] = perfil[alerta.pop("indice_ponto")]["distancia_acumulada_m"]
+        alertas.sort(key=lambda a: a["distancia_m"])
+        rota["alertas"] = alertas
+
+
 @app.get("/api/route")
 def get_route(
     origin_lat: float,
@@ -274,31 +301,43 @@ def get_route(
         raise HTTPException(status_code=422, detail=str(e))
     finally:
         conn.close()
-    # feature 06: cada trecho ganha a chance prevista e o status que a considera
-    for rota in resultado["rotas"]:
-        for t in rota["trechos_risco"]:
-            risco = risco_inclinacao(t["slope_deg"])
-            t["chance_pct"] = risco["chance_pct"] if risco else None
-            t["status_previsto"] = status_previsto(t["slope_status"], risco)
-        rota["trechos_risco_previsto"] = sum(t["status_previsto"] != t["slope_status"] for t in rota["trechos_risco"])
-
-    # feature 08: acréscimo ao contrato, nenhuma chave acima muda --
-    # cruza o histórico do rover e o limite de volta à base (mesmas
-    # regras do /api/point) com os pontos de cada variante calculada.
-    # distancia_m (acima do início, não do destino) vem do mesmo
-    # perfil_elevacao do gráfico -- é o "em que trecho" que faltava:
-    # sem isso, o alerta valia pra rota inteira, não pra um ponto dela.
-    for rota in resultado["rotas"]:
-        alertas = alertas_da_rota([tuple(p) for p in rota["pontos"]])
-        perfil = rota["perfil_elevacao"]
-        for alerta in alertas:
-            alerta["distancia_m"] = perfil[alerta.pop("indice_ponto")]["distancia_acumulada_m"]
-        alertas.sort(key=lambda a: a["distancia_m"])
-        rota["alertas"] = alertas
-
+    enriquecer_rotas(resultado["rotas"])
     # feature 02 + 08: acréscimo -- ordem sugerida com o porquê; nenhuma rota sai da lista
     resultado["sugestao"] = sugerir(resultado["rotas"])
     return resultado
+
+
+@app.get("/api/replanejar")
+def get_replanejar(lat: float, lon: float, problema: str = Query(min_length=1, max_length=500),
+                   dest_lat: float | None = None, dest_lon: float | None = None, tipo_atual: str = "mais_segura"):
+    """F02 + F08: problema relatado no meio da caminhada -> opções novas a partir do ponto
+    marcado (lat/lon), no mesmo formato do /api/route. Ver replanejar.py."""
+    problema_tipo = classificar(problema) or "outro"
+    destino = (dest_lat, dest_lon) if dest_lat is not None and dest_lon is not None else None
+    rota_atual = None
+    if destino:
+        try:
+            atual = get_route(lat, lon, *destino, [], [])
+            rota_atual = next((r["pontos"] for r in atual["rotas"] if r["tipo"] == tipo_atual), atual["rotas"][0]["pontos"])
+        except HTTPException:
+            pass  # sem a rota atual, o obstáculo não tem "à frente": as opções saem sem desvio
+    dados_rad = get_cached_conditions(REFERENCE_SOL)
+    dose = dados_rad["rad"]["dose_media_ugy_por_hora"] if dados_rad else None
+    conn = get_connection()
+    try:
+        def planejar(alvo, tipo, evitar):
+            try:
+                return plan_route(conn, lat, lon, *alvo, dose, [], tipos=(tipo,), evitar=evitar)["rotas"][0]
+            except (ForaDoGridError, SemCaminhoError) as e:
+                raise HTTPException(status_code=422, detail=str(e))
+        res = opcoes(problema_tipo, (lat, lon), destino, BASE_LAT_LON, rota_atual, planejar)
+    finally:
+        conn.close()
+    if not res["rotas"]:
+        raise HTTPException(status_code=422, detail="Nenhuma opção com caminho: " + "; ".join(res["erros"]))
+    enriquecer_rotas(res["rotas"])
+    return {"problema": problema_tipo, "problema_texto": res["texto"], "obstaculo": res["obstaculo"],
+            "rotas": res["rotas"], "sugestao": sugerir(res["rotas"]), "avisos": res["erros"]}
 
 
 @app.get("/api/previsao-rota")
@@ -330,7 +369,11 @@ class Pergunta(BaseModel):
     # sem ponto escolhido, o assistente responde sobre a base (mesma de api/alertas.py)
     lat: float = Field(BASE_LAT_LON[0], ge=-90, le=90)
     lon: float = Field(BASE_LAT_LON[1], ge=-180, le=360)
+    # onde o astronauta está ("📍 estou aqui"); com rota aberta, lat/lon é o destino. Sem ele: /api/posicao
+    pos_lat: float | None = Field(None, ge=-90, le=90)
+    pos_lon: float | None = Field(None, ge=-180, le=360)
     sol: int = REFERENCE_SOL
+    idioma: str | None = Field(None, pattern="^[a-z]{2,3}$")  # o que o Whisper detectou; sem ele, pelas palavras
 
 
 @app.post("/api/ask")
@@ -338,8 +381,9 @@ def ask(p: Pergunta, request: Request):
     """Feature 08, fase 2: pergunta em linguagem natural sobre o ponto,
     respondida pelo modelo local só com o contexto do /api/point."""
     ponto = get_point(p.lat, p.lon, request)
+    idioma = p.idioma or idioma_da_pergunta(p.pergunta)
     if SOCORRO.search(p.pergunta):
-        return {"resposta": resposta_de_socorro(ponto, BASE_LAT_LON), "socorro": True,
+        return {"resposta": resposta_de_socorro(ponto, BASE_LAT_LON, idioma), "socorro": True, "idioma": idioma,
                 "fontes": ["DTM HiRISE (inclinação)", "posição da base (H2G2)"], "alertas": ponto["alertas"]}
     condicoes = get_cached_conditions(p.sol)
     if condicoes:
@@ -352,6 +396,7 @@ def ask(p: Pergunta, request: Request):
         except HTTPException as e:  # sem caminho/fora do mapa: o agente diz que não há previsão
             ctx["previsao_rota"] = {"erro": e.detail}
     acoes, alertas_ferramenta, fontes_ferramenta = [], [], []
+    pos = (p.pos_lat, p.pos_lon) if p.pos_lat is not None and p.pos_lon is not None else tuple(get_posicao()[k] for k in ("lat", "lon"))
 
     def executar(nome: str, args: dict) -> str:
         """Ferramentas do agente (tool calling). Argumento vem do modelo: valida antes de usar."""
@@ -367,27 +412,56 @@ def ask(p: Pergunta, request: Request):
                                  for a in alvos) or "nenhum alvo cadastrado"
             if nome == "consultar_ponto":
                 lat, lon = float(args["lat"]), float(args["lon"])
+                fontes_ferramenta.append("ponto consultado (DTM HiRISE)")
                 return contexto_em_texto(montar_contexto(get_point(lat, lon, request), None))
             if nome == "planejar_rota":
                 lat, lon = float(args["dest_lat"]), float(args["dest_lon"])
-                pos = get_posicao()  # a rota sai do astronauta, como no front, não do ponto clicado
-                r = get_route(pos["lat"], pos["lon"], lat, lon, [], [])
+                r = get_route(*pos, lat, lon, [], [])  # a rota sai do astronauta, como no front, não do ponto clicado
                 sg = r["sugestao"]
                 sugerida = next(x for x in r["rotas"] if x["tipo"] == sg["sugerida"])
                 alertas_ferramenta.extend(sugerida["alertas"])
                 acoes.append({"tipo": "abrir_rota", "lat": lat, "lon": lon})
                 fontes_ferramenta.append("rotas: A* sobre o DTM HiRISE + regra de sugestão H2G2")
-                return "\n".join([f"SUGESTÃO DO SISTEMA: {sg['motivo']}", *(f"- rota {x['tipo']}: {x['rotulo']} ({x['por_que']})" for x in sg["resumo"]),
-                                   *(f"- rota {x['tipo']}: {round(x['distancia_m'])} m, ~{round(x['tempo_estimado_min'])} min" for x in r["rotas"]),
-                                   *([sg["aviso_poeira"]] if sg["aviso_poeira"] else [])])
+                return "\n".join([*sugestao_em_texto(sg),
+                                   *(f"- variante {x['tipo']}: {round(x['distancia_m'])} m, ~{round(x['tempo_estimado_min'])} min" for x in r["rotas"])])
             return f"ferramenta desconhecida: {nome}"
         except (KeyError, TypeError, ValueError) as e:
             return f"argumento inválido para {nome}: {e}"
         except HTTPException as e:  # fora do mapa / sem caminho: o modelo diz que não há
             return f"sem resultado: {e.detail}"
 
+    problema = classificar(p.pergunta)
+    if problema and (p.rota or problema in ("poeira", "cansaco")):  # sem rota aberta, só a volta faz sentido
+        try:
+            res = get_replanejar(*pos, p.pergunta, *((p.rota.dest_lat, p.rota.dest_lon) if p.rota else (None, None)),
+                                 tipo_atual=p.rota.tipo if p.rota else "mais_segura")
+            acoes.append({"tipo": "replanejar", "origem": {"lat": pos[0], "lon": pos[1]}, "resultado": res})
+            alertas_ferramenta.extend(next(r for r in res["rotas"] if r["tipo"] == res["sugestao"]["sugerida"])["alertas"])
+            fontes_ferramenta.append("replanejamento: A* sobre o DTM HiRISE + regra de sugestão H2G2")
+            ctx["buscas"] = [f"PROBLEMA RELATADO: {res['problema_texto']} Opções novas a partir de onde o astronauta está:",
+                             *sugestao_em_texto(res["sugestao"])]
+            ctx.pop("previsao_rota", None)  # a rota aberta deixou de valer: o modelo fala das opções novas
+        except HTTPException as e:
+            ctx["buscas"] = [f"PROBLEMA RELATADO, mas sem opção de caminho: {e.detail}"]
+
+    conn = get_connection()
     try:
-        resposta = perguntar(p.pergunta, ctx, executar)
+        alvos = todos_alvos_cientificos(conn)
+    finally:
+        conn.close()
+    alvo = destino_citado(p.pergunta, alvos)
+    if not alvo and alvos and pede_alvo_perto(p.pergunta):
+        alvo = min(alvos, key=lambda a: haversine_m(*pos, a["lat"], a["lon"]))
+    if alvo and not problema:  # por regra: com o nome na frase, o modelo pequeno ainda pegava outro alvo ou outra rota
+        ctx["buscas"] = [f"ALVO CITADO: {alvo['nome']}: lat {alvo['lat']}, lon {alvo['lon']}; "
+                         f"{alvo['medicao_curiosity'] or 'sem medição registrada'}"]
+        fontes_ferramenta.append("alvos científicos (F04)")
+        if pede_caminho(p.pergunta):
+            ctx["buscas"].append(executar("planejar_rota", {"dest_lat": alvo["lat"], "dest_lon": alvo["lon"]}))
+            ctx.pop("previsao_rota", None)  # a rota aberta é outra: misturar as duas confundiu o modelo
+
+    try:
+        resposta = perguntar(p.pergunta, ctx, executar, idioma)
     except AgenteIndisponivel as e:
         # 503 com os alertas: as regras de segurança não dependem do modelo
         raise HTTPException(status_code=503, detail={"mensagem": str(e), "alertas": ponto["alertas"]})
@@ -397,8 +471,8 @@ def ask(p: Pergunta, request: Request):
     resposta = tirar_perigo_repetido(resposta, lista_perigos)
     perigos = " ".join(a["mensagem"] for a in lista_perigos)
     if perigos:
-        resposta = f"Perigo: {perigos} {resposta}"
-    return {"resposta": resposta, "fontes": list(dict.fromkeys(fontes_do_contexto(ctx) + fontes_ferramenta)),
+        resposta = f"{'Perigo' if idioma == 'pt' else 'Danger'}: {perigos} {resposta}"
+    return {"resposta": resposta, "idioma": idioma, "fontes": list(dict.fromkeys(fontes_do_contexto(ctx) + fontes_ferramenta)),
             "alertas": ponto["alertas"], "acoes": acoes}
 
 
@@ -414,12 +488,15 @@ def carregar_whisper():
         threading.Thread(target=_modelo, args=(nome,), daemon=True).start()
 
 
-def destinos_por_voz(lat: float | None, lon: float | None) -> list[dict]:
-    """Só o que tem coordenada real: a base, o ponto marcado e os alvos do banco."""
-    destinos = [{"nome": "a base", "lat": BASE_LAT_LON[0], "lon": BASE_LAT_LON[1],
+def destinos_por_voz(lat: float | None, lon: float | None, idioma: str | None = None) -> list[dict]:
+    """Só o que tem coordenada real: a base, o ponto marcado e os alvos do banco.
+    Base e ponto com o nome no idioma da fala; os alvos ficam com o nome do banco."""
+    f = falas(idioma)
+    destinos = [{"nome": f["base"], "lat": BASE_LAT_LON[0], "lon": BASE_LAT_LON[1],
                  "chaves": ["base", "habitat"], "base": True}]
     if lat is not None and lon is not None:
-        destinos.append({"nome": "o ponto marcado", "lat": lat, "lon": lon, "chaves": ["ponto", "marcado"]})
+        destinos.append({"nome": f["ponto"], "lat": lat, "lon": lon, "chaves": ["ponto", "marcado", "marked", "point"],
+                         "marcado": True})
     conn = get_connection()
     try:
         destinos += [{"nome": n, "lat": la, "lon": lo} for n, la, lo in conn.execute("SELECT nome, lat, lon FROM science_targets")]
@@ -430,7 +507,8 @@ def destinos_por_voz(lat: float | None, lon: float | None) -> list[dict]:
 
 @app.post("/api/voz")
 async def voz(request: Request, ativado: bool = False, confirmando: bool = False,
-              lat: float | None = Query(None, ge=-90, le=90), lon: float | None = Query(None, ge=-180, le=360)):
+              lat: float | None = Query(None, ge=-90, le=90), lon: float | None = Query(None, ge=-180, le=360),
+              idioma: str | None = Query(None, pattern="^[a-z]{2,3}$")):
     """Feature 08, voz: áudio bruto (float32 mono 16 kHz) -> texto -> comando.
     lat/lon: ponto marcado (onde o astronauta está). ativado: já veio de
     "segure espaço" ou da janela do "Confirma?" -- dispensa a palavra "Guia".
@@ -439,6 +517,8 @@ async def voz(request: Request, ativado: bool = False, confirmando: bool = False
     "Guia"; conversa de fundo não ocupa o modelo grande. Só "Ei guia" devolve
     intencao "escutar": o front bipa e trata a próxima fala como ativada.
     O modelo grande também precisa ouvir o "guia" para a fala valer.
+    idioma: o do pedido, quando já se sabe (o "sim" curto do "Confirma?" sai indeciso
+    na detecção e viraria inglês). Sem ele, detecta; as falas saem no idioma ouvido.
     Ver docs/feature-08-voz-plano-execucao.md."""
     corpo = await request.body()
     if len(corpo) > LIMITE_AUDIO_BYTES:
@@ -459,26 +539,28 @@ async def voz(request: Request, ativado: bool = False, confirmando: bool = False
             if gatilho["ativado"] and gatilho["intencao"] == "nenhuma":  # só "Ei guia": escuta já, sem o grande (~6 s)
                 return {**rapido, **gatilho, "intencao": "escutar", "fala": None}
         modelo = MODELO_CONFIRMACAO if confirmando else MODELO
-        ouvido = await run_in_threadpool(transcrever, audio, modelo)  # CPU pesada: fora do loop da API
+        ja_detectado = idioma if (ativado or confirmando) else rapido["idioma"]  # o small já detectou: não detecta 2x
+        ouvido = await run_in_threadpool(transcrever, audio, modelo, ja_detectado)  # CPU pesada: fora do loop da API
     except (ImportError, OSError, ValueError, RuntimeError) as e:
         raise HTTPException(status_code=503, detail=f"voz indisponível (modelo Whisper local: rode make build): {e}")
     if ouvido["texto"] is None:
-        return {**ouvido, "intencao": "nenhuma", "destino": None, "fala": "Não entendi."}
+        return {**ouvido, "intencao": "nenhuma", "destino": None, "fala": falas(ouvido["idioma"])["nao_entendi"]}
 
-    destinos = destinos_por_voz(lat, lon)
+    f = falas(ouvido["idioma"])
+    destinos = destinos_por_voz(lat, lon, ouvido["idioma"])
     cmd = interpretar(ouvido["texto"], destinos, exigir_ativacao=not (ativado or confirmando))
     if cmd["ativado"] and cmd["intencao"] == "nenhuma" and not confirmando:
         cmd["intencao"] = "escutar"  # só "Ei guia", sem pedido: o front bipa e espera a próxima fala
     destino = cmd["destino"]
     origem = {"lat": lat, "lon": lon} if lat is not None and lon is not None else {"lat": BASE_LAT_LON[0], "lon": BASE_LAT_LON[1]}
-    if destino and destino.get("chaves") == ["ponto", "marcado"]:
+    if destino and destino.get("marcado"):
         origem = {"lat": BASE_LAT_LON[0], "lon": BASE_LAT_LON[1]}  # rota até o ponto sai da base
     curto = lambda d: d["nome"].split("—")[0].strip()
     fala = None
     if cmd["intencao"] == "rota" and destino and (destino["lat"], destino["lon"]) == (origem["lat"], origem["lon"]):
-        destino, fala = None, "Marque no mapa onde você está para eu calcular a rota."
+        destino, fala = None, f["marque"]
     elif cmd["intencao"] == "rota" and destino:
-        fala = f"Entendi: rota até {curto(destino)}. Confirma?"
+        fala = f["confirma"].format(curto(destino))
     return {**ouvido, **cmd, "destino": destino, "origem": origem, "fala": fala}
 
 

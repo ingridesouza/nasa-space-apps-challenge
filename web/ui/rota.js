@@ -7,18 +7,20 @@ import { coord, esc, num } from './util.js'
 const TIPO_LABEL = { mais_segura: 'Mais segura', mais_rapida: 'Mais rápida', mais_ciencia: 'Mais ciência' }
 // rótulo da sugestão (api/sugestao_rotas.py): regra fixa, não o modelo
 const ROTULO = { ok: ['✅', 'sem risco no mapa'], atencao: ['⚠️', 'atenção'], perigo: ['⛔', 'perigo'] }
+const nomeRota = (r) => r.titulo ?? TIPO_LABEL[r.tipo] ?? r.tipo // titulo: opção do replanejamento
+const VEREDITO = { ok: 'seguro', atencao: 'atencao', perigo: 'perigo' } // classes .v-* com as cores do sistema
 
 /** F02 + F08: por que esta rota -- prós e contras com fonte; a sugerida é só a ordem, todas ficam clicáveis. */
 function sugestaoHtml(r, sg) {
   const s = r.sugestao
   if (!s || !sg) return ''
-  const li = (x, sinal) => `<li title="fonte: ${esc(x.fonte)}">${sinal} ${esc(x.texto)}</li>`
+  const li = (x, cls, sinal) => `<li class="${cls}" title="fonte: ${esc(x.fonte)}"><b aria-hidden="true">${sinal}</b>${esc(x.texto)}</li>`
   return `<div class="rota-sec sugestao">
-    <p class="sugestao-motivo">${esc(sg.motivo)}</p>
-    ${sg.aviso_poeira ? `<p class="sugestao-motivo">⚠️ ${esc(sg.aviso_poeira)}</p>` : ''}
-    <span class="fl-sec">${ROTULO[s.rotulo][0]} Rota ${esc(TIPO_LABEL[r.tipo] ?? r.tipo)}${r.tipo === sg.sugerida ? ' · sugerida' : ''}</span>
-    <ul class="sugestao-lista">${s.pros.map((x) => li(x, '+')).join('')}${s.contras.map((x) => li(x, '−')).join('')}</ul>
-    <p class="rotulo mono">${esc(sg.metodo)} · quem decide é você</p>
+    <p class="sugestao-motivo v-${VEREDITO[sg.resumo[0]?.rotulo] ?? 'atencao'}"><span class="fl-sec">Sugestão do sistema</span>${esc(sg.motivo)}</p>
+    ${sg.aviso_poeira ? `<p class="sugestao-motivo v-atencao">${esc(sg.aviso_poeira)}</p>` : ''}
+    <span class="fl-sec">${ROTULO[s.rotulo][0]} ${esc(nomeRota(r))}${r.tipo === sg.sugerida ? ' · sugerida ★' : ' · alternativa'}</span>
+    <ul class="sugestao-lista">${s.pros.map((x) => li(x, 'pro', '+')).join('')}${s.contras.map((x) => li(x, 'contra', '!')).join('')}</ul>
+    <p class="rotulo mono" title="${esc(sg.metodo)}">linha tracejada no mapa = outras opções${st.anterior ? ' e a rota anterior' : ''} · quem decide é você</p>
   </div>`
 }
 
@@ -170,6 +172,20 @@ function secaoEva(r) {
 }
 
 const rotaAtiva = () => st.data?.rotas.find((r) => r.tipo === st.tipo) ?? null
+// as outras opções e, depois de um replanejamento, a rota que estava sendo seguida: tudo tracejado no mapa
+const outrasRotas = () => [...(st.data?.rotas.filter((r) => r.tipo !== st.tipo) ?? []), ...(st.anterior ? [st.anterior] : [])]
+const fimDa = (r) => ({ lat: r.pontos.at(-1)[0], lon: r.pontos.at(-1)[1] })
+
+/** F02 + F08: opções do /api/replanejar (problema relatado no meio da caminhada). Mesmo card das
+ * variantes; a rota que estava aberta continua tracejada no mapa. Nada é escolhido sozinho. */
+export function mostrarOpcoes(res, origem) {
+  const anterior = st.anterior ?? rotaAtiva()
+  pedido++ // descarta um cálculo de rota em andamento
+  const sugerida = res.rotas.find((r) => r.tipo === res.sugestao.sugerida) ?? res.rotas[0]
+  Object.assign(st, { origem, destino: fimDa(sugerida), escalas: [], data: res, erro: null, carregando: false, tipo: sugerida.tipo, anterior })
+  render()
+  cb.onRotaAtiva(rotaAtiva(), outrasRotas())
+}
 
 /** F08: a rota aberta, no formato que /api/ask espera; null sem rota calculada. */
 export function rotaParaAgente() {
@@ -183,7 +199,7 @@ function render() {
   // legenda das cores do traçado (mesmas faixas de api/route_planning.py)
   const legenda = st.data ? `<div class="legenda-rota mono"><span class="legenda-titulo">Inclinação</span><div>${[['seguro', '< 15°'], ['atencao', '15–20°'], ['perigo', '≥ 20°']]
     .map(([k, t]) => `<span><i style="background:${SLOPE_COLOR_HEX[k]}"></i>${t}</span>`).join('')}</div></div>` : ''
-  const topo = st.destino ? `<div class="rota-sec rota-topo">${legenda}<button type="button" class="link-btn" data-acao="adicionar-escala">+ parada no caminho</button></div>` : ''
+  const topo = st.destino ? `<div class="rota-sec rota-topo">${legenda}<span><button type="button" class="link-btn" data-acao="marcar-posicao" title="sem GPS: clique no mapa onde você está; replanejar parte daí">📍 estou aqui</button> <button type="button" class="link-btn" data-acao="adicionar-escala">+ parada no caminho</button></span></div>` : ''
   if (!st.destino) corpo = '<p class="vazio">Clique no mapa ou digite as coordenadas do destino.</p>'
   else {
     corpo = `<div class="rota-sec">
@@ -197,9 +213,12 @@ function render() {
       corpo += `<div class="tipos">${st.data.rotas
         .map((r) => {
           const [ico, txt] = ROTULO[r.sugestao?.rotulo] ?? ['', '']
-          return `<button type="button" class="tipo ${r.tipo === st.tipo ? 'on' : ''}" data-tipo="${r.tipo}" aria-label="${esc(TIPO_LABEL[r.tipo] ?? r.tipo)}: ${txt}">${ico} ${TIPO_LABEL[r.tipo] ?? esc(r.tipo)}${r.tipo === st.data.sugestao?.sugerida ? ' ★' : ''}</button>`
+          return `<button type="button" class="tipo ${r.tipo === st.tipo ? 'on' : ''}" data-tipo="${r.tipo}" aria-label="${esc(nomeRota(r))}: ${txt}">${ico} ${esc(nomeRota(r))}${r.tipo === st.data.sugestao?.sugerida ? ' ★' : ''}<small class="tipo-meta">${num(r.distancia_m, 0)} m · ${num(r.tempo_estimado_min, 0)} min</small></button>`
         }).join('')}</div>`
       const r = rotaAtiva()
+      if (st.data.problema_texto) {
+        corpo = `<div class="rota-sec"><p class="sugestao-motivo v-perigo"><span class="fl-sec">Problema relatado · novas opções</span>${esc(st.data.problema_texto)}</p></div>` + corpo
+      }
       if (r) corpo += sugestaoHtml(r, st.data.sugestao) + detalheRota(r, topo)
     }
     if (!rotaAtiva()) corpo += topo // sem rota calculada ainda: o botão de parada já fica à mão
@@ -210,7 +229,7 @@ function render() {
   </div>`
 }
 
-/** callbacks: onCancelar(), onRotaAtiva(rota|null), onAdicionarEscala(), onRemoverEscala(i), onAbrirAlvo(alvo). */
+/** callbacks: onCancelar(), onRotaAtiva(rota|null, outras[]), onAdicionarEscala(), onMarcarPosicao(), onRemoverEscala(i), onAbrirAlvo(alvo). */
 export function iniciarRota(container, callbacks) {
   el = container
   cb = callbacks
@@ -219,7 +238,8 @@ export function iniciarRota(container, callbacks) {
     if (!b) return
     if (b.dataset.tipo) {
       st.tipo = b.dataset.tipo
-      cb.onRotaAtiva(rotaAtiva())
+      if (st.data?.problema) st.destino = fimDa(rotaAtiva()) // opção de volta termina na base, não no destino
+      cb.onRotaAtiva(rotaAtiva(), outrasRotas())
     } else if (b.dataset.solPasso) {
       const base = st.solEva ?? st.prev?.sol
       if (base) st.solEva = Math.max(1, base + Number(b.dataset.solPasso))
@@ -231,6 +251,7 @@ export function iniciarRota(container, callbacks) {
       const a = b.dataset.acao
       if (a === 'cancelar') return cb.onCancelar()
       if (a === 'adicionar-escala') return cb.onAdicionarEscala()
+      if (a === 'marcar-posicao') return cb.onMarcarPosicao()
       if (a === 'remover-escala') return cb.onRemoverEscala(Number(b.dataset.i))
       if (a === 'alvo') return cb.onAbrirAlvo(rotaAtiva()?.alvo_cientifico)
     }
@@ -261,7 +282,7 @@ export function iniciarRota(container, callbacks) {
     render()
   })
   return async function atualizarRota(origem, destino, escalas = []) {
-    Object.assign(st, { origem, destino, escalas, data: null, erro: null, carregando: Boolean(origem && destino) })
+    Object.assign(st, { origem, destino, escalas, data: null, erro: null, carregando: Boolean(origem && destino), anterior: null })
     const meu = ++pedido
     cb.onRotaAtiva(null)
     render()
@@ -276,7 +297,7 @@ export function iniciarRota(container, callbacks) {
       st.erro = e.message
     }
     st.carregando = false
-    cb.onRotaAtiva(rotaAtiva())
+    cb.onRotaAtiva(rotaAtiva(), outrasRotas())
     render()
     return st.data // F08 voz: o resumo falado sai destes números
   }

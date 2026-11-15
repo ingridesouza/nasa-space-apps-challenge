@@ -27,25 +27,41 @@ export function para16k(amostras, taxa) {
 
 const curto = (nome) => nome.split('—')[0].trim()
 
+// Falas no idioma de quem falou (o Whisper detecta); outro idioma cai no inglês. A pílula é só em inglês.
+const FALAS = {
+  en: {
+    cancelado: 'Cancelled.', semConfirmacao: 'No confirmation. Cancelled.', falhou: 'Voice failed. Try again.',
+    nada: 'There is nothing to confirm.', perigo: 'Danger', calculando: (n) => `Planning the route to ${n}.`,
+    semRota: (n) => `I couldn't plan the route to ${n}.`,
+    resumo: (n, km, min) => `Safest route to ${n}: ${km} kilometers, about ${min} minutes.`,
+    atencao: (k) => `${k} ${k > 1 ? 'points' : 'point'} of attention on the way, see the map.`,
+  },
+  pt: {
+    cancelado: 'Cancelado.', semConfirmacao: 'Sem confirmação. Cancelado.', falhou: 'A voz falhou. Tente de novo.',
+    nada: 'Não há nada para confirmar.', perigo: 'Perigo', calculando: (n) => `Calculando a rota até ${n}.`,
+    semRota: (n) => `Não consegui calcular a rota até ${n}.`,
+    resumo: (n, km, min) => `Rota mais segura até ${n}: ${km} quilômetros, cerca de ${min} minutos.`,
+    atencao: (k) => `${k} ${k > 1 ? 'pontos' : 'ponto'} de atenção no caminho, veja no mapa.`,
+  },
+}
+const textos = (idioma) => FALAS[idioma] ?? FALAS.en
+
 /** Resumo falado montado só com números do /api/route; o perigo vem primeiro. */
-export function resumoRota(data, nome) {
+export function resumoRota(data, nome, idioma = 'en') {
+  const t = textos(idioma)
   const r = data?.rotas?.find((x) => x.tipo === 'mais_segura') ?? data?.rotas?.[0]
-  if (!r) return `Não consegui calcular a rota até ${nome}.`
+  if (!r) return t.semRota(nome)
   const alertas = r.alertas ?? []
-  const perigos = alertas.filter((a) => a.nivel === 'perigo').map((a) => `Perigo: ${a.mensagem}`)
+  const perigos = alertas.filter((a) => a.nivel === 'perigo').map((a) => `${t.perigo}: ${a.mensagem}`)
   const atencao = alertas.filter((a) => a.nivel === 'atencao').length
-  const km = (r.distancia_m / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })
-  return [
-    ...perigos,
-    `Rota mais segura até ${nome}: ${km} quilômetros, cerca de ${Math.round(r.tempo_estimado_min)} minutos.`,
-    atencao ? `${atencao} ${atencao > 1 ? 'pontos' : 'ponto'} de atenção no caminho, veja no mapa.` : '',
-  ].join(' ').trim()
+  const km = (r.distancia_m / 1000).toLocaleString(FALAS[idioma] ? idioma : 'en', { maximumFractionDigits: 1 })
+  return [...perigos, t.resumo(nome, km, Math.round(r.tempo_estimado_min)), atencao ? t.atencao(atencao) : ''].join(' ').trim()
 }
 
 /**
  * botao: liga/desliga o mãos-livres; status: linha de estado (aria-live).
  * pontoAtual() → {lat, lon} | null; rota(origem, destino) → Promise<dados do /api/route | null>;
- * perguntar(texto): manda ao assistente, que mostra e fala a resposta.
+ * perguntar(texto, idioma): manda ao assistente, que mostra e fala a resposta nesse idioma.
  */
 export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar }) {
   let ctx = null
@@ -62,10 +78,12 @@ export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar }) {
   let confirmarAte = 0
   let escutaAte = 0 // > agora: a próxima fala já é com o Guia
   let mudoAte = 0
+  let idioma = 'en' // o da última fala entendida; o "sim" da confirmação herda o do pedido
+  const dizer = (texto) => falar(texto, idioma)
 
   const mostrar = (texto) => { status.textContent = texto; status.hidden = !texto }
-  const ocioso = () => mostrar(!maosLivres ? 'microfone desligado · segure espaço para falar'
-    : ctx?.state === 'running' ? 'diga "Ei guia" · ou segure espaço' : 'clique na página para ligar o microfone')
+  const ocioso = () => mostrar(!maosLivres ? 'microphone off · hold space to talk'
+    : ctx?.state === 'running' ? 'say "Hey guide" · or hold space' : 'click the page to turn on the microphone')
 
   async function ligarMicrofone() {
     if (ctx) return
@@ -112,7 +130,7 @@ export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar }) {
     }
     if (pendente && agora > confirmarAte && !gravando) {
       pendente = null
-      falar('Sem confirmação. Cancelado.')
+      dizer(textos(idioma).semConfirmacao)
       return
     }
     if (escutaAte && agora > escutaAte && !gravando) {
@@ -135,7 +153,7 @@ export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar }) {
         gravando = antes
         antes = []
         abaixo = 0
-        mostrar('gravando…')
+        mostrar('recording…')
       }
       return
     }
@@ -162,16 +180,19 @@ export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar }) {
 
   async function processar(audio, ativado) {
     ocupado = true
-    mostrar('transcrevendo…')
+    mostrar('transcribing…')
     const confirmando = Boolean(pendente)
     try {
       const p = pontoAtual()
-      const r = await enviarVoz(audio, { ativado, confirmando, lat: p?.lat, lon: p?.lon })
-      if (r.texto) mostrar(`ouvi: “${r.texto}”`)
+      const r = await enviarVoz(audio, { ativado, confirmando, lat: p?.lat, lon: p?.lon, idioma: confirmando ? idioma : undefined })
+      if (r.texto) {
+        if (r.intencao !== 'nenhuma') idioma = r.idioma ?? idioma // conversa de fundo não troca o idioma
+        mostrar(`heard: “${r.texto}”`)
+      }
       await agir(r, confirmando, ativado)
     } catch (e) {
-      mostrar(`voz: ${e.message}`)
-      falar('A voz falhou. Tente de novo.')
+      mostrar(`voice: ${e.message}`)
+      dizer(textos(idioma).falhou)
     } finally {
       ocupado = false
     }
@@ -181,24 +202,24 @@ export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar }) {
     if (confirmando) {
       const acao = pendente
       pendente = null
-      if (r.intencao !== 'sim') return falar('Cancelado.')
-      falar(`Calculando a rota até ${acao.nome}.`)
-      return falar(resumoRota(await rota(acao.origem, acao.destino), acao.nome))
+      if (r.intencao !== 'sim') return dizer(textos(idioma).cancelado)
+      dizer(textos(idioma).calculando(acao.nome))
+      return dizer(resumoRota(await rota(acao.origem, acao.destino), acao.nome, idioma))
     }
     if (r.intencao === 'escutar') {
       bipe()
       escutaAte = Date.now() + ESCUTA_MS
-      return mostrar('ouvindo… pode falar')
+      return mostrar('listening… go ahead')
     }
     if (r.intencao === 'rota' && r.destino) {
       pendente = { origem: r.origem, destino: { lat: r.destino.lat, lon: r.destino.lon }, nome: curto(r.destino.nome) }
       confirmarAte = Date.now() + CONFIRMA_MS
-      return falar(r.fala)
+      return dizer(r.fala)
     }
-    if (r.intencao === 'rota') return falar(r.fala) // "marque no mapa onde você está"
-    if (r.intencao === 'pergunta') return perguntar(r.pergunta)
-    if (r.intencao === 'sim' || r.intencao === 'nao') return falar('Não há nada para confirmar.')
-    if (ativado && r.fala) falar(r.fala) // "Não entendi." só quando a pessoa apertou para falar
+    if (r.intencao === 'rota') return dizer(r.fala) // "marque no mapa onde você está"
+    if (r.intencao === 'pergunta') return perguntar(r.pergunta, idioma)
+    if (r.intencao === 'sim' || r.intencao === 'nao') return dizer(textos(idioma).nada)
+    if (ativado && r.fala) dizer(r.fala) // "Não entendi." só quando a pessoa apertou para falar
     else ocioso()
   }
 
@@ -211,11 +232,11 @@ export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar }) {
     try {
       await ligarMicrofone()
     } catch (err) {
-      return mostrar(`microfone indisponível: ${err.message}`)
+      return mostrar(`microphone unavailable: ${err.message}`)
     }
     segurando = true
     gravando = []
-    mostrar('ouvindo… solte espaço ao terminar')
+    mostrar('listening… release space when done')
   })
   document.addEventListener('keyup', (e) => {
     if (e.code !== 'Space' || digitando(e)) return
@@ -229,7 +250,7 @@ export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar }) {
       await ligarMicrofone()
     } catch (err) {
       ligado = false
-      mostrar(`microfone indisponível: ${err.message}`)
+      mostrar(`microphone unavailable: ${err.message}`)
     }
     maosLivres = ligado
     botao.classList.toggle('on', maosLivres)

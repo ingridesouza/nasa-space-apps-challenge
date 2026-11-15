@@ -40,7 +40,7 @@ LIMITE_SLOPE_PERIGO_DEG = 20.0
 #: peso extra aplicado à faixa "atenção" (15-20°) na variante "mais
 #: segura" -- penaliza mais forte que na variante "mais rápida", que só
 #: evita o que é realmente impassável (>=20°).
-PESO_ATENCAO = {"mais_segura": 6.0, "mais_rapida": 1.8}
+PESO_ATENCAO = {"mais_segura": 6.0, "mais_rapida": 1.8, "mais_suave": 30.0}  # mais_suave: replanejamento "está íngreme"
 
 #: desvio máximo (em metros) que vale a pena pra passar por um alvo
 #: científico -- bbox inteiro tem ~5.6km de lado, então 600m é um
@@ -408,7 +408,8 @@ def _astar_encadeado(elevacao, slope_deg, transform, pixel_size_m, pontos_rc: li
 
 
 def plan_route(
-    conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_lon, dose_rad_ugy_por_hora=None, paradas=None
+    conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_lon, dose_rad_ugy_por_hora=None, paradas=None,
+    tipos=("mais_segura", "mais_rapida"), evitar=None,
 ) -> dict:
     """paradas: lista opcional de (lat, lon) -- pontos que a rota precisa
     visitar em ordem, entre a origem e o destino (gap "paradas
@@ -423,6 +424,13 @@ def plan_route(
     pixel_size_deg = abs(transform.a)
     pixel_size_m = pixel_size_deg * MARS_METERS_PER_DEGREE
     slope_deg = _slope_grid_deg(elevacao, pixel_size_m)
+    # evitar: [(lat, lon, raio_m)] -- obstáculo relatado (replanejar.py) vira terreno intransponível
+    for lat, lon, raio_m in evitar or []:
+        r0, c0 = _latlon_to_rc(transform, lat, lon)
+        raio_px = math.ceil(raio_m / pixel_size_m)
+        linhas, colunas = np.ogrid[:slope_deg.shape[0], :slope_deg.shape[1]]
+        slope_deg = slope_deg.copy()
+        slope_deg[(linhas - r0) ** 2 + (colunas - c0) ** 2 <= raio_px ** 2] = 90.0
 
     def dentro_bbox(lat, lon):
         return bounds.left <= lon <= bounds.right and bounds.bottom <= lat <= bounds.top
@@ -436,7 +444,7 @@ def plan_route(
     origem_rc, destino_rc = pontos_rc[0], pontos_rc[-1]
 
     rotas = []
-    for tipo in ("mais_segura", "mais_rapida"):
+    for tipo in tipos:
         caminho = _astar_encadeado(elevacao, slope_deg, transform, pixel_size_m, pontos_rc, tipo)
         rotas.append(_monta_rota(tipo, caminho, elevacao, slope_deg, transform, pixel_size_m, dose_rad_ugy_por_hora))
 
@@ -445,7 +453,7 @@ def plan_route(
     # -- com poucos alvos cadastrados (feature 4), nem sempre vai existir
     # um perto o bastante, e aí essa variante simplesmente não aparece
     # (melhor que forçar um desvio absurdo só pra "ter ciência").
-    if not paradas:
+    if not paradas and not evitar and tipos == ("mais_segura", "mais_rapida"):  # replanejamento não oferece desvio científico
         alvo = _melhor_alvo_cientifico(origin_lat, origin_lon, dest_lat, dest_lon, todos_alvos_cientificos(conn))
         if alvo is not None:
             alvo_rc = _latlon_to_rc(transform, alvo["lat"], alvo["lon"])
