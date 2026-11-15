@@ -42,7 +42,7 @@ Time (raiz): `make build` · `make run` (API :8000) · `make front` · `make tes
 Só o ETL do F03/F04 (a partir de `data-pipeline/f03/`): `../../.venv/bin/python etl/build.py` (o `make build` já roda)
 
 ## Convenções
-- **Todo código e componente novo em inglês**: nomes de variáveis, funções, classes, arquivos, comentários, chaves JSON, endpoints, colunas SQL, textos da UI e mensagens de erro. Nada de identificador ou texto de interface em português.
+- **Tudo em inglês, sem exceção**: (1) todo código e componente novo — nomes de variáveis, funções, classes, arquivos, comentários, chaves JSON, endpoints, colunas SQL; (2) tudo que aparece na interface ou é devolvido pela API — textos da UI, mensagens de erro, rótulos, respostas do agente **e dados exibidos** (CSVs curados, descrições de alvos, notas, tipos); (3) cabeçalhos e conteúdo de CSV/JSON/YAML de entrada. Nada de identificador, dado curado ou texto de interface em português. Dado externo em outro idioma é traduzido no ETL.
 - Docs em `docs/` seguem em português. Commits em inglês, imperativo ("Add…", "Fix…").
 - Campo novo em `/api/point`: acrescentar, nunca renomear/remover chave existente (contrato compartilhado entre features).
 - Doc de feature em `docs/feature-NN-<slug>.md`.

@@ -49,9 +49,9 @@ from pathlib import Path
 
 from .base import Measurement, OrbitalLabel, Target
 
-# the "type" column of m8_targets.csv is curated text in Portuguese: substring -> kind
-_KIND = (("furo", "drill_hole"), ("crista", "ridge"), ("hollow", "hollow"),
-         ("contato", "contact"), ("feição", "feature"))
+# the "type" column of m8_targets.csv is curated text: substring -> kind
+_KIND = (("drill", "drill_hole"), ("ridge", "ridge"), ("hollow", "hollow"),
+         ("contact", "contact"), ("feature", "feature"))
 _MAST_CREDIT = "NASA/JPL-Caltech/MSSS"
 
 

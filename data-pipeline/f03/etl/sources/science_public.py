@@ -58,8 +58,8 @@ def _pct(v: float) -> str:
     return f"{v:.1f}%"
 
 
-# the "type" column of m8_targets.csv is curated text in Portuguese: substring -> kind
-_KIND = (("furo", "drill_hole"), ("crista", "ridge"), ("hollow", "hollow"), ("contato", "contact"))
+# the "type" column of m8_targets.csv is curated text: substring -> kind
+_KIND = (("drill", "drill_hole"), ("ridge", "ridge"), ("hollow", "hollow"), ("contact", "contact"))
 
 
 def _kind(type_text: str) -> str:
