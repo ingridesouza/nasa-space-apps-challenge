@@ -7,7 +7,7 @@ MODELO := gemma3:4b
 export OLLAMA_MODELS := $(CURDIR)/data/local/ollama
 OLLAMA_SOBE = command -v ollama >/dev/null && (curl -s localhost:11434 >/dev/null || (ollama serve >/dev/null 2>&1 &))
 
-.PHONY: build run front test
+.PHONY: build run front test voz-gravar voz-medir
 
 build:
 	test -x $(PY) || python3 -m venv .venv
@@ -24,6 +24,8 @@ build:
 	$(PY) scripts/cache_climatologia.py && \
 	$(PY) db/populate_raster_registry.py && \
 	cd f03 && $(PY) etl/build.py
+	# Voz (F08): Whisper no pacote offline, como o modelo do agente (escolha medida em make voz-medir)
+	$(PY) -c "from faster_whisper import download_model as d; [d(m, cache_dir='data/local/whisper') for m in ('large-v3', 'turbo')]"
 	@if command -v ollama >/dev/null; then $(OLLAMA_SOBE); sleep 3; ollama pull $(MODELO); \
 	else echo "ollama não instalado: sem agente (/api/ask responde 503; os alertas seguem). Instale e rode make build de novo."; fi
 
@@ -35,4 +37,12 @@ front:
 	@echo "Front servido pela API: rode 'make run' e abra http://localhost:8000"
 
 test:
-	cd api && $(PY) test_alertas.py && $(PY) test_agente.py && $(PY) test_previsao.py && $(PY) -m pytest -q test_f03.py
+	cd api && $(PY) test_alertas.py && $(PY) test_agente.py && $(PY) test_previsao.py && $(PY) test_voz.py && $(PY) -m pytest -q test_f03.py
+	@if command -v node >/dev/null; then node web/test_voz.mjs; else echo "node ausente: pulei web/test_voz.mjs"; fi
+
+# Fase 0 da voz: grava as frases no microfone da demo e compara os modelos Whisper
+voz-gravar:
+	cd api && $(PY) medir_voz.py --gravar
+
+voz-medir:
+	cd api && $(PY) medir_voz.py large-v3 turbo

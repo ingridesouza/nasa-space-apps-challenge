@@ -10,6 +10,7 @@ import * as mapa from './map.js'
 import { iniciarAssistente } from './ui/agente.js'
 import { renderCamadas } from './ui/camadas.js'
 import { iniciarRota } from './ui/rota.js'
+import { iniciarVoz } from './ui/voz.js'
 import { esc } from './ui/util.js'
 
 const $ = (id) => document.getElementById(id)
@@ -315,7 +316,7 @@ function definirDestino(p) {
   mapa.setEscalas([])
   instrucao(null)
   $('btn-rota').textContent = 'Editar rota'
-  atualizarRota(estado.posicao, p, [])
+  return atualizarRota(estado.posicao, p, [])
 }
 
 function cancelarRota() {
@@ -426,7 +427,17 @@ document.addEventListener('keydown', (e) => {
 })
 
 // ---------------- F08: assistente ----------------
-iniciarAssistente($('assistente'), $('btn-assistente'), () => estado.local ?? estado.posicao)
+const assistente = iniciarAssistente($('assistente'), $('btn-assistente'), () => estado.local ?? estado.posicao)
+
+// F08 voz: "Ei guia, rota até …" ou pergunta falada; a origem é sempre a posição atual
+iniciarVoz($('btn-voz'), $('voz-status'), {
+  pontoAtual: () => estado.posicao,
+  rota: (_origem, destino) => definirDestino({ ...destino, tipo: 'destino', rotulo: 'o destino da rota' }),
+  perguntar: (texto) => {
+    if ($('assistente').hidden) assistente.abrir(true)
+    return assistente.enviar(texto, true)
+  },
+})
 
 // ---------------- Carga inicial ----------------
 getPosicao()

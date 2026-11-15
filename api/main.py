@@ -16,7 +16,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import numpy as np
 from fastapi import FastAPI, HTTPException, Query, Request, Response
+from fastapi.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -35,6 +37,7 @@ from tile_server import render_tile
 from vector_queries import all_photos, nearby_photos, nearest_science_target
 import ficha
 import panorama
+from voz import MODELO, MODELO_CONFIRMACAO, TAXA_HZ, _modelo, interpretar, transcrever
 
 # Sol de referência da missão -- dado real cacheado (não é "hoje",
 # é o mesmo sol usado nos testes de REMS/RAD, ver PROXIMOS-PASSOS.md).
@@ -325,6 +328,86 @@ def ask(p: Pergunta, request: Request):
     if perigos:
         resposta = f"Perigo: {perigos} {resposta}"
     return {"resposta": resposta, "fontes": fontes_do_contexto(ctx), "alertas": ponto["alertas"]}
+
+
+LIMITE_AUDIO_BYTES = 15 * TAXA_HZ * 4  # 15 s de float32 mono
+
+
+@app.on_event("startup")
+def carregar_whisper():
+    """Carrega os modelos em segundo plano: sem isso a 1ª fala espera ~10 s a mais.
+    Se o modelo não estiver baixado, a thread falha no log e /api/voz responde 503."""
+    import threading
+    for nome in (MODELO, MODELO_CONFIRMACAO):
+        threading.Thread(target=_modelo, args=(nome,), daemon=True).start()
+
+
+def destinos_por_voz(lat: float | None, lon: float | None) -> list[dict]:
+    """Só o que tem coordenada real: a base, o ponto marcado e os alvos do banco."""
+    destinos = [{"nome": "a base", "lat": BASE_LAT_LON[0], "lon": BASE_LAT_LON[1],
+                 "chaves": ["base", "habitat"], "base": True}]
+    if lat is not None and lon is not None:
+        destinos.append({"nome": "o ponto marcado", "lat": lat, "lon": lon, "chaves": ["ponto", "marcado"]})
+    conn = get_connection()
+    try:
+        destinos += [{"nome": n, "lat": la, "lon": lo} for n, la, lo in conn.execute("SELECT nome, lat, lon FROM science_targets")]
+    finally:
+        conn.close()
+    return destinos
+
+
+@app.post("/api/voz")
+async def voz(request: Request, ativado: bool = False, confirmando: bool = False,
+              lat: float | None = Query(None, ge=-90, le=90), lon: float | None = Query(None, ge=-180, le=360)):
+    """Feature 08, voz: áudio bruto (float32 mono 16 kHz) -> texto -> comando.
+    lat/lon: ponto marcado (onde o astronauta está). ativado: já veio de
+    "segure espaço" ou da janela do "Confirma?" -- dispensa a palavra "Guia".
+    confirmando: espera só "sim"/"não", então vai no modelo rápido.
+    Mãos-livres (nenhum dos dois): o modelo rápido confere antes se a fala é com o
+    "Guia"; conversa de fundo não ocupa o modelo grande. Só "Ei guia" devolve
+    intencao "escutar": o front bipa e trata a próxima fala como ativada.
+    O modelo grande também precisa ouvir o "guia" para a fala valer.
+    Ver docs/feature-08-voz-plano-execucao.md."""
+    corpo = await request.body()
+    if len(corpo) > LIMITE_AUDIO_BYTES:
+        raise HTTPException(status_code=413, detail="áudio acima de 15 s")
+    if not corpo or len(corpo) % 4:
+        raise HTTPException(status_code=400, detail="corpo precisa ser float32 mono 16 kHz")
+    audio = np.frombuffer(corpo, np.float32)
+    if not np.isfinite(audio).all():
+        raise HTTPException(status_code=400, detail="áudio com valor inválido")
+    try:
+        if not (ativado or confirmando):
+            # o small só descarta o que ouviu com clareza e sem "guia"; na dúvida, o grande decide.
+            # Ele não confirma sozinho: com o vocabulário, ouviu "Hoje Guia" em "Hoje o dia".
+            rapido = await run_in_threadpool(transcrever, audio, MODELO_CONFIRMACAO)  # ~1 s
+            gatilho = interpretar(rapido["texto"] or "", [], exigir_ativacao=True)
+            if rapido["texto"] and not gatilho["ativado"]:
+                return {**rapido, "ativado": False, "intencao": "nenhuma", "destino": None, "fala": None}
+            if gatilho["ativado"] and gatilho["intencao"] == "nenhuma":  # só "Ei guia": escuta já, sem o grande (~6 s)
+                return {**rapido, **gatilho, "intencao": "escutar", "fala": None}
+        modelo = MODELO_CONFIRMACAO if confirmando else MODELO
+        ouvido = await run_in_threadpool(transcrever, audio, modelo)  # CPU pesada: fora do loop da API
+    except (ImportError, OSError, ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=503, detail=f"voz indisponível (modelo Whisper local: rode make build): {e}")
+    if ouvido["texto"] is None:
+        return {**ouvido, "intencao": "nenhuma", "destino": None, "fala": "Não entendi."}
+
+    destinos = destinos_por_voz(lat, lon)
+    cmd = interpretar(ouvido["texto"], destinos, exigir_ativacao=not (ativado or confirmando))
+    if cmd["ativado"] and cmd["intencao"] == "nenhuma" and not confirmando:
+        cmd["intencao"] = "escutar"  # só "Ei guia", sem pedido: o front bipa e espera a próxima fala
+    destino = cmd["destino"]
+    origem = {"lat": lat, "lon": lon} if lat is not None and lon is not None else {"lat": BASE_LAT_LON[0], "lon": BASE_LAT_LON[1]}
+    if destino and destino.get("chaves") == ["ponto", "marcado"]:
+        origem = {"lat": BASE_LAT_LON[0], "lon": BASE_LAT_LON[1]}  # rota até o ponto sai da base
+    curto = lambda d: d["nome"].split("—")[0].strip()
+    fala = None
+    if cmd["intencao"] == "rota" and destino and (destino["lat"], destino["lon"]) == (origem["lat"], origem["lon"]):
+        destino, fala = None, "Marque no mapa onde você está para eu calcular a rota."
+    elif cmd["intencao"] == "rota" and destino:
+        fala = f"Entendi: rota até {curto(destino)}. Confirma?"
+    return {**ouvido, **cmd, "destino": destino, "origem": origem, "fala": fala}
 
 
 @app.get("/api/previsao")

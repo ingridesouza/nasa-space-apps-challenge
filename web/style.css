@@ -290,3 +290,8 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .legenda-rota .legenda-titulo{display:block;margin-bottom:4px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;opacity:.6}
 .h2g2-ass-form input:focus-visible{outline:none}
 .h2g2-fechar-mapa{display:flex;align-items:center;justify-content:center;color:var(--b200)}
+/* F08 voz: botão do microfone e linha de estado (ouvindo / transcrevendo / ouvi "…") */
+.pilula.btn-voz{left:auto;right:20px;transform:none}
+@media (max-width:900px){.pilula.btn-voz{right:auto;left:16px}}
+.btn-voz[aria-pressed='false']{opacity:.55}
+.voz-status{position:absolute;z-index:15;top:112px;left:50%;transform:translateX(-50%);max-width:min(90vw,640px);padding:8px 16px;font-size:12px;text-align:center;color:var(--b200);border:1px solid var(--line);background:rgba(10,10,11,.75);pointer-events:none}

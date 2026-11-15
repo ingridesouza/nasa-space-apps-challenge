@@ -252,5 +252,6 @@ export function iniciarRota(container, callbacks) {
     st.carregando = false
     cb.onRotaAtiva(rotaAtiva())
     render()
+    return st.data // F08 voz: o resumo falado sai destes números
   }
 }

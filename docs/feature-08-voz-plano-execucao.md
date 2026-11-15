@@ -17,8 +17,8 @@ microfone ─▶ detector de fala (navegador) ─▶ Whisper (API) ─▶ palavr
 
 | Decisão | Escolha | Por quê |
 | --- | --- | --- |
-| Modelo de transcrição | `large-v3` se a fase 0 medir até ~5 s por frase; senão `turbo` | O `large-v3` é o Whisper mais preciso fora do inglês. O `turbo` tem só 4 camadas no decodificador e perde precisão nisso |
-| Idioma | Detectado, mas **só entre os permitidos** (`pt`, `en`) | A detecção livre erra em frase curta e transcreve português "em inglês" |
+| Modelo de transcrição | **`large-v3`** para o comando, **`small`** para o "sim/não" da confirmação | Medido em 14/11 (i5-13420H, frase sintética de 2,3 s): `large-v3` 5,8 s com a CPU livre, e ouviu "rota"; o `turbo` ouviu "hota" e ganha pouco, porque o peso na CPU está no codificador, igual nos dois. O `small` responde em 1,1 s |
+| Idioma | **Português fixo**; `H2G2_IDIOMA=auto` liga a detecção | A detecção dobra o tempo (16,9 s × 8,7 s) e errou em frase curta: "Sim." virou "Seeing." |
 | "Treino" para hoje | Lista de palavras do domínio e nomes de destinos passados ao Whisper | Fine-tuning precisa de horas de áudio rotulado e de GPU. Fica para depois, com o áudio gravado em uso real |
 | Como o áudio chega à API | O navegador já manda o áudio bruto em 16 kHz | Evita a biblioteca de decodificação de áudio do Python, hoje incompatível com o faster-whisper neste ambiente |
 | Ativação | Palavra **"Guia"** no início da frase, mais "segure espaço para falar" como plano B | Uma palavra comum em português o Whisper transcreve bem. "H2G2" ele escreveria de dez jeitos |
