@@ -2,6 +2,7 @@
 // with the EVA window from the local forecast. The origin is always the current position.
 import { deleteMeasurement, getForecast, getRoute, postMeasurement } from '../api.js'
 import { SLOPE_COLOR_HEX } from '../layers.js'
+import { paginate } from './pages.js'
 import { coord, esc, num } from './util.js'
 
 const TYPE_LABEL = { safest: 'Safest', fastest: 'Fastest', most_science: 'Most science' }
@@ -227,8 +228,10 @@ function render() {
   }
   el.innerHTML = `<div class="route-wrap">
     <div class="route-body">${body}
-      <button type="button" class="link-btn route-cancel" data-action="cancel">✕ cancel route</button></div>
+      <button type="button" class="link-btn route-cancel page-fixed" data-action="cancel">✕ cancel route</button></div>
   </div>`
+  // F11: no scrolling; card sections become pages (‹ 1/3 ›)
+  paginate(el, { sel: ':scope > .route-wrap > .route-body > *', max: () => Math.min(innerHeight - 40, 560) })
 }
 
 /** callbacks: onCancel(), onActiveRoute(route|null, others[]), onAddStop(), onMarkPosition(), onRemoveStop(i), onOpenTarget(target). */

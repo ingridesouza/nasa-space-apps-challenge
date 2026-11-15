@@ -26,10 +26,11 @@ CONFIRM_MODEL = os.environ.get("H2G2_WHISPER_CONFIRM", "small")
 LANGUAGE = os.environ.get("H2G2_LANGUAGE", "en")
 RATE_HZ = 16000
 # Words Whisper should favor: activation, domain and destinations accepted by voice.
-# "EVA" was left out: it pulled "Hey guide" towards "EVA". "Hey guide" goes in whole, not only "Guide".
-VOCABULARY = ("Hey guide, route, base, habitat, boxwork, Curiosity, Altadena, Totoral, Sillar, "
+# "EVA" was left out: it pulled "Hey Marvin" towards "EVA". "Hey Marvin" goes in whole, not only "Marvin".
+VOCABULARY = ("Hey Marvin, route, base, habitat, boxwork, Curiosity, Altadena, Totoral, Sillar, "
               "Gale crater, sol, slope, radiation, science target, safety, climb, "
-              "emergency, toxic gas, leak, oxygen, suit, pressure, dust")
+              "emergency, toxic gas, leak, oxygen, suit, pressure, dust, "
+              "Atlas, Vega, Polaris, Orion, Rigel, Altair, Draco, Castor, Pollux, Antares, zoom, layer, panorama, card, next")
 MAX_NO_SPEECH = 0.6    # no_speech_prob above this: the segment is silence/noise
 # avg_logprob below this: the model is guessing. -0.6 = confidence 0.55; on the 1st real recording
 # (11/14, laptop microphone) the invented phrases came with 0.50-0.55 and the good ones with 0.61+.
@@ -79,9 +80,9 @@ def transcribe(audio: np.ndarray, model: str = MODEL) -> dict:
 
 # ---- phase 2: understand the command (rules, no model: 5 destinations fit in a list) ----
 
-ACTIVATION = {"guide", "guides", "guy", "guid"}  # short spellings Whisper produces
-ACTIVATION_WITHIN = 3  # "Hello guide, ..." / "Hey, guide, ..." / "Hi, oh guide, ..."
-# A route command is short ("Guide, take me to the boxwork ridges" = 7). A long report
+ACTIVATION = {"marvin", "marvim", "marvyn", "marven"}  # spellings Whisper produces
+ACTIVATION_WITHIN = 3  # "Hello Marvin, ..." / "Hey, Marvin, ..." / "Hi, oh Marvin, ..."
+# A route command is short ("Marvin, take me to the boxwork ridges" = 7). A long report
 # ("I'm in the middle of a route and a gas showed up") goes whole to the model, even mentioning "route".
 MAX_COMMAND_WORDS = 8
 ROUTE = {"route", "path", "take", "go", "lead", "walk", "navigate"}
@@ -137,11 +138,11 @@ def interpret(text: str, destinations: list[dict], require_activation: bool = Tr
     Returns {activated, intent: route|yes|no|question|none, destination, question}.
     Never returns a coordinate outside the list: an unknown destination becomes None."""
     w = words(text)
-    # short spellings only exact: in fuzzy matching, "guy" would match "gay"
-    i = next((i for i, x in enumerate(w[:ACTIVATION_WITHIN]) if x in ACTIVATION or _similar(x, {"guide"})), None)
+    # short spellings only exact: in fuzzy matching, other names could match
+    i = next((i for i, x in enumerate(w[:ACTIVATION_WITHIN]) if x in ACTIVATION or _similar(x, {"marvin"})), None)
     activated = i is not None
     rest = w[i + 1:] if activated else w
-    # what comes after "Guide", with the original accents and punctuation (same word split)
+    # what comes after "Marvin", with the original accents and punctuation (same word split)
     tokens = list(re.finditer(r"[^\W_]+", text))
     question = text[tokens[i].end():].lstrip(" ,.!?;:") if activated and i < len(tokens) else text.strip()
     base = {"activated": activated, "destination": None, "question": question}

@@ -220,6 +220,26 @@ export function center(p, route = null) {
   } else if (p) map.jumpTo({ center: [p.lon, p.lat], zoom: Math.max(map.getZoom(), 16) })
 }
 
+/** F11 voice: relative zoom (whole levels). */
+export function zoomBy(delta) {
+  map?.easeTo({ zoom: map.getZoom() + delta, duration: 300 })
+}
+
+/** F11 voice: pans a third of the screen toward the requested side. */
+export function pan(direction) {
+  if (!map) return
+  const [dx, dy] = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[direction]
+  const c = map.getContainer()
+  map.panBy([dx * c.clientWidth / 3, dy * c.clientHeight / 3], { duration: 300 })
+}
+
+/** F11 voice: map center (the crosshair), to read or mark without a click. */
+export function mapCenter() {
+  if (!map) return null
+  const c = map.getCenter()
+  return { lat: c.lat, lon: c.lng }
+}
+
 export function clearPoint() {
   clickMarker?.remove()
 }

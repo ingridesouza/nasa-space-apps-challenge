@@ -33,7 +33,7 @@ Protótipo de apoio a astronauta na cratera Gale (área do Curiosity). Princípi
 | `docs/` | Proposta, pitch, plano de produto, `feature-NN-*.md` |
 | `subprojetos/f03-f04-victoria/` | Só docs do F03/F04 (código e dados já mesclados em `api/`, `data-pipeline/f03/` e `web/`) |
 
-Features: 01 mapa em camadas · 02 rota+risco · 03 fotos/panorama no ponto · 04 ficha científica · 05 condições REMS/RAD · 06 clima · 07 HUD · 08 agente local · 09 sync Terra–Marte · 10 perigos colaborativos. Detalhes em `docs/Plano_Produto_Completo.md`.
+Features: 01 mapa em camadas · 02 rota+risco · 03 fotos/panorama no ponto · 04 ficha científica · 05 condições REMS/RAD · 06 clima · 07 HUD · 08 agente local · 09 sync Terra–Marte · 10 perigos colaborativos · 11 visor por voz (ids m-A…, comandos em `web/commands.json`). Detalhes em `docs/Plano_Produto_Completo.md`.
 
 ## Comandos
 

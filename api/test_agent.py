@@ -43,7 +43,7 @@ def test_ollama_down_gives_503_with_alerts():
 def test_distress_answered_by_rule_without_model():
     url, agent.OLLAMA_URL = agent.OLLAMA_URL, "http://127.0.0.1:9"  # proves the model is not called
     try:
-        r = ask(Question(question="Hey guide, I fell into a hole, now what?", lat=SOL_4309[0], lon=SOL_4309[1]), Req())
+        r = ask(Question(question="Hey Marvin, I fell into a hole, now what?", lat=SOL_4309[0], lon=SOL_4309[1]), Req())
     finally:
         agent.OLLAMA_URL = url
     assert r["distress"] and r["answer"].startswith("Stop") and "The base is" in r["answer"], r

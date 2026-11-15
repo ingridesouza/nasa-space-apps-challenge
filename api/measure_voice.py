@@ -21,14 +21,14 @@ SECONDS = 6
 DESTINATIONS = [{"name": "the base", "lat": 0, "lon": 0, "keys": ["base", "habitat"], "base": True}] + [
     {"name": n, "lat": 0, "lon": 0} for n in ("Boxwork ridges", "Altadena", "Totoral / Sillar")]
 PHRASES = [
-    "Guide, what is the best route to the base?",
-    "Guide, route to Altadena.",
-    "Guide, take me to the boxwork ridges.",
-    "Guide, I want to go back to the base.",
-    "Guide, route to Totoral.",
-    "Guide, can I climb here safely?",
-    "Guide, how much radiation will I get today?",
-    "Guide, is there a science target near here?",
+    "Marvin, what is the best route to the base?",
+    "Marvin, route to Altadena.",
+    "Marvin, take me to the boxwork ridges.",
+    "Marvin, I want to go back to the base.",
+    "Marvin, route to Totoral.",
+    "Marvin, can I climb here safely?",
+    "Marvin, how much radiation will I get today?",
+    "Marvin, is there a science target near here?",
     "Yes.",
     "No, cancel.",
 ]

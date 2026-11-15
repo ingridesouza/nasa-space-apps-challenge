@@ -7,10 +7,12 @@ import {
 } from './api.js'
 import { TOGGLEABLE_LAYERS } from './layers.js'
 import * as map from './map.js'
-import { initAssistant } from './ui/agent.js'
+import { initAssistant, speak } from './ui/agent.js'
 import { arrivalHour, renderLayers } from './ui/layers-panel.js'
 import { initRoute, routeForAgent, showOptions } from './ui/route.js'
 import { initVoice } from './ui/voice.js'
+import { context, describeOpen, execute, initCommands, register } from './ui/commands.js'
+import { changePage, paginate } from './ui/pages.js'
 import { esc } from './ui/util.js'
 
 const $ = (id) => document.getElementById(id)
@@ -131,6 +133,7 @@ function collapseGroup(id, c) {
   t.textContent = c ? '‹' : '›'
   t.title = `${c ? 'Expand' : 'Collapse'} ${t.dataset.name}`
   t.setAttribute('aria-expanded', String(!c))
+  if (id === 'g-route' && !c) requestAnimationFrame(() => paginate($('c-route'))) // hidden, it measured 0 px
   if (id === 'g-images') {
     $('science-cards').classList.toggle('collapsed', c)
     if (!c) requestAnimationFrame(() => { viewer?.resize(); placeScienceCards() }) // pannellum measured 0 px while hidden
@@ -261,8 +264,12 @@ function showScience(d, open = false) {
   $('science-name').textContent = name
   $('science-type').textContent = type
   $('science').innerHTML = H2G2Card.html(d)
-  requestAnimationFrame(placeScienceCards)
+  requestAnimationFrame(() => { paginateScience(); placeScienceCards() })
 }
+// F11: card without scrolling, in pages; the list of lines breaks item by item
+const paginateScience = () => paginate($('science'), { sel: ':scope > :not(ul), :scope > ul > li', max: () => innerHeight * 0.42 })
+$('c-science').addEventListener('toggle', () => { if ($('c-science').open) paginateScience() })
+addEventListener('resize', () => { paginateScience(); paginate($('c-route')); paginate($('assistant')) })
 
 // ---------------- Map: circle <-> full screen ----------------
 const layers = () => renderLayers($('layers-panel'), state)
@@ -439,7 +446,11 @@ async function mapClick(lat, lon) {
     msg(null)
     return setDestination(p)
   }
-  // explore: quick readout of lat, lon and elevation
+  return readPoint(lat, lon) // explore: quick readout of lat, lon and elevation
+}
+
+/** Writes (and returns) lat, lon and elevation of the point in the readout line. */
+async function readPoint(lat, lon) {
   const mine = ++readoutSeq
   const el = $('readout')
   el.hidden = false
@@ -456,6 +467,7 @@ async function mapClick(lat, lon) {
   } catch (e) {
     if (mine === readoutSeq) el.textContent = `${lat.toFixed(6)}° · ${lon.toFixed(6)}°E · ${e.message}`
   }
+  return el.textContent
 }
 
 // ---------------- Layers (delegation: the HTML is rebuilt on every render) ----------------
@@ -536,13 +548,16 @@ $('layers-panel').addEventListener('click', (e) => {
 document.addEventListener('click', (e) => { if (!e.target.closest('.lyr-sel')) closeAtmMenu() })
 
 // ---------------- Keyboard ----------------
-document.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape' || !$('assistant').hidden) return // the assistant handles its own Esc
+function back() {
   const atmMenu = $('layers-panel').querySelector('.lyr-menu')
   if (atmMenu && !atmMenu.hidden) return closeAtmMenu()
   if (document.body.classList.contains('viewer-front')) closeViewer()
   else if (state.map !== 'viewer') closeMap()
   else closeViewer()
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || !$('assistant').hidden) return // the assistant handles its own Esc
+  back()
 })
 
 // ---------------- F08: assistant ----------------
@@ -574,7 +589,158 @@ initVoice($('btn-voice'), $('voice-status'), {
     if ($('assistant').hidden) assistant.open(true)
     return assistant.send(text, true)
   },
+  execute,
+  context,
 })
+
+// ---------------- F11: actions of each block (catalog in commands.json) ----------------
+const activeViewer = () => viewerBg ?? viewer
+const clickRoute = (sel) => { const b = $('c-route').querySelector(sel); if (!b) return false; b.click() }
+/** Field of the route card that only reacts to 'change' (route.js). */
+function fill(sel, value) {
+  const i = $('c-route').querySelector(sel)
+  if (!i) return 'That field only appears once the route is computed.'
+  i.value = value
+  i.dispatchEvent(new Event('change', { bubbles: true }))
+}
+function setLayer(layer, visible, opacity) {
+  const c = state.layers[layer]
+  c.visible = visible
+  if (opacity !== undefined) { c.opacity = opacity; map.setLayerOpacity(layer, opacity) }
+  map.setLayerVisible(layer, visible)
+  layers()
+}
+register('m-A', {
+  expand: () => { if (state.map !== 'viewer') return 'The map is already open.'; openMap('explore') },
+  collapse: () => { if (state.map === 'viewer') return 'The map is already collapsed.'; closeMap() },
+  zoom_in: ({ levels }) => { map.zoomBy(levels) },
+  zoom_out: ({ levels }) => { map.zoomBy(-levels) },
+  move: ({ direction }) => { map.pan(direction) },
+  center: () => { map.center(state.destination ?? state.position, state.route) },
+  read: async () => {
+    const c = map.mapCenter()
+    if (!c) return 'The map has not loaded yet.'
+    if (state.map === 'viewer') openMap('explore')
+    $('readout').hidden = false
+    speak((await readPoint(c.lat, c.lon)).replaceAll('·', ',').replace('°E', ' degrees east'))
+  },
+})
+register('m-B', {
+  show: ({ layer }) => setLayer(layer, true),
+  hide: ({ layer }) => setLayer(layer, false),
+  opacity: ({ layer, value }) => setLayer(layer, true, value / 100),
+})
+register('m-C', {
+  plan: () => { openMap('route') },
+  type: ({ type }) => clickRoute(`[data-type="${type}"]`),
+  sol: ({ delta }) => clickRoute(`[data-sol-step="${delta}"]`),
+  target: () => clickRoute('[data-action="target"]'),
+  next: () => changePage($('c-route'), 1) || 'Route: already on the last page.',
+  previous: () => changePage($('c-route'), -1) || 'Route: already on the first page.',
+  collapse: () => { collapseGroup('g-route', true) },
+  expand: () => { collapseGroup('g-route', false) },
+  cancel: () => { if (!state.routeActive) return 'There is no route.'; cancelRoute() },
+  destination_center: () => {
+    const c = map.mapCenter()
+    if (!c) return 'The map has not loaded yet.'
+    if (state.map !== 'route') openMap('route')
+    $('lat').value = c.lat.toFixed(6)
+    $('lon').value = c.lon.toFixed(6)
+    setDestination(c)
+  },
+  stop: () => {
+    const c = map.mapCenter()
+    if (!state.destination) return 'Set the destination before the stop.'
+    if (!c) return 'The map has not loaded yet.'
+    state.stops.push(c)
+    map.setStops(state.stops)
+    updateRoute(state.position, state.destination, state.stops)
+  },
+  remove_stop: ({ n }) => {
+    if (!state.stops[n - 1]) return `There is no stop ${n}.`
+    state.stops.splice(n - 1, 1)
+    map.setStops(state.stops)
+    updateRoute(state.position, state.destination, state.stops)
+  },
+  go_sol: ({ sol }) => fill('[data-sol-eva]', sol),
+  o2: ({ liters }) => fill('[data-field="o2-capacity"]', liters),
+  measurement: ({ sol, minimum, maximum, pressure, dose }) => {
+    const f = $('c-route').querySelector('form[data-measure]')
+    if (!f) return 'Open a route with the forecast loaded to record the measurement.'
+    Object.entries({ sol: Math.round(sol), temp_min_c: minimum, temp_max_c: maximum, pressure_pa: pressure, dose_ugy_day: dose ?? '' })
+      .forEach(([k, v]) => { f.elements[k].value = v })
+    f.requestSubmit()
+  },
+  delete_measurement: () => clickRoute('[data-delete-measurement]'),
+})
+register('m-D', {
+  expand: () => { if (!viewer) return 'No panorama here.'; if (!inViewer) expand() },
+  collapse: () => { if (!inViewer) return 'The panorama is not in the viewer.'; collapse() },
+  rotate: ({ direction, degrees }) => {
+    const v = activeViewer()
+    if (!v) return 'No panorama here.'
+    if (direction === 'left' || direction === 'right') v.setYaw(v.getYaw() + (direction === 'right' ? degrees : -degrees))
+    else v.setPitch(v.getPitch() + (direction === 'up' ? degrees : -degrees))
+  },
+  zoom_in: () => { const v = activeViewer(); if (!v) return 'No panorama here.'; v.setHfov(v.getHfov() - 15) },
+  zoom_out: () => { const v = activeViewer(); if (!v) return 'No panorama here.'; v.setHfov(v.getHfov() + 15) },
+  center: () => { const v = activeViewer(); if (!v) return 'No panorama here.'; v.setYaw(pointYaw) },
+})
+register('m-E', {
+  open: ({ n }) => {
+    const ph = photoList[photoPage * PHOTOS_PER_PAGE + n - 1]
+    if (!ph) return `There is no photo ${n} on this page.`
+    openPhoto(ph)
+  },
+  next: () => {
+    if ((photoPage + 1) * PHOTOS_PER_PAGE >= photoList.length) return 'Photos: already on the last page.'
+    photoPage++; renderPhotos(1)
+  },
+  previous: () => {
+    if (photoPage === 0) return 'Photos: already on the first page.'
+    photoPage--; renderPhotos(-1)
+  },
+  collapse: () => { collapseGroup('g-images', true) },
+  expand: () => { collapseGroup('g-images', false) },
+})
+register('m-F', {
+  open: () => { if ($('c-science').hidden) return 'No science card open.'; $('c-science').open = true },
+  close: () => { $('c-science').open = false },
+  next: () => changePage($('science'), 1) || 'Science card: already on the last page.',
+  previous: () => changePage($('science'), -1) || 'Science card: already on the first page.',
+})
+register('m-G', {
+  open: () => { assistant.open(true) },
+  close: () => { assistant.open(false) },
+  next: () => changePage($('assistant'), 1) || 'Assistant: there is no older answer.',
+  previous: () => changePage($('assistant'), -1) || 'Assistant: already on the newest.',
+  listen: () => {
+    const b = $('assistant').querySelector('.h2g2-asst-item:not(.page-out) [data-listen]')
+    if (!b) return 'There is no answer to listen to.'
+    b.click()
+  },
+})
+register('m-H', {
+  close: () => { if ($('viewer-close').hidden) return 'The viewer is already empty.'; closeViewer() },
+})
+register('m-I', {
+  set: ({ lat, lon }) => {
+    if (state.map !== 'route') openMap('route')
+    $('lat').value = lat
+    $('lon').value = lon
+    $('coords').requestSubmit()
+  },
+})
+register('m-J', {
+  read: () => { if ($('c-status').hidden) return 'There is no warning.'; speak($('c-status').textContent.trim()) },
+})
+register('sys', {
+  back: () => { if (!$('assistant').hidden) assistant.open(false); else back() },
+  silence: () => { speechSynthesis.cancel() },
+  microphone: () => { if ($('btn-voice').getAttribute('aria-pressed') !== 'true') return 'The microphone is already off.'; $('btn-voice').click() },
+  help: () => { speak(describeOpen()) },
+})
+initCommands().catch((e) => console.warn('command catalog unavailable:', e))
 
 // ---------------- Initial load ----------------
 getPosition()

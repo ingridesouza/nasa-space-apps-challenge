@@ -41,7 +41,7 @@ front:
 	@echo "Front is served by the API: run 'make run' and open http://localhost:8000"
 
 test:
-	cd api && $(PY) test_alerts.py && $(PY) test_agent.py && $(PY) test_forecast.py && $(PY) test_voice.py && $(PY) -m pytest -q test_f03.py
+	cd api && $(PY) test_alerts.py && $(PY) test_agent.py && $(PY) test_forecast.py && $(PY) test_voice.py && $(PY) test_commands.py && $(PY) -m pytest -q test_f03.py
 	@if command -v node >/dev/null; then node web/test_voice.mjs; else echo "node missing: skipped web/test_voice.mjs"; fi
 
 # Voice phase 0: record the phrases on the demo microphone and compare the Whisper models
