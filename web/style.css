@@ -51,11 +51,10 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 
 /* ---------- layout: viewer fills everything, cards float ---------- */
 .app{position:relative;height:100vh;height:100dvh}
-.viewer{position:absolute;inset:0;background-color:#000;overflow:hidden}
+.viewer{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 35%,rgba(0,0,0,.85) 100%),linear-gradient(rgba(0,0,0,.6),rgba(0,0,0,.6)),#000 url('/img/mars-pano.jpg') center/cover no-repeat;overflow:hidden}
 .viewer-hud{position:absolute;top:16px;left:20px;z-index:13;display:flex;flex-direction:column;gap:4px;pointer-events:none;text-shadow:0 1px 3px #000}
 .viewer-stage{position:absolute;inset:0;display:grid;place-items:center}
 .viewer-stage #pano-bg{width:100%;height:100%}
-.viewer-empty{color:var(--dim);font-size:12px;letter-spacing:.08em}
 .viewer-img{max-width:100%;max-height:100%;object-fit:contain}
 .viewer-close{position:absolute;top:80px;left:20px;z-index:9}
 

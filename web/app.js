@@ -169,7 +169,6 @@ function expand() {
     hotSpots: hotSpots(), hfov: HFOV_BG, pitch: voff * CENTER_BG, yaw: viewer.getYaw(),
   }))
   roPano.observe(d)
-  $('viewer-empty').hidden = true
   $('viewer-close').hidden = false
   inViewer = true
   viewerInFront(true)
@@ -181,7 +180,6 @@ function expand() {
 function collapse() {
   if (viewerBg) { viewerBg.destroy(); viewerBg = null }
   $('pano-bg')?.remove()
-  $('viewer-empty').hidden = !!viewer
   $('viewer-close').hidden = true
   inViewer = false
   collapseGroup('g-images', false)
@@ -242,7 +240,6 @@ function openPhoto(ph) {
   $('viewer-img').src = ph.img
   $('viewer-img').alt = ph.label
   $('viewer-img').hidden = false
-  $('viewer-empty').hidden = true
   $('viewer-close').hidden = false
   viewerInFront(true)
 }
@@ -252,7 +249,6 @@ function closePhoto() {
   openedPhoto = null
   $('viewer-img').hidden = true
   $('viewer-img').removeAttribute('src')
-  $('viewer-empty').hidden = inViewer
   $('viewer-close').hidden = !inViewer
 }
 function closeViewer() { if (inViewer) collapse(); closePhoto(); viewerInFront(false) }
