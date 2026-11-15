@@ -18,7 +18,6 @@ and [`docs/PITCH.md`](docs/PITCH.md).
 | `api/` | FastAPI API (feature 01 map, 02 route/A*, 08 alerts+rover trail) — also serves `web/` at the root (`/`), same origin. See [`api/README.md`](api/README.md) |
 | `data-pipeline/` | ETL for the real data (Mars Trek, PDS, MMGIS, MSL image API) — adapters + `fetch_*`/`seed_*` scripts. See [`data-pipeline/README.md`](data-pipeline/README.md) |
 | `web/` | **The project's only frontend**, plain HTML/CSS/JS (features 01 to 08) — no bundler/`npm install`, MapLibre and fonts vendored. The React `frontend/` was actually removed on 2026-11-14 (see note below). See [`docs/migracao-front-html-puro.md`](docs/migracao-front-html-puro.md) |
-| `subprojetos/f03-f04-victoria/` | Docs for feature 03 (photos/panorama at the point) and 04 (science card). Code in `api/panorama.py` and `api/science_card.py`, ETL in `data-pipeline/f03/` |
 | `docs/` | Product proposal, pitch, feature docs. See [`docs/README.md`](docs/README.md) |
 | `NEXT-STEPS.md` | Real technical status of each data source and each feature -- the most honest doc in the repo about what actually works |
 | `CLAUDE.md` | Architecture guidelines for the team -- motivated the move to `web/`, see section below |
