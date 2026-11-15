@@ -22,8 +22,11 @@ export function speak(text) {
  * currentPoint(): {lat, lon, label} of the destination or current position, or null (the API uses the base).
  * currentRoute(): open route (routeForAgent) or null; with it the API runs the route forecast.
  * openRoute({lat, lon}): the agent planned a route (plan_route tool): opens it on the map, without choosing for you.
+ * showOptions(result, origin): problem reported -> new options from /api/replan, next to the current route.
+ * currentPosition(): where the astronaut is ("📍 I am here"); currentPoint may be the destination with an open route.
  */
-export function initAssistant(el, currentPoint, currentRoute = () => null, openRoute = () => {}) {
+export function initAssistant(el, currentPoint, currentRoute = () => null, openRoute = () => {}, showOptions = () => {},
+  currentPosition = () => null) {
   const history = [] // {question, about, answer?, sources?, error?, seconds}
   let busy = false
   let timer = null
@@ -67,10 +70,12 @@ export function initAssistant(el, currentPoint, currentRoute = () => null, openR
     }, 1000)
     const p = currentPoint()
     try {
-      const r = await ask(h.question, p?.lat, p?.lon, currentRoute())
+      const r = await ask(h.question, p?.lat, p?.lon, currentRoute(), currentPosition())
       Object.assign(h, { answer: r.answer, sources: r.sources })
       const route = r.actions?.findLast((a) => a.type === 'open_route')
       if (route) openRoute({ lat: route.lat, lon: route.lon })
+      const replan = r.actions?.findLast((a) => a.type === 'replan')
+      if (replan) showOptions(replan.result, replan.origin)
       if (byVoice) speak(`You asked: ${h.question} ${r.answer}`) // repeats what it heard: a transcription error becomes audible
     } catch (err) {
       h.error = err.message

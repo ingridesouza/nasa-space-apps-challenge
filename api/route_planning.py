@@ -40,7 +40,7 @@ SLOPE_DANGER_LIMIT_DEG = 20.0
 #: extra weight applied to the "caution" band (15-20°) in the "safest"
 #: variant -- penalizes harder than in the "fastest" variant, which only
 #: avoids what is truly impassable (>=20°).
-CAUTION_WEIGHT = {"safest": 6.0, "fastest": 1.8}
+CAUTION_WEIGHT = {"safest": 6.0, "fastest": 1.8, "smoothest": 30.0}  # smoothest: replanning "it is steep"
 
 #: maximum detour (in meters) worth making to pass by a science
 #: target -- the whole bbox is ~5.6km on a side, so 600m is a
@@ -402,7 +402,8 @@ def _chained_astar(elevation, slope_deg, transform, pixel_size_m, points_rc: lis
 
 
 def plan_route(
-    conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_lon, rad_dose_ugy_per_hour=None, stops=None
+    conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_lon, rad_dose_ugy_per_hour=None, stops=None,
+    kinds=("safest", "fastest"), avoid=None,
 ) -> dict:
     """stops: optional list of (lat, lon) -- points the route must
     visit in order, between the origin and the destination ("intermediate
@@ -417,6 +418,13 @@ def plan_route(
     pixel_size_deg = abs(transform.a)
     pixel_size_m = pixel_size_deg * MARS_METERS_PER_DEGREE
     slope_deg = _slope_grid_deg(elevation, pixel_size_m)
+    # avoid: [(lat, lon, radius_m)] -- a reported obstacle (replan.py) becomes impassable terrain
+    for lat, lon, radius_m in avoid or []:
+        r0, c0 = _latlon_to_rc(transform, lat, lon)
+        radius_px = math.ceil(radius_m / pixel_size_m)
+        rows, cols = np.ogrid[:slope_deg.shape[0], :slope_deg.shape[1]]
+        slope_deg = slope_deg.copy()
+        slope_deg[(rows - r0) ** 2 + (cols - c0) ** 2 <= radius_px ** 2] = 90.0
 
     def inside_bbox(lat, lon):
         return bounds.left <= lon <= bounds.right and bounds.bottom <= lat <= bounds.top
@@ -430,7 +438,7 @@ def plan_route(
     origin_rc, dest_rc = points_rc[0], points_rc[-1]
 
     routes = []
-    for kind in ("safest", "fastest"):
+    for kind in kinds:
         route_path = _chained_astar(elevation, slope_deg, transform, pixel_size_m, points_rc, kind)
         routes.append(_build_route(kind, route_path, elevation, slope_deg, transform, pixel_size_m, rad_dose_ugy_per_hour))
 
@@ -439,7 +447,7 @@ def plan_route(
     # -- with few registered targets (feature 4), there will not always be
     # one close enough, and then this variant simply does not appear
     # (better than forcing an absurd detour just to "have science").
-    if not stops:
+    if not stops and not avoid and kinds == ("safest", "fastest"):  # replanning offers no science detour
         target = _best_science_target(origin_lat, origin_lon, dest_lat, dest_lon, all_science_targets(conn))
         if target is not None:
             target_rc = _latlon_to_rc(transform, target["lat"], target["lon"])

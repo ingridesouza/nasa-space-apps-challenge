@@ -8,18 +8,20 @@ import { coord, esc, num } from './util.js'
 const TYPE_LABEL = { safest: 'Safest', fastest: 'Fastest', most_science: 'Most science' }
 // suggestion label (api/route_suggestions.py): fixed rule, not the model
 const LABEL = { ok: ['✅', 'no risk on the map'], caution: ['⚠️', 'caution'], danger: ['⛔', 'danger'] }
+const routeName = (r) => r.title ?? TYPE_LABEL[r.type] ?? r.type // title: replanning option
+const VERDICT = { ok: 'safe', caution: 'caution', danger: 'danger' } // .v-* classes with the system colors
 
 /** F02 + F08: why this route -- pros and cons with source; the suggested one is only the order, all stay clickable. */
 function suggestionHtml(r, sg) {
   const s = r.suggestion
   if (!s || !sg) return ''
-  const li = (x, sign) => `<li title="source: ${esc(x.source)}">${sign} ${esc(x.text)}</li>`
+  const li = (x, cls, sign) => `<li class="${cls}" title="source: ${esc(x.source)}"><b aria-hidden="true">${sign}</b>${esc(x.text)}</li>`
   return `<div class="route-sec suggestion">
-    <p class="suggestion-reason">${esc(sg.reason)}</p>
-    ${sg.dust_warning ? `<p class="suggestion-reason">⚠️ ${esc(sg.dust_warning)}</p>` : ''}
-    <span class="fl-sec">${LABEL[s.label][0]} Route ${esc(TYPE_LABEL[r.type] ?? r.type)}${r.type === sg.suggested ? ' · suggested' : ''}</span>
-    <ul class="suggestion-list">${s.pros.map((x) => li(x, '+')).join('')}${s.cons.map((x) => li(x, '−')).join('')}</ul>
-    <p class="caption mono">${esc(sg.method)} · you decide</p>
+    <p class="suggestion-reason v-${VERDICT[sg.summary[0]?.label] ?? 'caution'}"><span class="fl-sec">System suggestion</span>${esc(sg.reason)}</p>
+    ${sg.dust_warning ? `<p class="suggestion-reason v-caution">${esc(sg.dust_warning)}</p>` : ''}
+    <span class="fl-sec">${LABEL[s.label][0]} ${esc(routeName(r))}${r.type === sg.suggested ? ' · suggested ★' : ' · alternative'}</span>
+    <ul class="suggestion-list">${s.pros.map((x) => li(x, 'pro', '+')).join('')}${s.cons.map((x) => li(x, 'con', '!')).join('')}</ul>
+    <p class="caption mono" title="${esc(sg.method)}">dashed line on the map = other options${st.previous ? ' and the previous route' : ''} · you decide</p>
   </div>`
 }
 
@@ -171,12 +173,27 @@ function evaSection(r) {
 }
 
 const activeRoute = () => st.data?.routes.find((r) => r.type === st.type) ?? null
+// the other options and, after a replanning, the route that was being followed: all dashed on the map
+const otherRoutes = () => [...(st.data?.routes.filter((r) => r.type !== st.type) ?? []), ...(st.previous ? [st.previous] : [])]
+const endOf = (r) => ({ lat: r.points.at(-1)[0], lon: r.points.at(-1)[1] })
+
+/** F02 + F08: options from /api/replan (problem reported in the middle of the walk). Same card as the
+ * variants; the route that was open stays dashed on the map. Nothing is chosen on its own. */
+export function showOptions(res, origin) {
+  const previous = st.previous ?? activeRoute()
+  request++ // discards a route computation in progress
+  const suggested = res.routes.find((r) => r.type === res.suggestion.suggested) ?? res.routes[0]
+  Object.assign(st, { origin, destination: endOf(suggested), stops: [], data: res, error: null, loading: false, type: suggested.type, previous })
+  render()
+  cb.onActiveRoute(activeRoute(), otherRoutes())
+}
 
 /** F08: the open route, in the format /api/ask expects; null with no computed route. */
 export function routeForAgent() {
   const { origin: o, destination: d } = st
   if (!activeRoute() || !o || !d) return null
-  return { origin_lat: o.lat, origin_lon: o.lon, dest_lat: d.lat, dest_lon: d.lon, type: st.type, ...(st.solEva && { sol: st.solEva }) }
+  // replanning option: the forecast recomputes by the A* weight (variant), not by the option id
+  return { origin_lat: o.lat, origin_lon: o.lon, dest_lat: d.lat, dest_lon: d.lon, type: activeRoute().variant ?? st.type, ...(st.solEva && { sol: st.solEva }) }
 }
 
 function render() {
@@ -184,7 +201,7 @@ function render() {
   // legend for the track colors (same bands as api/route_planning.py)
   const legend = st.data ? `<div class="route-legend mono"><span class="legend-title">Slope</span><div>${[['safe', '< 15°'], ['caution', '15–20°'], ['danger', '≥ 20°']]
     .map(([k, t]) => `<span><i style="background:${SLOPE_COLOR_HEX[k]}"></i>${t}</span>`).join('')}</div></div>` : ''
-  const top = st.destination ? `<div class="route-sec route-top">${legend}<button type="button" class="link-btn" data-action="add-stop">+ stop along the way</button></div>` : ''
+  const top = st.destination ? `<div class="route-sec route-top">${legend}<span><button type="button" class="link-btn" data-action="mark-position" title="no GPS: click the map where you are; replanning starts there">📍 I am here</button> <button type="button" class="link-btn" data-action="add-stop">+ stop along the way</button></span></div>` : ''
   if (!st.destination) body = '<p class="empty">Click the map or type the destination coordinates.</p>'
   else {
     body = `<div class="route-sec">
@@ -199,9 +216,12 @@ function render() {
       body += `<div class="types">${st.data.routes
         .map((r) => {
           const [icon, txt] = LABEL[r.suggestion?.label] ?? ['', '']
-          return `<button type="button" class="type ${r.type === st.type ? 'on' : ''}" data-type="${r.type}" aria-label="${esc(TYPE_LABEL[r.type] ?? r.type)}: ${txt}">${icon} ${TYPE_LABEL[r.type] ?? esc(r.type)}${r.type === st.data.suggestion?.suggested ? ' ★' : ''}</button>`
+          return `<button type="button" class="type ${r.type === st.type ? 'on' : ''}" data-type="${r.type}" aria-label="${esc(routeName(r))}: ${txt}">${icon} ${esc(routeName(r))}${r.type === st.data.suggestion?.suggested ? ' ★' : ''}<small class="type-meta">${num(r.distance_m, 0)} m · ${num(r.estimated_time_min, 0)} min</small></button>`
         }).join('')}</div>`
       const r = activeRoute()
+      if (st.data.problem_text) {
+        body = `<div class="route-sec"><p class="suggestion-reason v-danger"><span class="fl-sec">Problem reported · new options</span>${esc(st.data.problem_text)}</p></div>` + body
+      }
       if (r) body += suggestionHtml(r, st.data.suggestion) + routeDetail(r, top)
     }
     if (!activeRoute()) body += top // no route computed yet: the stop button is already at hand
@@ -214,7 +234,7 @@ function render() {
   paginate(el, { sel: ':scope > .route-wrap > .route-body > *', max: () => Math.min(innerHeight - 40, 560) })
 }
 
-/** callbacks: onCancel(), onActiveRoute(route|null), onAddStop(), onRemoveStop(i), onOpenTarget(target). */
+/** callbacks: onCancel(), onActiveRoute(route|null, others[]), onAddStop(), onMarkPosition(), onRemoveStop(i), onOpenTarget(target). */
 export function initRoute(container, callbacks) {
   el = container
   cb = callbacks
@@ -223,7 +243,8 @@ export function initRoute(container, callbacks) {
     if (!b) return
     if (b.dataset.type) {
       st.type = b.dataset.type
-      cb.onActiveRoute(activeRoute())
+      if (st.data?.problem) st.destination = endOf(activeRoute()) // a return option ends at the base, not at the destination
+      cb.onActiveRoute(activeRoute(), otherRoutes())
     } else if (b.dataset.solStep) {
       const base = st.solEva ?? st.fc?.sol
       if (base) st.solEva = Math.max(1, base + Number(b.dataset.solStep))
@@ -235,6 +256,7 @@ export function initRoute(container, callbacks) {
       const a = b.dataset.action
       if (a === 'cancel') return cb.onCancel()
       if (a === 'add-stop') return cb.onAddStop()
+      if (a === 'mark-position') return cb.onMarkPosition()
       if (a === 'remove-stop') return cb.onRemoveStop(Number(b.dataset.i))
       if (a === 'target') return cb.onOpenTarget(activeRoute()?.science_target)
     }
@@ -265,7 +287,7 @@ export function initRoute(container, callbacks) {
     render()
   })
   async function updateRoute(origin, destination, stops = []) {
-    Object.assign(st, { origin, destination, stops, data: null, error: null, loading: Boolean(origin && destination) })
+    Object.assign(st, { origin, destination, stops, data: null, error: null, loading: Boolean(origin && destination), previous: null })
     const mine = ++request
     cb.onActiveRoute(null)
     render()
@@ -280,7 +302,7 @@ export function initRoute(container, callbacks) {
       st.error = e.message
     }
     st.loading = false
-    cb.onActiveRoute(activeRoute())
+    cb.onActiveRoute(activeRoute(), otherRoutes())
     render()
     return st.data // F08 voice: the spoken summary comes from these numbers
   }
