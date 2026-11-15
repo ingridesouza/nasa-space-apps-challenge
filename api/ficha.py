@@ -102,7 +102,7 @@ def science_card(lat: float = Query(..., ge=-90, le=90), lon: float = Query(...)
             "tipo": t["kind"], "tipo_rotulo": KIND_PT.get(t["kind"], t["kind"]),
             "sol": t["sol"], "rmc": None if t["site"] is None else f"{t['site']}_{t['drive']}",
             "lat": t["lat"], "lon": t["lon"], "distancia_m": round(d, 1),
-            "distancia_rotulo": f"{fmt_dist(d)} daqui", "pos_quality": t["pos_quality"],
+            "distancia_rotulo": f"{fmt_dist(d)} do ponto consultado", "pos_quality": t["pos_quality"],
         }
         if t["pos_quality"] != "exata":
             out["aviso_posicao"] = f"posição aproximada pela parada do sol {t['sol']}"

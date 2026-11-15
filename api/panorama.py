@@ -129,7 +129,7 @@ def panorama_nearest(lat: float = Query(..., ge=-90, le=90), lon: float = Query(
     yaw = 0.0 if d < 1 else yaw_inicial(rumo_parada_ponto, p["center_az"])
     cor = p["camera"] == "Mastcam"
     sufixo = "Mastcam · cor · posição estimada" if cor else "Navcam"
-    rotulo = (f"panorama tirado {fmt_dist(d)} daqui, a {compass(rumo_ponto_parada)}"
+    rotulo = (f"panorama tirado {fmt_dist(d)} do destino, a {compass(rumo_ponto_parada)}"
               f" · sol {p['sol']}{fmt_date(p['date'])} · {sufixo}")
     return {
         "found": True, "dentro_da_janela": inside,
@@ -163,7 +163,7 @@ def photos_near(lat: float = Query(..., ge=-90, le=90), lon: float = Query(...),
             "azimute_real": None if r["true_az"] is None else round(r["true_az"], 1),
             "mast_el": r["mast_el"], "img": f"/bundle/{r['img_path']}",
             "thumb": f"/bundle/{r['thumb_path']}", "credito": r["credit"],
-            "rotulo": (f"foto tirada {fmt_dist(d)} daqui, a {compass(rumo)}{olhando}"
+            "rotulo": (f"foto tirada {fmt_dist(d)} do destino, a {compass(rumo)}{olhando}"
                        f" · sol {r['sol']}{fmt_date(r['date_taken'])} · Navcam"),
         })
         paradas.setdefault(rmc, []).append(r["id"])

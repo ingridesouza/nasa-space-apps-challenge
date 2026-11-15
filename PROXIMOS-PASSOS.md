@@ -174,6 +174,17 @@ amostra por camada, não pirâmide completa.
 - [ ] `docs/PITCH.md` tem o argumento central (Gale vs. Jezero: só Gale
       tem clima+radiação co-localizados) pronto pra quem for montar a
       apresentação.
+- [ ] **Validar o modelo de O₂ e tempo da rota** (card de rota, F02) —
+      números sem fonte citada, hoje exibidos como "simulado":
+      - capacidade padrão do traje de 400 L (`web/ui/rota.js`): sem
+        referência; parece spec de traje na tela;
+      - 0,84 L/min (`api/route_planning.py`): o comentário diz
+        "repouso/caminhada leve", mas equivale à taxa média de trabalho de
+        EVA Apollo (~270 W); repouso seria ~0,3 L/min — achar a fonte;
+      - velocidade base 0,8 m/s e a queda linear até 40% em 20°: sem
+        fonte;
+      - o tempo aparece como "~X min" sem dizer "estimado" (só o O₂ diz
+        "simulado").
 
 ## Auditoria "certeza absoluta" contra a spec original (2026-11-13)
 

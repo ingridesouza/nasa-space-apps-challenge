@@ -118,7 +118,7 @@ function formMedicao(p) {
 }
 
 function secaoEva(r) {
-  const minutos = r.tempo_estimado_min
+  const minutos = r.tempo_estimado_min * 2 // EVA = ida + volta (mesmo tempo nos dois sentidos, ver o2Html)
   const chave = `${st.solEva}|${minutos}`
   if (st.prevChave !== chave) carregarPrev(chave, minutos)
   const p = st.prev

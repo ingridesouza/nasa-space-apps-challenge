@@ -184,7 +184,7 @@ function renderFotos(dir) {
   for (const ft of fotosLista.slice(fotosPag * FOTOS_POR_PAG, (fotosPag + 1) * FOTOS_POR_PAG)) {
     const b = document.createElement('button')
     b.type = 'button'; b.className = 'foto'; b.title = ft.rotulo
-    b.innerHTML = `<img loading="lazy" src="${esc(ft.thumb)}" alt=""><p>${ft.distancia_m} m · ${esc(ft.instrument)}</p>`
+    b.innerHTML = `<img loading="lazy" src="${esc(ft.thumb)}" alt=""><p>${ft.distancia_m < 5 ? '&lt; 10' : `~${Math.round(ft.distancia_m / 10) * 10}`} m · ${esc(ft.instrument)}</p>`
     b.onclick = () => abrirFoto(ft)
     box.appendChild(b)
   }
