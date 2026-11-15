@@ -47,7 +47,11 @@ event were happening today.
 
 - `web/app.js`: new `renderConditions()`, fetching `/api/conditions` on load and rendering any alerts (dust season, stale data, solar event) into the existing `#c-status` panel, reusing the route card's own `.suggestion-reason.v-safe/.v-caution/.v-danger` styling -- no new visual language introduced.
 - `web/api.js`: `getConditions(sol)` now accepts an optional sol (previously always the reference sol).
-- **Not done, scoped out for time:** a UI control to switch which sol `#c-status` shows (e.g., live-reusing the route card's EVA sol-stepper). Today, viewing the sol-242 demo requires requesting `/api/conditions?sol=242` directly (e.g., by URL) rather than a button in the UI. Flagged here so it is not mistaken for forgotten -- it is a deliberate cut, open to revisit.
+- `web/ui/route.js` (added in a follow-up pass, closing the two items left open below): the EVA section already has a sol stepper (`st.solEva`, used for the weather forecast) -- `loadConditions(sol)` now piggybacks on that same sol, no new UI control needed. When the conditions for that sol carry a `solar_event` alert, two things happen automatically, no manual report needed:
+  - a banner (`.suggestion-reason.v-caution`/`.v-danger`, same component the replanning "problem reported" banner already uses) appears above the EVA window;
+  - the "Radiation" row's value gets colored (`.v-text-caution`/`.v-text-danger`, added to style.css) and a ⚠ marker.
+  - Demonstrating sol 242 live is now just stepping the EVA sol stepper (‹ ›) down to 242 -- the "reuse the existing stepper" idea from the original plan, resolved together with the banner/highlight rather than as a separate task.
+- **Still open:** the "Radiation" row itself only renders when `/api/forecast` has a dose to show for that sol, which needs `data-pipeline/scripts/cache_climatology.py` to have run (unrelated pre-existing gap, not re-run in this pass -- it samples the whole ~3-Mars-year mission, disproportionate to just validating this feature). The banner does not depend on this and works regardless; the row highlight specifically needs that cache to be visible.
 
 ## 6. Open follow-ups
 
