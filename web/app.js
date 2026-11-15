@@ -1,347 +1,386 @@
-// H2G2 · orquestração do front. Visor (F03/F04) em tela cheia; mapa (F01) num círculo
-// que expande; rota (F02 + F06) num card; assistente (F08) no topo.
-// A posição atual vem do rastreador (simulado em /api/posicao) e é a origem da rota.
+// H2G2 · front orchestration. Viewer (F03/F04) full screen; map (F01) in a circle
+// that expands; route (F02 + F06) in a card; assistant (F08) at the top.
+// The current position comes from the tracker (simulated at /api/position) and is the route origin.
 import {
-  getFichaCientifica, getFotosPerto, getLayers, getPanorama,
-  getPoint, getPosicao,
+  getAtmosphereTrack, getScienceCard, getInsolation, getClock, getPhotosNear, getLayers, getPanorama,
+  getPoint, getPosition,
 } from './api.js'
 import { TOGGLEABLE_LAYERS } from './layers.js'
-import * as mapa from './map.js'
-import { iniciarAssistente } from './ui/agente.js'
-import { renderCamadas } from './ui/camadas.js'
-import { iniciarRota } from './ui/rota.js'
+import * as map from './map.js'
+import { initAssistant } from './ui/agent.js'
+import { arrivalHour, renderLayers } from './ui/layers-panel.js'
+import { initRoute } from './ui/route.js'
 import { esc } from './ui/util.js'
 
 const $ = (id) => document.getElementById(id)
 const mobile = () => matchMedia('(max-width:900px)').matches
-const TRANSICAO_MS = 260 // igual à transição de .mapa-box em style.css
+const TRANSITION_MS = 260 // same as the .map-box transition in style.css
 
-const estado = {
-  posicao: null, // {lat, lon, rotulo}
-  local: null, // o que o visor e os cards mostram: posição ou destino
-  mapa: 'visor', // 'visor' (círculo) | 'explorar' | 'rota'
-  rotaAtiva: false,
-  destino: null,
-  escalas: [],
-  rota: null,
-  camadas: Object.fromEntries(TOGGLEABLE_LAYERS.map((l) => [l.id, { visible: l.defaultVisible, opacity: l.defaultOpacity }])),
+const state = {
+  position: null, // {lat, lon, label}
+  place: null, // what the viewer and cards show: position or destination
+  map: 'viewer', // 'viewer' (circle) | 'explore' | 'route'
+  routeActive: false,
+  destination: null,
+  stops: [],
+  route: null,
+  layers: Object.fromEntries(TOGGLEABLE_LAYERS.map((l) => [l.id, { visible: l.defaultVisible, opacity: l.defaultOpacity }])),
+  insolation: { hour: 9, info: null, started: false }, // direct sun and shade layer: local solar time
+  clock: null, // simulated mission clock (/api/clock): {sol, ltst}
+  atmosphere: { geo: null, variable: 'temp_max_c' }, // REMS points layer (GeoJSON from /api/atmosphere/track)
 }
-let aguardandoEscala = false
+let awaitingStop = false
 
-// ---------------- Local (posição ou destino): status, panorama, fotos, ficha ----------------
-let seqLocal = 0
-let ultimo = null // {pano} do local atual, para redesenhar o status
+// ---------------- Place (position or destination): status, panorama, photos, science card ----------------
+let placeSeq = 0
+let last = null // {pano} of the current place, to redraw the status
 
-async function carregarLocal(local) {
-  const meu = ++seqLocal
-  estado.local = local
-  carregando()
-  mostrarFicha('carregando')
-  const { lat, lon } = local
-  const [pano, fotos, ficha] = (await Promise.allSettled([
-    getPanorama(lat, lon), getFotosPerto(lat, lon), getFichaCientifica(lat, lon),
+async function loadPlace(place) {
+  const mine = ++placeSeq
+  state.place = place
+  loading()
+  showScience('loading')
+  const { lat, lon } = place
+  const [pano, photos, science] = (await Promise.allSettled([
+    getPanorama(lat, lon), getPhotosNear(lat, lon), getScienceCard(lat, lon),
   ])).map((r) => (r.status === 'fulfilled' ? r.value : null))
-  if (meu !== seqLocal) return // outro local já substituiu este
-  ultimo = { pano }
-  mapa.setPanorama(pano?.found ? pano : null)
-  if (pano) mostrarPano(pano)
-  else limparPano()
-  mostrarFicha(ficha ?? 'erro')
-  if (fotos) mostrarFotos(fotos)
-  else $('c-fotos').hidden = true
+  if (mine !== placeSeq) return // another place already replaced this one
+  last = { pano }
+  map.setPanorama(pano?.found ? pano : null)
+  if (pano) showPano(pano)
+  else clearPano()
+  showScience(science ?? 'error')
+  if (photos) showPhotos(photos)
+  else $('c-photos').hidden = true
 }
 
-// barra de imagens vazia (e fechada pelo :has do CSS) até haver destino com rota calculada
-function limparBarra() {
-  seqLocal++
-  estado.local = null
-  ultimo = null
-  limparPano()
-  fecharFoto()
-  mapa.setPanorama(null)
-  for (const id of ['c-status', 'c-fotos', 'c-ficha']) $(id).hidden = true
-  colapsarGrupo('g-imagens', false)
+// images bar empty (and closed by the CSS :has) until there is a destination with a computed route
+function clearBar() {
+  placeSeq++
+  state.place = null
+  last = null
+  clearPano()
+  closePhoto()
+  map.setPanorama(null)
+  for (const id of ['c-status', 'c-photos', 'c-science']) $(id).hidden = true
+  collapseGroup('g-images', false)
 }
 
-const mesmoPonto = (a, b) => a && b && a.lat === b.lat && a.lon === b.lon
+const samePoint = (a, b) => a && b && a.lat === b.lat && a.lon === b.lon
 
-function carregando() {
-  for (const id of ['c-pano', 'c-fotos', 'c-ficha']) $(id).hidden = true
+function loading() {
+  for (const id of ['c-pano', 'c-photos', 'c-science']) $(id).hidden = true
 }
 
 function card(id, html) { $(id).innerHTML = html; $(id).hidden = false }
 
 // ---------------- Panorama ----------------
-let viewer = null // preview (sempre no painel)
-let viewerFundo = null // cópia no visor
-let cfgPano = null
-let noVisor = false
-// preview mais aproximado; no fundo, volta a 90° e sobe/desce um pouco rumo ao centro da imagem
-const HFOV_PREVIEW = 65, HFOV_FUNDO = 90, CENTRO_FUNDO = 0.5, CENTRO_PREVIEW = 0.3
+let viewer = null // preview (always in the panel)
+let viewerBg = null // copy in the viewer
+let panoCfg = null
+let pointYaw = 0
+// pannellum keeps the DOM element inside the hotspot: each viewer needs its own object, otherwise one moves the other's marker
+const hotSpots = () => [{ pitch: 0, yaw: pointYaw, type: 'info', text: 'direction of the given point' }]
+let inViewer = false
+// preview more zoomed in; in the background, back to 90° and tilt a bit toward the image center
+const HFOV_PREVIEW = 65, HFOV_BG = 90, CENTER_BG = 0.5, CENTER_PREVIEW = 0.3
 let voff = 0
 let panoSeq = 0
+// pannellum only repositions the marker on window resize; a container that changes size (bar collapses/expands) leaves it off
+const roPano = new ResizeObserver((es) => {
+  for (const e of es) {
+    const v = e.target.id === 'pano-bg' ? viewerBg : viewer
+    if (v && e.contentRect.width) v.resize()
+  }
+})
 
-function limparPano() {
+function clearPano() {
   panoSeq++
-  if (noVisor) recolher()
+  if (inViewer) closeViewer()
   if (viewer) { viewer.destroy(); viewer = null }
   $('pano').innerHTML = ''
   $('c-pano').hidden = true
 }
 
-function mostrarPano(p) {
-  limparPano()
+function showPano(p) {
+  clearPano()
   if (!p.found) return
   $('c-pano').hidden = false
-  $('pano-rotulo').textContent = `${p.rotulo} · ${p.credito}`
+  $('pano-caption').textContent = `${p.label} · ${p.credit}`
   voff = p.pannellum.vOffset || 0
-  cfgPano = Object.assign({}, p.pannellum, {
+  panoCfg = Object.assign({}, p.pannellum, {
     showControls: false, compass: false,
-    hotSpots: [{ pitch: 0, yaw: p.pannellum.yaw, type: 'info', text: 'direção do ponto informado' }],
   })
-  // cria o viewer só depois do card pintar: init do pannellum é pesado e travava a animação
+  pointYaw = p.pannellum.yaw
+  // create the viewer only after the card paints: pannellum init is heavy and froze the animation
   const seq = panoSeq
   requestAnimationFrame(() => requestAnimationFrame(() => {
     if (seq !== panoSeq) return
-    viewer = pannellum.viewer('pano', Object.assign({}, cfgPano, { hfov: HFOV_PREVIEW, pitch: voff * CENTRO_PREVIEW }))
+    viewer = pannellum.viewer('pano', Object.assign({}, panoCfg, { hotSpots: hotSpots(), hfov: HFOV_PREVIEW, pitch: voff * CENTER_PREVIEW }))
+    roPano.observe($('pano'))
   }))
 }
 
-// duas barras independentes na coluna da direita (rota e imagens), cada uma com seu botão
-function colapsarGrupo(id, c) {
+// two independent bars in the right column (route and images), each with its own button
+function collapseGroup(id, c) {
   const g = $(id)
-  g.classList.toggle('colapsada', c)
-  const t = g.querySelector('.grupo-toggle')
+  g.classList.toggle('collapsed', c)
+  const t = g.querySelector('.group-toggle')
   t.textContent = c ? '‹' : '›'
-  t.title = `${c ? 'Expandir' : 'Recolher'} ${t.dataset.nome}`
+  t.title = `${c ? 'Expand' : 'Collapse'} ${t.dataset.name}`
   t.setAttribute('aria-expanded', String(!c))
-  if (id === 'g-imagens') {
-    $('fichas').classList.toggle('colapsada', c)
-    if (!c) requestAnimationFrame(() => { viewer?.resize(); posicionarFichas() }) // pannellum mediu 0 px escondido
+  if (id === 'g-images') {
+    $('science-cards').classList.toggle('collapsed', c)
+    if (!c) requestAnimationFrame(() => { viewer?.resize(); placeScienceCards() }) // pannellum measured 0 px while hidden
   }
 }
-// fichas à esquerda da barra de imagens (embaixo, CSS); no mobile ficam acima da folha inferior
-function posicionarFichas() {
-  const f = $('fichas')
-  f.style.bottom = mobile() ? innerHeight - $('flutuante').getBoundingClientRect().top + 8 + 'px' : ''
+// science cards left of the images bar (bottom, CSS); on mobile they sit above the bottom sheet
+function placeScienceCards() {
+  const f = $('science-cards')
+  f.style.bottom = mobile() ? innerHeight - $('floating').getBoundingClientRect().top + 8 + 'px' : ''
 }
 {
-  const ro = new ResizeObserver(posicionarFichas)
-  for (const id of ['flutuante', 'c-rota', 'c-status', 'c-pano', 'c-fotos']) ro.observe($(id))
-  addEventListener('resize', posicionarFichas)
-  $('flutuante').addEventListener('scroll', posicionarFichas)
+  const ro = new ResizeObserver(placeScienceCards)
+  for (const id of ['floating', 'c-route', 'c-status', 'c-pano', 'c-photos']) ro.observe($(id))
+  addEventListener('resize', placeScienceCards)
+  $('floating').addEventListener('scroll', placeScienceCards)
 }
-for (const t of document.querySelectorAll('.grupo-toggle')) {
-  t.addEventListener('click', () => { const g = t.parentElement; colapsarGrupo(g.id, !g.classList.contains('colapsada')) })
+for (const t of document.querySelectorAll('.group-toggle')) {
+  t.addEventListener('click', () => { const g = t.parentElement; collapseGroup(g.id, !g.classList.contains('collapsed')) })
 }
 
-// visor ganha um 2º viewer (mesma imagem, yaw atual); o preview continua no painel
-function expandir() {
+// the viewer gets a 2nd pannellum viewer (same image, current yaw); the preview stays in the panel
+function expand() {
   if (!viewer) return
-  colapsarGrupo('g-imagens', true)
-  fecharFoto()
+  collapseGroup('g-images', true)
+  closePhoto()
   const d = document.createElement('div')
-  d.id = 'pano-fundo'
-  $('visor-stage').appendChild(d)
-  viewerFundo = pannellum.viewer('pano-fundo', Object.assign({}, cfgPano, {
-    hfov: HFOV_FUNDO, pitch: voff * CENTRO_FUNDO, yaw: viewer.getYaw(),
+  d.id = 'pano-bg'
+  $('viewer-stage').appendChild(d)
+  viewerBg = pannellum.viewer('pano-bg', Object.assign({}, panoCfg, {
+    hotSpots: hotSpots(), hfov: HFOV_BG, pitch: voff * CENTER_BG, yaw: viewer.getYaw(),
   }))
-  $('visor-vazio').hidden = true
-  $('visor-fechar').hidden = false
-  noVisor = true
-  // tira o foco do botão (agora na barra recolhida) e entrega ao panorama
+  roPano.observe(d)
+  $('viewer-empty').hidden = true
+  $('viewer-close').hidden = false
+  inViewer = true
+  viewerInFront(true)
+  // take focus off the button (now in the collapsed bar) and hand it to the panorama
   if (document.activeElement) document.activeElement.blur()
   d.tabIndex = 0
   d.focus({ preventScroll: true })
 }
-function recolher() {
-  if (viewerFundo) { viewerFundo.destroy(); viewerFundo = null }
-  $('pano-fundo')?.remove()
-  $('visor-vazio').hidden = !!viewer
-  $('visor-fechar').hidden = true
-  noVisor = false
-  colapsarGrupo('g-imagens', false)
+function collapse() {
+  if (viewerBg) { viewerBg.destroy(); viewerBg = null }
+  $('pano-bg')?.remove()
+  $('viewer-empty').hidden = !!viewer
+  $('viewer-close').hidden = true
+  inViewer = false
+  collapseGroup('g-images', false)
 }
-$('pano-expandir').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); noVisor ? recolher() : expandir() })
+// click (without dragging) on the preview: opens the panorama in the viewer; clicking again closes it
+{
+  let start = null
+  const slot = document.querySelector('.pano-slot')
+  slot.addEventListener('pointerdown', (e) => { start = [e.clientX, e.clientY] }, true)
+  slot.addEventListener('pointerup', (e) => {
+    if (!start) return
+    const drag = Math.hypot(e.clientX - start[0], e.clientY - start[1])
+    start = null
+    if (drag > 5 || e.target.closest('.pnlm-controls-container')) return
+    inViewer ? closeViewer() : expand()
+  }, true)
+}
 
-// ---------------- Fotos ----------------
-const FOTOS_POR_PAG = 3
-let fotosLista = [], fotosPag = 0
+// ---------------- Photos ----------------
+const PHOTOS_PER_PAGE = 3
+let photoList = [], photoPage = 0
 
-function mostrarFotos(f) {
-  $('c-fotos').hidden = !f.total
+function showPhotos(f) {
+  $('c-photos').hidden = !f.total
   if (!f.total) return
-  fotosLista = f.fotos
-  fotosPag = 0
-  renderFotos(0)
+  photoList = f.photos
+  photoPage = 0
+  renderPhotos(0)
 }
 
-function renderFotos(dir) {
-  const total = Math.max(1, Math.ceil(fotosLista.length / FOTOS_POR_PAG))
-  fotosPag = Math.min(Math.max(fotosPag, 0), total - 1)
-  const box = $('fotos')
+function renderPhotos(dir) {
+  const total = Math.max(1, Math.ceil(photoList.length / PHOTOS_PER_PAGE))
+  photoPage = Math.min(Math.max(photoPage, 0), total - 1)
+  const box = $('photos')
   box.innerHTML = ''
-  for (const ft of fotosLista.slice(fotosPag * FOTOS_POR_PAG, (fotosPag + 1) * FOTOS_POR_PAG)) {
+  for (const ph of photoList.slice(photoPage * PHOTOS_PER_PAGE, (photoPage + 1) * PHOTOS_PER_PAGE)) {
     const b = document.createElement('button')
-    b.type = 'button'; b.className = 'foto'; b.title = ft.rotulo
-    b.innerHTML = `<img loading="lazy" src="${esc(ft.thumb)}" alt=""><p>${ft.distancia_m < 5 ? '&lt; 10' : `~${Math.round(ft.distancia_m / 10) * 10}`} m · ${esc(ft.instrument)}</p>`
-    b.onclick = () => abrirFoto(ft)
+    b.type = 'button'; b.className = 'photo'; b.title = ph.label
+    b.innerHTML = `<img loading="lazy" src="${esc(ph.thumb)}" alt=""><p>${ph.distance_m < 5 ? '&lt; 10' : `~${Math.round(ph.distance_m / 10) * 10}`} m · ${esc(ph.instrument)}</p>`
+    b.onclick = () => openPhoto(ph)
     box.appendChild(b)
   }
   box.classList.remove('slide-next', 'slide-prev')
   if (dir) { void box.offsetWidth; box.classList.add(dir > 0 ? 'slide-next' : 'slide-prev') }
-  $('fotos-nav').hidden = total <= 1
-  $('fotos-pag').textContent = `${fotosPag + 1} / ${total}`
-  $('fotos-prev').disabled = fotosPag === 0
-  $('fotos-next').disabled = fotosPag === total - 1
+  $('photos-nav').hidden = total <= 1
+  $('photos-page').textContent = `${photoPage + 1} / ${total}`
+  $('photos-prev').disabled = photoPage === 0
+  $('photos-next').disabled = photoPage === total - 1
 }
-$('fotos-prev').addEventListener('click', () => { fotosPag--; renderFotos(-1) })
-$('fotos-next').addEventListener('click', () => { fotosPag++; renderFotos(1) })
+$('photos-prev').addEventListener('click', () => { photoPage--; renderPhotos(-1) })
+$('photos-next').addEventListener('click', () => { photoPage++; renderPhotos(1) })
 
-function abrirFoto(ft) {
-  if (noVisor) recolher()
-  $('visor-img').src = ft.img
-  $('visor-img').alt = ft.rotulo
-  $('visor-img').hidden = false
-  $('visor-vazio').hidden = true
-  $('visor-fechar').hidden = false
+let openedPhoto = null
+function openPhoto(ph) {
+  if (openedPhoto === ph && !$('viewer-img').hidden) return closeViewer() // 2nd click closes
+  openedPhoto = ph
+  if (inViewer) collapse()
+  $('viewer-img').src = ph.img
+  $('viewer-img').alt = ph.label
+  $('viewer-img').hidden = false
+  $('viewer-empty').hidden = true
+  $('viewer-close').hidden = false
+  viewerInFront(true)
 }
-function fecharFoto() {
-  $('visor-img').hidden = true
-  $('visor-img').removeAttribute('src')
-  $('visor-vazio').hidden = noVisor
-  $('visor-fechar').hidden = !noVisor
+// with the map expanded, the viewer (photo/panorama) overlays it; closing returns to the map
+function viewerInFront(v) { document.body.classList.toggle('viewer-front', v) }
+function closePhoto() {
+  openedPhoto = null
+  $('viewer-img').hidden = true
+  $('viewer-img').removeAttribute('src')
+  $('viewer-empty').hidden = inViewer
+  $('viewer-close').hidden = !inViewer
 }
-function fecharVisor() { if (noVisor) recolher(); fecharFoto() }
-$('visor-fechar').addEventListener('click', fecharVisor)
+function closeViewer() { if (inViewer) collapse(); closePhoto(); viewerInFront(false) }
+$('viewer-close').addEventListener('click', closeViewer)
 
-// ---------------- Ficha científica (F04, card.js) ----------------
-function mostrarFicha(d, abrir = false) {
-  const aberta = $('c-ficha').open
-  $('c-ficha').hidden = false
-  $('c-ficha').open = abrir || (d !== 'carregando' && aberta)
-  const [nome, tipo] = H2G2Card.titulo(d)
-  $('ficha-nome').textContent = nome
-  $('ficha-tipo').textContent = tipo
-  $('ficha').innerHTML = H2G2Card.html(d)
-  requestAnimationFrame(posicionarFichas)
-}
-
-// ---------------- Mapa: círculo <-> tela cheia ----------------
-const camadas = () => renderCamadas($('camadas'), estado)
-
-function depoisDaTransicao(fn) { setTimeout(fn, TRANSICAO_MS) }
-
-function instrucao(texto) {
-  $('instrucao').hidden = !texto
-  $('instrucao').textContent = texto ?? ''
+// ---------------- Science card (F04, science-card.js) ----------------
+function showScience(d, open = false) {
+  const wasOpen = $('c-science').open
+  $('c-science').hidden = false
+  $('c-science').open = open || (d !== 'loading' && wasOpen)
+  const [name, type] = H2G2Card.title(d)
+  $('science-name').textContent = name
+  $('science-type').textContent = type
+  $('science').innerHTML = H2G2Card.html(d)
+  requestAnimationFrame(placeScienceCards)
 }
 
-function abrirMapa(modo) {
-  estado.mapa = modo
-  document.body.classList.add('mapa-aberto')
-  $('mapa-box').removeAttribute('title')
-  camadas()
-  $('camadas').hidden = false
-  $('coords').hidden = modo !== 'rota'
-  mapa.setModo(modo)
-  if (modo === 'rota') {
-    if (!estado.rotaAtiva) {
-      estado.rotaAtiva = true // card de rota só aparece com destino (a instrução já guia o clique)
-      atualizarRota(estado.posicao, null, [])
+// ---------------- Map: circle <-> full screen ----------------
+const layers = () => renderLayers($('layers-panel'), state)
+
+function afterTransition(fn) { setTimeout(fn, TRANSITION_MS) }
+
+function instruction(text) {
+  $('instruction').hidden = !text
+  $('instruction').textContent = text ?? ''
+}
+
+function openMap(mode) {
+  state.map = mode
+  document.body.classList.add('map-open')
+  viewerInFront(false)
+  $('map-box').removeAttribute('title')
+  layers()
+  $('layers-panel').hidden = false
+  $('coords').hidden = mode !== 'route'
+  map.setMode(mode)
+  if (mode === 'route') {
+    if (!state.routeActive) {
+      state.routeActive = true // route card only appears with a destination (the instruction already guides the click)
+      updateRoute(state.position, null, [])
     }
-    if (!estado.destino) instrucao('clique no mapa ou digite as coordenadas do DESTINO')
+    if (!state.destination) instruction('click the map or type the DESTINATION coordinates')
   }
-  depoisDaTransicao(() => { mapa.redimensionar(); mapa.centrar(estado.destino ?? estado.posicao, estado.rota) })
+  afterTransition(() => { map.resize(); map.center(state.destination ?? state.position, state.route) })
 }
 
-function fecharMapa() {
-  estado.mapa = 'visor'
-  aguardandoEscala = false
-  document.body.classList.remove('mapa-aberto')
-  $('mapa-box').title = 'Expandir mapa'
-  for (const id of ['camadas', 'coords', 'leitura']) $(id).hidden = true
-  instrucao(null)
-  mapa.setModo('visor')
-  let carga = Promise.resolve()
-  if (estado.rotaAtiva && !estado.destino) cancelarRota()
-  depoisDaTransicao(() => {
-    mapa.redimensionar()
-    mapa.centrar(estado.destino ?? estado.posicao, estado.rota)
+function closeMap() {
+  state.map = 'viewer'
+  awaitingStop = false
+  document.body.classList.remove('map-open')
+  $('map-box').title = 'Expand map'
+  for (const id of ['layers-panel', 'coords', 'readout']) $(id).hidden = true
+  instruction(null)
+  map.setMode('viewer')
+  let pending = Promise.resolve()
+  if (state.routeActive && !state.destination) cancelRoute()
+  afterTransition(() => {
+    map.resize()
+    map.center(state.destination ?? state.position, state.route)
     viewer?.resize()
   })
-  return carga
+  return pending
 }
 
-$('mapa-box').addEventListener('click', () => { if (estado.mapa === 'visor') abrirMapa('explorar') })
-$('btn-rota').addEventListener('click', () => abrirMapa('rota'))
+$('map-box').addEventListener('click', () => { if (state.map === 'viewer') openMap('explore') })
+$('btn-route').addEventListener('click', () => openMap('route'))
 
-// ---------------- Rota ----------------
-const atualizarRota = iniciarRota($('c-rota'), {
-  onCancelar: cancelarRota,
-  onRotaAtiva: (r) => {
-    estado.rota = r
-    mapa.setRota(r)
-    if (r && estado.mapa === 'visor') mapa.centrar(null, r)
-    // rota calculada: a barra abre com panorama, fotos e ficha do DESTINO (não da origem)
-    if (r && estado.destino && !mesmoPonto(estado.local, estado.destino)) {
-      carregarLocal({ ...estado.destino, tipo: 'destino', rotulo: 'o destino da rota' })
+// ---------------- Route ----------------
+const updateRoute = initRoute($('c-route'), {
+  onCancel: cancelRoute,
+  mapReady: map.mapReady,
+  onActiveRoute: (r) => {
+    state.route = r
+    map.setRoute(r)
+    if (state.layers.insolation.visible) updateInsolation() // destination/arrival changed
+    if (r && state.map === 'viewer') map.center(null, r)
+    // route computed: the bar opens with panorama, photos and science card of the DESTINATION (not the origin)
+    if (r && state.destination && !samePoint(state.place, state.destination)) {
+      loadPlace({ ...state.destination, kind: 'destination', label: 'the route destination' })
     }
   },
-  onAdicionarEscala: () => {
-    if (estado.mapa !== 'rota') abrirMapa('rota')
-    aguardandoEscala = true
-    instrucao('clique no mapa para adicionar a PARADA')
+  onAddStop: () => {
+    if (state.map !== 'route') openMap('route')
+    awaitingStop = true
+    instruction('click the map to add the STOP')
   },
-  onRemoverEscala: (i) => {
-    estado.escalas.splice(i, 1)
-    mapa.setEscalas(estado.escalas)
-    atualizarRota(estado.posicao, estado.destino, estado.escalas)
+  onRemoveStop: (i) => {
+    state.stops.splice(i, 1)
+    map.setStops(state.stops)
+    updateRoute(state.position, state.destination, state.stops)
   },
-  onAbrirAlvo: async (alvo) => {
-    if (!alvo?.lat) return
-    if (estado.mapa !== 'visor') await fecharMapa()
-    getFichaCientifica(alvo.lat, alvo.lon).then((f) => mostrarFicha(f, true), () => mostrarFicha('erro', true))
+  onOpenTarget: async (target) => {
+    if (!target?.lat) return
+    if (state.map !== 'viewer') await closeMap()
+    getScienceCard(target.lat, target.lon).then((f) => showScience(f, true), () => showScience('error', true))
   },
 })
 
-function definirDestino(p) {
-  if (!mesmoPonto(estado.local, p)) limparBarra() // dados do destino anterior saem já
-  $('c-rota').hidden = false
-  colapsarGrupo('g-rota', false)
-  estado.destino = p
-  estado.escalas = []
-  mapa.setDestino(p)
-  mapa.setEscalas([])
-  instrucao(null)
-  $('btn-rota').textContent = 'Editar rota'
-  atualizarRota(estado.posicao, p, [])
+function setDestination(p) {
+  if (!samePoint(state.place, p)) clearBar() // previous destination data goes away right now
+  $('c-route').hidden = false
+  collapseGroup('g-route', false)
+  state.destination = p
+  state.stops = []
+  map.setDestination(p)
+  map.setStops([])
+  instruction(null)
+  $('btn-route').textContent = 'Edit route'
+  updateRoute(state.position, p, [])
 }
 
-function cancelarRota() {
-  Object.assign(estado, { rotaAtiva: false, destino: null, escalas: [], rota: null })
-  aguardandoEscala = false
-  mapa.setDestino(null)
-  mapa.setEscalas([])
-  mapa.setRota(null)
-  $('c-rota').hidden = true
-  $('btn-rota').textContent = 'Planejar rota'
-  if (estado.mapa === 'rota') {
-    estado.mapa = 'explorar'
-    mapa.setModo('explorar')
+function cancelRoute() {
+  Object.assign(state, { routeActive: false, destination: null, stops: [], route: null })
+  if (state.layers.insolation.visible) updateInsolation()
+  awaitingStop = false
+  map.setDestination(null)
+  map.setStops([])
+  map.setRoute(null)
+  $('c-route').hidden = true
+  $('btn-route').textContent = 'Plan route'
+  if (state.map === 'route') {
+    state.map = 'explore'
+    map.setMode('explore')
     $('coords').hidden = true
-    instrucao(null)
+    instruction(null)
   }
-  limparBarra()
+  clearBar()
 }
 
-// ---------------- Destino por coordenadas ----------------
-function msg(texto) {
-  $('coords-msg').hidden = !texto
-  $('coords-msg').textContent = texto || ''
+// ---------------- Destination by coordinates ----------------
+function msg(text) {
+  $('coords-msg').hidden = !text
+  $('coords-msg').textContent = text || ''
 }
 
-function lerCoords() {
+function readCoords() {
   const lat = parseFloat($('lat').value)
   let lon = parseFloat($('lon').value)
   const latOk = Number.isFinite(lat) && lat >= -90 && lat <= 90
@@ -353,100 +392,173 @@ function lerCoords() {
   return { lat, lon }
 }
 
-let janela = null // recorte do boxwork (/map): aviso quando o destino cai fora
-fetch('/map').then((r) => r.json()).then((m) => (janela = m.window || null)).catch(() => {})
+let bbox = null // boxwork window (/map): warning when the destination falls outside
+fetch('/map').then((r) => r.json()).then((m) => (bbox = m.window || null)).catch(() => {})
 
 $('coords').addEventListener('submit', (e) => {
   e.preventDefault()
-  const c = lerCoords()
-  if (!c) return msg('Latitude entre −90 e 90; longitude numérica (°E).')
-  const dentro = !janela || (c.lat >= janela.lat_min && c.lat <= janela.lat_max && c.lon >= janela.lon_min && c.lon <= janela.lon_max)
-  msg(dentro ? null : 'Fora da janela do boxwork — resultados podem ser vazios.')
-  definirDestino(c)
-  mapa.centrar(c)
+  const c = readCoords()
+  if (!c) return msg('Latitude between −90 and 90; numeric longitude (°E).')
+  const inside = !bbox || (c.lat >= bbox.lat_min && c.lat <= bbox.lat_max && c.lon >= bbox.lon_min && c.lon <= bbox.lon_max)
+  msg(inside ? null : 'Outside the boxwork window — results may be empty.')
+  setDestination(c)
+  map.center(c)
 })
 
-// ---------------- Clique no mapa expandido ----------------
-let seqLeitura = 0
-async function cliqueNoMapa(lat, lon) {
+// ---------------- Click on the expanded map ----------------
+let readoutSeq = 0
+async function mapClick(lat, lon) {
   const p = { lat, lon }
-  if (estado.mapa === 'rota') {
-    if (aguardandoEscala) {
-      aguardandoEscala = false
-      instrucao(null)
-      estado.escalas.push(p)
-      mapa.setEscalas(estado.escalas)
-      return atualizarRota(estado.posicao, estado.destino, estado.escalas)
+  if (state.map === 'route') {
+    if (awaitingStop) {
+      awaitingStop = false
+      instruction(null)
+      state.stops.push(p)
+      map.setStops(state.stops)
+      return updateRoute(state.position, state.destination, state.stops)
     }
     $('lat').value = lat.toFixed(6)
     $('lon').value = lon.toFixed(6)
     msg(null)
-    return definirDestino(p)
+    return setDestination(p)
   }
-  // explorar: leitura rápida de lat, lon e elevação
-  const meu = ++seqLeitura
-  const el = $('leitura')
+  // explore: quick readout of lat, lon and elevation
+  const mine = ++readoutSeq
+  const el = $('readout')
   el.hidden = false
-  el.textContent = `${lat.toFixed(6)}° · ${lon.toFixed(6)}°E · consultando elevação…`
+  el.textContent = `${lat.toFixed(6)}° · ${lon.toFixed(6)}°E · querying elevation…`
   try {
-    const ponto = await getPoint(lat, lon)
-    const rv = ponto.raster_values
-    const ti = ponto.inercia_termica
-    if (meu !== seqLeitura) return
-    el.textContent = `${lat.toFixed(6)}° · ${lon.toFixed(6)}°E · ` + (rv.elevacao_m === null
-      ? 'sem elevação (fora do DTM)'
-      : `${rv.elevacao_m.toFixed(1)} m${rv.slope_deg !== null ? ` · ${rv.slope_deg.toFixed(1)}°` : ''}`)
-      + (ti ? ` · TI ${ti.valor}` : '')
+    const point = await getPoint(lat, lon)
+    const rv = point.raster_values
+    const ti = point.thermal_inertia
+    if (mine !== readoutSeq) return
+    el.textContent = `${lat.toFixed(6)}° · ${lon.toFixed(6)}°E · ` + (rv.elevation_m === null
+      ? 'no elevation (outside the DTM)'
+      : `${rv.elevation_m.toFixed(1)} m${rv.slope_deg !== null ? ` · ${rv.slope_deg.toFixed(1)}°` : ''}`)
+      + (ti ? ` · TI ${ti.value}` : '')
   } catch (e) {
-    if (meu === seqLeitura) el.textContent = `${lat.toFixed(6)}° · ${lon.toFixed(6)}°E · ${e.message}`
+    if (mine === readoutSeq) el.textContent = `${lat.toFixed(6)}° · ${lon.toFixed(6)}°E · ${e.message}`
   }
 }
 
-// ---------------- Camadas (delegação: o HTML é refeito a cada render) ----------------
-$('camadas').addEventListener('click', (e) => {
+// ---------------- Layers (delegation: the HTML is rebuilt on every render) ----------------
+$('layers-panel').addEventListener('click', (e) => {
+  const go = e.target.closest('[data-insol-go]')?.dataset.insolGo
+  if (go !== undefined) {
+    state.insolation.hour = quarter(Number(go))
+    updateInsolation()
+    return
+  }
   const id = e.target.closest('[data-toggle]')?.dataset.toggle
   if (!id) return
-  const c = estado.camadas[id]
+  const c = state.layers[id]
   c.visible = !c.visible
-  mapa.setCamadaVisivel(id, c.visible)
-  camadas()
+  map.setLayerVisible(id, c.visible)
+  if (id === 'insolation' && c.visible && !state.insolation.started) {
+    // first time: starts at the arrival hour (if there is a route) or the current one
+    const h = arrivalHour(state) ?? state.clock?.ltst
+    if (h !== undefined) state.insolation.hour = quarter(h)
+    state.insolation.started = true
+    updateInsolation()
+  }
+  layers()
 })
-$('camadas').addEventListener('input', (e) => {
-  const id = e.target.dataset.opacidade
-  if (!id) return
-  estado.camadas[id].opacity = Number(e.target.value)
-  mapa.setCamadaOpacidade(id, estado.camadas[id].opacity) // sem re-render: não roubar o foco do slider
-})
+// insolation hour: 'change' (slider release), not 'input' -- each hour is a new grid on the server
+// with a destination set, the query already tells whether IT is in sun or shade at the chosen hour
+function updateInsolation() {
+  const { hour } = state.insolation
+  map.setInsolationHour(hour)
+  getInsolation(hour, state.destination)
+    .catch(() => getInsolation(hour)) // destination outside the 1 m DTM: Sun position only
+    .then((info) => { state.insolation.info = info; layers() })
+    .catch(() => { state.insolation.info = null; layers() })
+}
+const quarter = (h) => Math.round(h * 4) / 4
 
-// ---------------- Teclado ----------------
+// simulated clock: refreshes every minute (solar time advances ~1 min per minute)
+function readClock() {
+  getClock()
+    .then((r) => {
+      state.clock = r
+      if (state.layers.insolation.visible) layers()
+    })
+    .catch(() => {})
+}
+readClock()
+setInterval(readClock, 60_000)
+$('layers-panel').addEventListener('change', (e) => {
+  if (e.target.matches('[data-insol-hour]')) {
+    state.insolation.hour = Number(e.target.value)
+    updateInsolation()
+    return
+  }
+})
+// Custom atmospheric variable selector (replaces the native <select>)
+const closeAtmMenu = () => {
+  const m = $('layers-panel').querySelector('.lyr-menu')
+  if (!m || m.hidden) return
+  m.hidden = true
+  m.parentElement.querySelector('[data-atm-open]').setAttribute('aria-expanded', 'false')
+}
+$('layers-panel').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-atm-open]')
+  if (btn) {
+    const m = btn.parentElement.querySelector('.lyr-menu')
+    const open = m.hidden
+    closeAtmMenu()
+    m.hidden = !open
+    btn.setAttribute('aria-expanded', String(open))
+    return
+  }
+  const opt = e.target.closest('[data-atm-var]')
+  if (!opt) return
+  state.atmosphere.variable = opt.dataset.atmVar
+  map.setAtmosphere(state.atmosphere.geo, state.atmosphere.variable, state.layers.atmosphere_track.visible)
+  layers()
+})
+document.addEventListener('click', (e) => { if (!e.target.closest('.lyr-sel')) closeAtmMenu() })
+
+// ---------------- Keyboard ----------------
 document.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape' || !$('assistente').hidden) return // Esc do assistente é dele
-  if (estado.mapa !== 'visor') fecharMapa()
-  else fecharVisor()
+  if (e.key !== 'Escape' || !$('assistant').hidden) return // the assistant handles its own Esc
+  const atmMenu = $('layers-panel').querySelector('.lyr-menu')
+  if (atmMenu && !atmMenu.hidden) return closeAtmMenu()
+  if (document.body.classList.contains('viewer-front')) closeViewer()
+  else if (state.map !== 'viewer') closeMap()
+  else closeViewer()
 })
 
-// ---------------- F08: assistente ----------------
-iniciarAssistente($('assistente'), $('btn-assistente'), () => estado.local ?? estado.posicao)
+// ---------------- F08: assistant ----------------
+initAssistant($('assistant'), $('btn-assistant'), () => state.place ?? state.position)
 
-// ---------------- Carga inicial ----------------
-getPosicao()
+// ---------------- Initial load ----------------
+getPosition()
   .then((p) => {
-    estado.posicao = { lat: p.lat, lon: p.lon, rotulo: 'a posição atual', fonte: p.rotulo, tipo: 'posicao' }
-    mapa.setOrigem(estado.posicao)
-    mapa.centrar(estado.posicao)
+    state.position = { lat: p.lat, lon: p.lon, label: 'the current position', source: p.label, kind: 'position' }
+    map.setOrigin(state.position)
+    map.center(state.position)
   })
-  .catch((e) => card('c-status', `<p class="vazio erro">Sem posição: ${esc(e.message)}</p>`))
+  .catch((e) => card('c-status', `<p class="empty error">No position: ${esc(e.message)}</p>`))
 
 try {
   const metas = await getLayers()
-  $('mapa-status').remove()
-  mapa.criarMapa($('mapa'), metas, {
-    onClick: cliqueNoMapa,
-    onFechar: fecharMapa,
+  $('map-status').remove()
+  map.createMap($('map'), metas, {
+    onClick: mapClick,
+    onClose: closeMap,
     onLoad: () => {
-      if (estado.posicao) { mapa.setOrigem(estado.posicao); mapa.centrar(estado.posicao) }
+      if (state.route) map.setRoute(state.route) // route computed before the map loaded
+      updateRoute.redraw()
+      if (state.position) { map.setOrigin(state.position); map.center(state.position) }
+      getAtmosphereTrack()
+        .then((geo) => {
+          state.atmosphere.geo = geo
+          map.setAtmosphere(geo, state.atmosphere.variable, state.layers.atmosphere_track.visible)
+          layers()
+        })
+        .catch((e) => { state.atmosphere.error = e.message; layers() })
     },
   })
 } catch (e) {
-  $('mapa-status').textContent = `sem mapa: ${e.message}`
+  $('map-status').textContent = `no map: ${e.message}`
 }

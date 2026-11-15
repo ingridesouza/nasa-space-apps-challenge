@@ -1,101 +1,97 @@
 <!doctype html>
-<!-- Front H2G2 em HTML/CSS/JS puro, servido pela API (api/main.py).
-     Libs vendorizadas: MapLibre GL 6.17.0 (lib/maplibre/, BSD-3) e Pannellum 2.5.6 (lib/pannellum/, MIT). Nada carrega de fora. -->
-<html lang="pt-BR">
+<!-- H2G2 front in plain HTML/CSS/JS, served by the API (api/main.py).
+     Vendored libs: MapLibre GL 6.17.0 (lib/maplibre/, BSD-3) and Pannellum 2.5.6 (lib/pannellum/, MIT). Nothing loads from outside. -->
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <title>H2G2 · Visor</title>
+  <title>H2G2 · Viewer</title>
   <link rel="stylesheet" href="lib/maplibre/maplibre-gl.css">
   <link rel="stylesheet" href="lib/pannellum/pannellum.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app">
-    <!-- VISOR: visão do astronauta (panorama ou foto) -->
-    <main id="visor" class="visor grid-bg">
-      <div id="visor-stage" class="visor-stage">
-        <p id="visor-vazio" class="visor-vazio mono">Abra o panorama (⤢) ou uma foto para ver aqui.</p>
-        <img id="visor-img" class="visor-img" alt="" hidden>
+    <!-- VIEWER: the astronaut's view (panorama or photo) -->
+    <main id="viewer" class="viewer grid-bg">
+      <div id="viewer-stage" class="viewer-stage">
+        <p id="viewer-empty" class="viewer-empty mono">Open the panorama (⤢) or a photo to view it here.</p>
+        <img id="viewer-img" class="viewer-img" alt="" hidden>
       </div>
-      <button id="visor-fechar" class="ibtn visor-fechar" type="button" title="Voltar (Esc)" hidden>✕</button>
+      <button id="viewer-close" class="ibtn viewer-close" type="button" title="Back (Esc)" hidden>✕</button>
     </main>
 
-    <div class="visor-hud mono">
+    <div class="viewer-hud mono">
       <span class="eyebrow">H2G2</span>
     </div>
 
-    <!-- F08: assistente local -->
-    <button id="btn-assistente" class="pilula frame mono" type="button" aria-expanded="false" aria-controls="assistente">Send your request</button>
-    <section id="assistente" class="card panel assistente" hidden aria-label="Assistente H2G2"></section>
+    <!-- F08: local assistant -->
+    <button id="btn-assistant" class="pill frame mono" type="button" aria-expanded="false" aria-controls="assistant">Send your request</button>
+    <section id="assistant" class="card panel assistant" hidden aria-label="H2G2 assistant"></section>
 
-    <!-- MAPA (F01): o mesmo elemento vira círculo (minimizado) ou tela cheia -->
-    <div id="mapa-box" class="mapa-box" title="Expandir mapa">
-      <div id="mapa"></div>
-      <!-- CTX/HiRISE em Gale só existem em P&B; mix-blend-mode: color troca só o matiz
-           (poeira marciana) e preserva a luminância. Nenhum dado científico passa por aqui. -->
-      <div class="mars-tint"></div>
-      <p id="mapa-status" class="mapa-status mono">carregando mapa…</p>
+    <!-- MAP (F01): the same element becomes a circle (minimized) or full screen -->
+    <div id="map-box" class="map-box" title="Expand map">
+      <div id="map"></div>
+      <p id="map-status" class="map-status mono">loading map…</p>
     </div>
-    <div id="mapa-acoes" class="mapa-acoes">
-      <button id="btn-rota" class="btn btn-red btn-sm" type="button">Planejar rota</button>
+    <div id="map-actions" class="map-actions">
+      <button id="btn-route" class="btn btn-red btn-sm" type="button">Plan route</button>
     </div>
-    <div id="camadas" class="card panel camadas" hidden></div>
-    <div id="instrucao" class="instrucao mono" hidden></div>
-    <div id="leitura" class="leitura mono" hidden></div>
+    <div id="layers-panel" class="card panel layers-panel" hidden></div>
+    <div id="instruction" class="instruction mono" hidden></div>
+    <div id="readout" class="readout mono" hidden></div>
 
     <form id="coords" class="coords panel frame" autocomplete="off" novalidate hidden>
-      <div class="eyebrow">Destino</div>
-      <label class="campo"><span class="mono">LAT °</span>
+      <div class="eyebrow">Destination</div>
+      <label class="field"><span class="mono">LAT °</span>
         <input id="lat" class="mono" type="number" step="any" placeholder="-4.808008" required>
       </label>
-      <label class="campo"><span class="mono">LON °E</span>
+      <label class="field"><span class="mono">LON °E</span>
         <input id="lon" class="mono" type="number" step="any" placeholder="137.381004" required>
       </label>
-      <button class="btn btn-red btn-sm" type="submit">Enviar</button>
+      <button class="btn btn-red btn-sm" type="submit">Send</button>
       <p id="coords-msg" class="coords-msg mono" hidden></p>
     </form>
 
-    <!-- BARRAS DA DIREITA: rota e imagens, independentes (cada uma com seu botão de abrir/fechar) -->
-    <div id="flutuante" class="flutuante">
-      <div id="g-rota" class="grupo">
-        <button class="ibtn ibtn-sm grupo-toggle" type="button" data-nome="rota" title="Recolher rota" aria-expanded="true">›</button>
-        <section id="c-rota" class="card panel rota-card" hidden></section>
+    <!-- RIGHT BARS: route and images, independent (each with its own open/close button) -->
+    <div id="floating" class="floating">
+      <div id="g-route" class="group">
+        <button class="ibtn ibtn-sm group-toggle" type="button" data-name="route" title="Collapse route" aria-expanded="true">›</button>
+        <section id="c-route" class="card panel route-card" hidden></section>
       </div>
 
-      <div id="g-imagens" class="grupo">
-        <button class="ibtn ibtn-sm grupo-toggle" type="button" data-nome="imagens" title="Recolher imagens" aria-expanded="true">›</button>
+      <div id="g-images" class="group">
+        <button class="ibtn ibtn-sm group-toggle" type="button" data-name="images" title="Collapse images" aria-expanded="true">›</button>
         <section id="c-status" class="card panel" hidden></section>
 
         <section id="c-pano" class="card panel" hidden>
           <div class="pano-slot"><div id="pano"></div>
-            <button id="pano-expandir" class="ibtn ibtn-sm" type="button" title="Expandir no visor">⤢</button>
           </div>
-          <p id="pano-rotulo" class="rotulo mono"></p>
+          <p id="pano-caption" class="caption mono"></p>
         </section>
 
-        <section id="c-fotos" class="card panel" hidden>
-          <div id="fotos" class="fotos"></div>
-          <div id="fotos-nav" class="fotos-nav" hidden>
-            <button type="button" id="fotos-prev" class="fotos-seta" aria-label="Página anterior">‹</button>
-            <span id="fotos-pag" class="fotos-pag"></span>
-            <button type="button" id="fotos-next" class="fotos-seta" aria-label="Próxima página">›</button>
+        <section id="c-photos" class="card panel" hidden>
+          <div id="photos" class="photos"></div>
+          <div id="photos-nav" class="photos-nav" hidden>
+            <button type="button" id="photos-prev" class="photos-arrow" aria-label="Previous page">‹</button>
+            <span id="photos-page" class="photos-page"></span>
+            <button type="button" id="photos-next" class="photos-arrow" aria-label="Next page">›</button>
           </div>
         </section>
       </div>
     </div>
-    <!-- FICHAS (F04): coluna à esquerda da barra, empilha para cima -->
-    <div id="fichas" class="fichas">
-      <details id="c-ficha" class="card panel ficha-card" hidden>
-        <summary><span id="ficha-nome" class="ficha-nome"></span><span id="ficha-tipo" class="tag tag-red"></span></summary>
-        <div id="ficha" class="ficha-body"></div>
+    <!-- SCIENCE CARDS (F04): column left of the bar, stacks upward -->
+    <div id="science-cards" class="science-cards">
+      <details id="c-science" class="card panel science-card" hidden>
+        <summary><span id="science-name" class="science-name"></span><span id="science-type" class="tag tag-red"></span></summary>
+        <div id="science" class="science-body"></div>
       </details>
     </div>
   </div>
 
   <script src="lib/pannellum/pannellum.js"></script>
-  <script src="card.js"></script>
+  <script src="science-card.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

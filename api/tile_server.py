@@ -1,23 +1,23 @@
-"""Serve tiles XYZ padrão (`/tiles/{layer}/{z}/{x}/{y}.png`) pras
-camadas raster reais -- substitui o `ImageSource` de imagem única
-(mosaics.py + frontend/src/map/style.ts) por um mapa de tiles de
-verdade: zoom/pan carregando por partes, não uma foto esticada.
+"""Serves standard XYZ tiles (`/tiles/{layer}/{z}/{x}/{y}.png`) for the
+real raster layers -- replaces the single-image `ImageSource`
+(mosaics.py + frontend/src/map/style.ts) with a real tile map:
+zoom/pan loading in parts, not a stretched photo.
 
-Por que isso funciona sem reprojeção cartográfica de verdade: o
-endereçamento z/x/y -> bbox lon/lat do slippy map padrão (OSM/Google/
-qualquer XYZ) é só uma convenção de graus normalizados -- o raio do
-corpo celeste só entra na conta de ESCALA/resolução física, não no
-endereçamento (mesma ressalva já documentada sobre
-OGC_METERS_PER_DEGREE em data-pipeline/adapters/mars_trek_wmts.py).
-Nossas coordenadas de Marte já são lon/lat de verdade em todo o
-sistema, então um recorte de janela por lon/lat (mesma operação de
-`route_planning._latlon_to_rc`) é suficiente -- sem inventar nenhuma
-precisão que não existe.
+Why this works without real cartographic reprojection: the standard
+slippy map z/x/y -> lon/lat bbox addressing (OSM/Google/
+any XYZ) is just a normalized-degree convention -- the radius of the
+celestial body only enters the SCALE/physical resolution math, not the
+addressing (same caveat already documented about
+OGC_METERS_PER_DEGREE in data-pipeline/adapters/mars_trek_wmts.py).
+Our Mars coordinates are already real lon/lat across the whole
+system, so a window crop by lon/lat (same operation as
+`route_planning._latlon_to_rc`) is enough -- without inventing any
+precision that does not exist.
 
-Suporta só os dois `tipo_acesso` que o frontend realmente usa como
-camada de tiles (`tiles_wmts` e `hillshade_derivado`) -- `raster_unico`
-(DTM/MOLA) não é exibido como tile diretamente hoje, só amostrado
-ponto a ponto (ver raster_sampling.py)."""
+Serves the `access_type`s the frontend actually uses as a
+tile layer (`tiles_wmts`, `derived_hillshade` and the derived/scalar layers) -- `single_raster`
+(DTM/MOLA) is not displayed as a tile directly today, only sampled
+point by point (see raster_sampling.py)."""
 
 import functools
 import io
@@ -30,46 +30,46 @@ from PIL import Image
 from rasterio.warp import Resampling, reproject
 
 from geo import MARS_RADIUS_M
-from mosaics import build_hillshade_array, build_mosaic_image
+from mosaics import build_hillshade_rgba, build_mosaic_image
 
 TILE_SIZE = 256
 
-# PROJ4 ad hoc pra esfera de Marte -- não existe EPSG de Marte, e marcar
-# como EPSG:4326 (WGS84 de verdade) seria enganoso. Só usado como
-# metadado do GeoTIFF cacheado; todo o recorte de tile é feito por
-# aritmética direta do transform, nunca por reprojeção PROJ de verdade.
+# Ad hoc PROJ4 for the Mars sphere -- there is no Mars EPSG, and marking
+# it as EPSG:4326 (real WGS84) would be misleading. Only used as
+# metadata of the cached GeoTIFF; all tile cropping is done by
+# direct transform arithmetic, never by real PROJ reprojection.
 MARS_GEOGRAPHIC_CRS = f"+proj=longlat +a={MARS_RADIUS_M} +b={MARS_RADIUS_M} +no_defs"
 
 
 def tile_bounds_lonlat(z: int, x: int, y: int) -> tuple[float, float, float, float]:
-    """(min_lon, min_lat, max_lon, max_lat) do tile z/x/y -- fórmula
-    padrão de slippy map, independente do corpo celeste (ver docstring
-    do módulo)."""
+    """(min_lon, min_lat, max_lon, max_lat) of tile z/x/y -- standard
+    slippy map formula, independent of the celestial body (see the module
+    docstring)."""
     n = 2**z
 
-    def lat_do_y(y_tile: float) -> float:
+    def lat_from_y(y_tile: float) -> float:
         t = math.pi * (1 - 2 * y_tile / n)
         return math.degrees(math.atan(math.sinh(t)))
 
     min_lon = x / n * 360.0 - 180.0
     max_lon = (x + 1) / n * 360.0 - 180.0
-    max_lat = lat_do_y(y)
-    min_lat = lat_do_y(y + 1)
+    max_lat = lat_from_y(y)
+    min_lat = lat_from_y(y + 1)
     return min_lon, min_lat, max_lon, max_lat
 
 
 def _build_georef_tif(local_tile_path: str, bbox: tuple[float, float, float, float], out_path: str) -> None:
-    """Constrói (uma vez, cacheado em disco) um GeoTIFF real a partir do
-    mosaico já stitched (mosaics.build_mosaic_image) + bbox real já
-    corrigido (ver PROXIMOS-PASSOS.md sobre a correção de
-    georreferenciamento de 2026-11-14) -- mesma técnica de
-    `rasterio.transform.from_bounds` já usada em route_planning.py."""
-    mosaico = build_mosaic_image(local_tile_path)
-    if mosaico is None:
-        raise RuntimeError(f"Sem tiles em {local_tile_path}")
+    """Builds (once, cached on disk) a real GeoTIFF from the
+    already-stitched mosaic (mosaics.build_mosaic_image) + the already
+    corrected real bbox (see NEXT-STEPS.md about the
+    georeferencing fix of 2026-11-14) -- same technique as
+    `rasterio.transform.from_bounds` already used in route_planning.py."""
+    mosaic = build_mosaic_image(local_tile_path)
+    if mosaic is None:
+        raise RuntimeError(f"No tiles in {local_tile_path}")
 
     min_lon, min_lat, max_lon, max_lat = bbox
-    array = np.array(mosaico)  # (rows, cols, 3) RGB
+    array = np.array(mosaic)  # (rows, cols, 3) RGB
     height, width = array.shape[0], array.shape[1]
     transform = rasterio.transform.from_bounds(min_lon, min_lat, max_lon, max_lat, width, height)
 
@@ -84,115 +84,123 @@ def _build_georef_tif(local_tile_path: str, bbox: tuple[float, float, float, flo
         crs=MARS_GEOGRAPHIC_CRS,
         transform=transform,
     ) as dst:
-        for banda in range(3):
-            dst.write(array[:, :, banda], banda + 1)
+        for band in range(3):
+            dst.write(array[:, :, band], band + 1)
 
 
 @functools.lru_cache(maxsize=8)
-def _load_array_and_transform(layer_name: str, local_tile_path: str, tipo_acesso: str, bbox: tuple[float, float, float, float]):
-    """(array, transform) cacheado em memória -- mesmo padrão de
-    route_planning._load_dtm, evita reabrir/reconstruir a cada tile
-    pedido."""
-    if tipo_acesso == "hillshade_derivado":
-        shade = build_hillshade_array(local_tile_path)
+def _load_array_and_transform(layer_name: str, local_tile_path: str, access_type: str, bbox: tuple[float, float, float, float],
+                              variant: tuple | None = None):
+    """(array, transform) cached in memory -- same pattern as
+    route_planning._load_dtm, avoids reopening/rebuilding on each
+    requested tile."""
+    if access_type == "derived_hillshade":
+        shade = build_hillshade_rgba(local_tile_path)
         if shade is None:
-            raise RuntimeError(f"Sem DTM em {local_tile_path} pra gerar hillshade")
+            raise RuntimeError(f"No DTM at {local_tile_path} to generate the hillshade")
         with rasterio.open(local_tile_path) as ds:
             transform, crs = ds.transform, ds.crs
         return shade, transform, (crs or MARS_GEOGRAPHIC_CRS)
 
-    if tipo_acesso == "risco_derivado":
-        from previsao import grade_risco_rgba
+    if access_type == "derived_risk":
+        from forecast import risk_grid_rgba
 
-        rgba, transform, crs = grade_risco_rgba(local_tile_path)
+        rgba, transform, crs = risk_grid_rgba(local_tile_path)
         return rgba, transform, (crs or MARS_GEOGRAPHIC_CRS)
 
-    if tipo_acesso == "termico_escalar":
-        from termico import grade_ti_rgba
+    if access_type == "derived_insolation":
+        from insolation import insolation_grid_rgba
 
-        rgba, transform, crs = grade_ti_rgba(local_tile_path)
+        rgba, transform, crs = insolation_grid_rgba(*variant)  # variant = (sol, hour)
         return rgba, transform, (crs or MARS_GEOGRAPHIC_CRS)
 
-    if tipo_acesso == "tiles_wmts":
-        georef_path = os.path.join(local_tile_path, "_mosaico_georef.tif")
+    if access_type == "thermal_scalar":
+        from thermal import ti_grid_rgba
+
+        rgba, transform, crs = ti_grid_rgba(local_tile_path)
+        return rgba, transform, (crs or MARS_GEOGRAPHIC_CRS)
+
+    if access_type == "tiles_wmts":
+        georef_path = os.path.join(local_tile_path, "_georef_mosaic.tif")
         if not os.path.exists(georef_path):
             _build_georef_tif(local_tile_path, bbox, georef_path)
         with rasterio.open(georef_path) as ds:
             array = ds.read()  # (3, rows, cols)
             return array, ds.transform, (ds.crs or MARS_GEOGRAPHIC_CRS)
 
-    raise ValueError(f"tipo_acesso {tipo_acesso!r} não é servido como tile -- ver docstring do módulo")
+    raise ValueError(f"access_type {access_type!r} is not served as a tile -- see the module docstring")
 
 
-#: cacheia o PNG final (não só o array decodificado) por layer/z/x/y --
-#: sem isso, voltar pra um nível de zoom já visitado nessa sessão
-#: refaz o reproject do zero toda vez. ~50KB por tile, 2048 tiles
-#: cabem em ~100MB -- não arrisca repetir os cortes de memória que já
-#: aconteceram nesta sessão (não usei múltiplos workers do uvicorn por
-#: esse mesmo motivo: cada worker duplicaria os arrays já cacheados em
-#: memória).
+#: caches the final PNG (not just the decoded array) per layer/z/x/y --
+#: without this, going back to a zoom level already visited in this session
+#: redoes the reproject from scratch every time. ~50KB per tile, 2048 tiles
+#: fit in ~100MB -- does not risk repeating the memory cuts that already
+#: happened in this session (I did not use multiple uvicorn workers for
+#: this same reason: each worker would duplicate the arrays already cached in
+#: memory).
 @functools.lru_cache(maxsize=2048)
 def render_tile(
-    layer_name: str, z: int, x: int, y: int, local_tile_path: str, tipo_acesso: str, bbox: tuple[float, float, float, float]
+    layer_name: str, z: int, x: int, y: int, local_tile_path: str, access_type: str, bbox: tuple[float, float, float, float],
+    variant: tuple | None = None,
 ) -> bytes | None:
-    """PNG 256x256 do tile pedido, ou None se o tile não intersecta a
-    cobertura real da camada (vira 404 em api/main.py, mesmo padrão já
-    usado por /mosaics/{layer}.png).
+    """256x256 PNG of the requested tile, or None if the tile does not intersect
+    the real coverage of the layer (becomes 404 in api/main.py, same pattern already
+    used by /mosaics/{layer}.png).
 
-    Reamostragem via `rasterio.warp.reproject` (GDAL) em vez de recorte
-    de janela por índice inteiro + resize do PIL -- a versão anterior
-    arredondava a janela de cada tile de forma independente, e como
-    tile vizinho é outra requisição/arredondamento separado, a borda
-    entre dois tiles não batia pixel a pixel (ficava a "costura"/
-    distorção visível reportada pelo usuário ao dar zoom). `reproject`
-    amostra cada pixel de destino pela coordenada contínua real (sem
-    arredondar janela primeiro), então dois tiles vizinhos sempre batem
-    exatamente na borda -- e por ser C/GDAL, é bem mais rápido que o
-    crop+resize em Python puro de antes."""
+    Resampling via `rasterio.warp.reproject` (GDAL) instead of an
+    integer-index window crop + PIL resize -- the previous version
+    rounded each tile's window independently, and since a
+    neighboring tile is another request/separate rounding, the edge
+    between two tiles did not match pixel by pixel (the visible "seam"/
+    distortion reported by the user when zooming). `reproject`
+    samples each destination pixel by its real continuous coordinate (without
+    rounding the window first), so two neighboring tiles always match
+    exactly at the edge -- and being C/GDAL, it is much faster than the
+    pure-Python crop+resize from before."""
     min_lon, min_lat, max_lon, max_lat = bbox
     t_min_lon, t_min_lat, t_max_lon, t_max_lat = tile_bounds_lonlat(z, x, y)
 
     if t_max_lon < min_lon or t_min_lon > max_lon or t_max_lat < min_lat or t_min_lat > max_lat:
         return None
 
-    array, transform, crs = _load_array_and_transform(layer_name, local_tile_path, tipo_acesso, bbox)
+    array, transform, crs = _load_array_and_transform(layer_name, local_tile_path, access_type, bbox, variant)
     dst_transform = rasterio.transform.from_bounds(t_min_lon, t_min_lat, t_max_lon, t_max_lat, TILE_SIZE, TILE_SIZE)
 
     if array.ndim == 2:
-        destino = np.zeros((TILE_SIZE, TILE_SIZE), dtype=array.dtype)
+        destination = np.zeros((TILE_SIZE, TILE_SIZE), dtype=array.dtype)
     else:
-        destino = np.zeros((array.shape[0], TILE_SIZE, TILE_SIZE), dtype=array.dtype)
+        destination = np.zeros((array.shape[0], TILE_SIZE, TILE_SIZE), dtype=array.dtype)
 
-    # dst_crs = src_crs (mesmo sistema de graus dos dois lados) -- não é
-    # uma reprojeção cartográfica de verdade, só reamostragem contínua
-    # entre duas grades de pixel diferentes (ver docstring do módulo
-    # sobre o endereçamento z/x/y não depender do raio do corpo).
+    # dst_crs = src_crs (same degree system on both sides) -- it is not
+    # a real cartographic reprojection, just continuous resampling
+    # between two different pixel grids (see the module docstring
+    # about z/x/y addressing not depending on the body radius).
     #
-    # Resampling.cubic em vez de bilinear -- interpolação mais nítida
-    # dos MESMOS pixels reais ao dar zoom in além da resolução nativa
-    # (já confirmado: z16 é o maior nível que o Mars Trek oferece pra
-    # HiRISE nessa região, não existe mais detalhe real pra baixar).
-    # Isto não inventa nenhum pixel novo, só troca o jeito de
-    # interpolar os que já temos por um kernel mais nítido que a média
-    # simples do bilinear.
+    # Resampling.cubic instead of bilinear -- sharper interpolation
+    # of the SAME real pixels when zooming in beyond the native resolution
+    # (already confirmed: z16 is the highest level Mars Trek offers for
+    # HiRISE in this region, there is no more real detail to download).
+    # This does not invent any new pixel, it only changes the way of
+    # interpolating the ones we already have to a sharper kernel than the
+    # simple average of bilinear.
     reproject(
         source=array,
-        destination=destino,
+        destination=destination,
         src_transform=transform,
         src_crs=crs,
         dst_transform=dst_transform,
         dst_crs=crs,
-        # categórica (risco) não pode misturar cores entre faixas; térmica mostra a
-        # célula real de 100 m em vez de borrar
-        resampling=Resampling.nearest if tipo_acesso in ("risco_derivado", "termico_escalar") else Resampling.cubic,
+        # categorical (risk) must not mix colors between bands; thermal shows the
+        # real 100 m cell instead of blurring
+        resampling=Resampling.nearest if access_type in ("derived_risk", "thermal_scalar", "derived_insolation") else Resampling.cubic,
     )
 
     if array.ndim == 2:
-        img = Image.fromarray(destino).convert("L").convert("RGB")
+        img = Image.fromarray(destination).convert("L").convert("RGB")
     elif array.shape[0] == 4:
-        img = Image.fromarray(np.moveaxis(destino, 0, -1), mode="RGBA")
+        img = Image.fromarray(np.moveaxis(destination, 0, -1), mode="RGBA")
     else:
-        img = Image.fromarray(np.moveaxis(destino, 0, -1)).convert("RGB")
+        img = Image.fromarray(np.moveaxis(destination, 0, -1)).convert("RGB")
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")

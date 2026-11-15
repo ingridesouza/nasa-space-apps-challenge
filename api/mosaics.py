@@ -1,19 +1,19 @@
-"""Monta um mosaico único a partir dos tiles WMTS já baixados pra uma
-camada -- é a alternativa real ao que a gente tentou primeiro (servir
-como fonte `tiles` padrão XYZ do MapLibre).
+"""Builds a single mosaic from the WMTS tiles already downloaded for a
+layer -- it is the real alternative to what we tried first (serving
+as a standard XYZ `tiles` source in MapLibre).
 
-Por que não dá pra usar `tiles` XYZ direto: o MapLibre assume Web
-Mercator (EPSG:3857) pra decidir qual x/y pedir em cada zoom. Nossos
-tiles vêm da grade própria do WMTS do Mars Trek (CRS geográfico/Marte,
-origem e espaçamento diferentes -- ver
-data-pipeline/adapters/mars_trek_wmts.py). Então o x/y que o navegador
-pede quase nunca bate com o arquivo que baixamos -- tudo 404, mapa em
-branco.
+Why XYZ `tiles` cannot be used directly: MapLibre assumes Web
+Mercator (EPSG:3857) to decide which x/y to request at each zoom. Our
+tiles come from Mars Trek's own WMTS grid (geographic/Mars CRS,
+different origin and spacing -- see
+data-pipeline/adapters/mars_trek_wmts.py). So the x/y the browser
+requests almost never matches the file we downloaded -- all 404, blank
+map.
 
-Solução: já que só temos uma amostra pequena de tiles (uma única área
-de teste, poucos deles), stitch tudo numa imagem só e exibe via
-`ImageSource` do MapLibre, que aceita as 4 coordenadas reais do canto
-em vez de depender de um esquema de tile padrão.
+Solution: since we only have a small sample of tiles (a single test
+area, few of them), stitch everything into a single image and display it via
+MapLibre's `ImageSource`, which takes the 4 real corner coordinates
+instead of depending on a standard tile scheme.
 """
 
 import io
@@ -30,22 +30,22 @@ TILE_FILENAME_RE = re.compile(r"^(\d+)_(\d+)_(\d+)\.png$")
 
 
 def _list_tiles(folder: str) -> list[tuple[int, int, int, str]]:
-    """Devolve [(z, row, col, caminho)] só pro z que efetivamente existe
-    -- nossos adaptadores salvam um único nível de zoom por amostra."""
+    """Returns [(z, row, col, path)] only for the z that actually exists
+    -- our adapters save a single zoom level per sample."""
     tiles = []
-    for nome in os.listdir(folder):
-        m = TILE_FILENAME_RE.match(nome)
+    for name in os.listdir(folder):
+        m = TILE_FILENAME_RE.match(name)
         if m:
             z, row, col = (int(v) for v in m.groups())
-            tiles.append((z, row, col, os.path.join(folder, nome)))
+            tiles.append((z, row, col, os.path.join(folder, name)))
     return tiles
 
 
 def build_mosaic_image(local_tile_path: str) -> Image.Image | None:
-    """Stitch em memória (devolve a imagem, não PNG já codificado) --
-    reaproveitado tanto pelo endpoint de thumbnail (`build_mosaic_png`)
-    quanto pelo tile server (`tile_server.py`), que precisa do array de
-    pixel pra recortar janelas, não de bytes PNG prontos."""
+    """In-memory stitch (returns the image, not already-encoded PNG) --
+    reused both by the thumbnail endpoint (`build_mosaic_png`)
+    and by the tile server (`tile_server.py`), which needs the pixel
+    array to crop windows, not ready PNG bytes."""
     tiles = _list_tiles(local_tile_path)
     if not tiles:
         return None
@@ -54,48 +54,48 @@ def build_mosaic_image(local_tile_path: str) -> Image.Image | None:
     cols = sorted({t[2] for t in tiles})
     row_min, col_min = rows[0], cols[0]
 
-    with Image.open(tiles[0][3]) as amostra:
-        tile_w, tile_h = amostra.size
+    with Image.open(tiles[0][3]) as sample:
+        tile_w, tile_h = sample.size
 
-    mosaico = Image.new("RGB", (len(cols) * tile_w, len(rows) * tile_h))
-    for _z, row, col, caminho in tiles:
-        with Image.open(caminho) as tile_img:
-            mosaico.paste(tile_img.convert("RGB"), ((col - col_min) * tile_w, (row - row_min) * tile_h))
+    mosaic = Image.new("RGB", (len(cols) * tile_w, len(rows) * tile_h))
+    for _z, row, col, path in tiles:
+        with Image.open(path) as tile_img:
+            mosaic.paste(tile_img.convert("RGB"), ((col - col_min) * tile_w, (row - row_min) * tile_h))
 
-    return mosaico
+    return mosaic
 
 
 def build_mosaic_png(local_tile_path: str) -> bytes | None:
-    mosaico = build_mosaic_image(local_tile_path)
-    if mosaico is None:
+    mosaic = build_mosaic_image(local_tile_path)
+    if mosaic is None:
         return None
 
     buf = io.BytesIO()
-    mosaico.save(buf, format="PNG")
+    mosaic.save(buf, format="PNG")
     return buf.getvalue()
 
 
 def build_hillshade_array(dtm_path: str, azimuth_deg: float = 315.0, altitude_deg: float = 45.0) -> np.ndarray | None:
-    """Gera um hillshade real a partir de um GeoTIFF de elevação (DTM
-    HiRISE 1m ou MOLA) -- fórmula clássica de Horn/ESRI, luz vindo de
-    noroeste (315°) a 45° de altura (convenção padrão de cartografia,
-    não é a posição real do Sol em Gale naquele sol -- isto é uma
-    camada de RELEVO, não de iluminação solar real).
+    """Generates a real hillshade from an elevation GeoTIFF (HiRISE
+    1m DTM or MOLA) -- classic Horn/ESRI formula, light coming from the
+    northwest (315°) at 45° altitude (standard cartographic convention,
+    it is not the real position of the Sun at Gale on that sol -- this is a
+    RELIEF layer, not real solar illumination).
 
-    Não é um algoritmo "oficial" calibrado (ex. GDAL `gdaldem
-    hillshade`), mas usa dado de elevação real, mesma filosofia de
-    aproximação já documentada em `_slope_degrees`. Devolve o array
-    8-bit (não PNG já codificado) -- reaproveitado pelo tile server, que
-    precisa recortar janelas do array, não de bytes PNG prontos."""
+    It is not a calibrated "official" algorithm (e.g. GDAL `gdaldem
+    hillshade`), but it uses real elevation data, the same approximation
+    philosophy already documented in `_slope_degrees`. Returns the 8-bit
+    array (not already-encoded PNG) -- reused by the tile server, which
+    needs to crop windows from the array, not from ready PNG bytes."""
     with rasterio.open(dtm_path) as ds:
-        elevacao = ds.read(1).astype("float64")
+        elevation = ds.read(1).astype("float64")
         nodata = ds.nodata
         if nodata is not None:
-            elevacao = np.where(elevacao == nodata, np.nan, elevacao)
+            elevation = np.where(elevation == nodata, np.nan, elevation)
 
         pixel_size_m = abs(ds.transform.a) * MARS_METERS_PER_DEGREE
 
-    dzdy, dzdx = np.gradient(elevacao, pixel_size_m)
+    dzdy, dzdx = np.gradient(elevation, pixel_size_m)
 
     slope_rad = np.arctan(np.hypot(dzdx, dzdy))
     aspect_rad = np.arctan2(dzdy, -dzdx)
@@ -108,6 +108,31 @@ def build_hillshade_array(dtm_path: str, azimuth_deg: float = 315.0, altitude_de
     )
     shade = np.nan_to_num(shade, nan=0.5)
     return np.clip(shade * 255, 0, 255).astype("uint8")
+
+
+def build_hillshade_rgba(dtm_path: str, azimuth_deg: float = 315.0, altitude_deg: float = 45.0) -> np.ndarray | None:
+    """Hillshade as an OVERLAY layer, (4, h, w) uint8: only what differs from flat terrain.
+
+    Flat terrain renders sin(light altitude); what is brighter than that becomes white, what is
+    darker becomes black, and opacity grows with the difference. Flat areas stay
+    transparent and the image below (HiRISE) shows; ridges and slopes shade on top.
+    The contrast is stretched by the 98th percentile of the difference over the whole crop (the same for
+    all tiles, so the scale does not change from one tile to its neighbor)."""
+    gray = build_hillshade_array(dtm_path, azimuth_deg, altitude_deg)
+    if gray is None:
+        return None
+    flat = np.sin(np.radians(altitude_deg)) * 255
+    delta = gray.astype("float64") - flat
+    scale = max(np.percentile(np.abs(delta), 98), 1.0)
+    strength = np.clip(np.abs(delta) / scale, 0, 1)
+    rgba = np.zeros((4, *gray.shape), dtype="uint8")
+    rgba[:3] = np.where(delta > 0, 255, 0).astype("uint8")
+    rgba[3] = (strength * HILLSHADE_MAX_ALPHA).astype("uint8")
+    return rgba
+
+
+#: maximum opacity of the hillshade overlay (0-255): on the ridges the image is still visible
+HILLSHADE_MAX_ALPHA = 200
 
 
 def build_hillshade_png(dtm_path: str, azimuth_deg: float = 315.0, altitude_deg: float = 45.0) -> bytes | None:

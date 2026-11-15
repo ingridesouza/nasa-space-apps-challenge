@@ -1,54 +1,60 @@
-// Cliente da API local -- mesma origem (a API serve este web/), sem URL externa.
-// Contrato dos JSONs: ver api/main.py (antes espelhado em frontend/src/api/types.ts).
+// Local API client -- same origin (the API serves this web/), no external URL.
+// JSON contract: see api/main.py (formerly mirrored in frontend/src/api/types.ts).
 
-async function get(caminho) {
-  const resp = await fetch(caminho)
+async function get(path) {
+  const resp = await fetch(path)
   if (!resp.ok) {
-    const corpo = await resp.json().catch(() => null)
-    throw new Error(corpo?.detail ?? `${caminho.split('?')[0]} falhou: ${resp.status}`)
+    const body = await resp.json().catch(() => null)
+    throw new Error(body?.detail ?? `${path.split('?')[0]} failed: ${resp.status}`)
   }
   return resp.json()
 }
 
-/** Posição atual do astronauta: rastreador simulado na base provisória. */
-export const getPosicao = () => get('/api/posicao')
+/** Current astronaut position: simulated tracker at the provisional base. */
+export const getPosition = () => get('/api/position')
 export const getPoint = (lat, lon) => get(`/api/point?lat=${lat}&lon=${lon}`)
 export const getConditions = () => get('/api/conditions')
-/** F06: medição do sensor do habitat/traje. 422 traz detail (texto ou lista do pydantic). */
-export async function postMedicao(m) {
-  const resp = await fetch('/api/medicao', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(m) })
-  const corpo = await resp.json().catch(() => null)
-  if (!resp.ok) throw new Error(typeof corpo?.detail === 'string' ? corpo.detail : 'medição fora da faixa física de Gale')
-  return corpo
+/** F06: habitat/suit sensor measurement. 422 carries detail (text or pydantic list). */
+export async function postMeasurement(m) {
+  const resp = await fetch('/api/measurement', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(m) })
+  const body = await resp.json().catch(() => null)
+  if (!resp.ok) throw new Error(typeof body?.detail === 'string' ? body.detail : 'measurement outside the physical range of Gale')
+  return body
 }
-export const apagarMedicao = (sol) => fetch(`/api/medicao/${sol}`, { method: 'DELETE' })
+export const deleteMeasurement = (sol) => fetch(`/api/measurement/${sol}`, { method: 'DELETE' })
 
-/** F06. q opcional: {sol, duracao_min}. */
-export const getPrevisao = (q = {}) => get(`/api/previsao?${new URLSearchParams(q)}`)
+/** F06. q optional: {sol, duration_min}. */
+export const getForecast = (q = {}) => get(`/api/forecast?${new URLSearchParams(q)}`)
 export const getNomenclature = () => get('/api/nomenclature')
 export const getLayers = () => get('/layers')
-/** paradas: [{lat,lon}, ...] opcional, em ordem -- pontos entre origem e destino. */
-export const getRoute = (o, d, paradas = []) => {
+/** Atmospheric layer: GeoJSON, one point per sol measured by REMS. */
+export const getAtmosphereTrack = () => get('/api/atmosphere/track')
+/** Sun position and max direct irradiance for the local solar hour (current sol). */
+export const getInsolation = (hour, point = null) => get(`/api/insolation?${new URLSearchParams({ hour, ...(point && { lat: point.lat, lon: point.lon }) })}`)
+/** Simulated mission clock: {sol, lmst, ltst} (local solar time at Gale). */
+export const getClock = () => get('/api/clock')
+/** stops: [{lat,lon}, ...] optional, in order -- points between origin and destination. */
+export const getRoute = (o, d, stops = []) => {
   const params = new URLSearchParams({ origin_lat: o.lat, origin_lon: o.lon, dest_lat: d.lat, dest_lon: d.lon })
-  for (const p of paradas) {
+  for (const p of stops) {
     params.append('stop_lat', p.lat)
     params.append('stop_lon', p.lon)
   }
   return get(`/api/route?${params}`)
 }
-// F03/F04 (rotas do subprojeto servidas pela mesma API)
+// F03/F04 (subproject routes served by the same API)
 export const getPanorama = (lat, lon) => get(`/panoramas/nearest?lat=${lat}&lon=${lon}`)
-export const getFotosPerto = (lat, lon) => get(`/photos/near?lat=${lat}&lon=${lon}`)
-export const getFichaCientifica = (lat, lon) => get(`/science/card?lat=${lat}&lon=${lon}`)
+export const getPhotosNear = (lat, lon) => get(`/photos/near?lat=${lat}&lon=${lon}`)
+export const getScienceCard = (lat, lon) => get(`/science/card?lat=${lat}&lon=${lon}`)
 
-/** F08: pergunta ao agente local. 503 (modelo fora) traz detail={mensagem, alertas}. */
-export async function perguntar(pergunta, lat, lon) { // sem lat/lon: a API usa a base
+/** F08: question to the local agent. 503 (model down) carries detail={message, alerts}. */
+export async function ask(question, lat, lon) { // without lat/lon: the API uses the base
   const resp = await fetch('/api/ask', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(lat === undefined ? { pergunta } : { pergunta, lat, lon }),
+    body: JSON.stringify(lat === undefined ? { question } : { question, lat, lon }),
   })
-  const corpo = await resp.json().catch(() => null)
-  if (!resp.ok) throw new Error(corpo?.detail?.mensagem ?? `/api/ask falhou: ${resp.status}`)
-  return corpo
+  const body = await resp.json().catch(() => null)
+  if (!resp.ok) throw new Error(body?.detail?.message ?? `/api/ask failed: ${resp.status}`)
+  return body
 }

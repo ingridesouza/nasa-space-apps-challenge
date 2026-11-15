@@ -1,110 +1,130 @@
-# Configuração de camadas por fonte. Sexta à noite, quando a aba
-# Resources abrir, o que muda aqui é `product_id` / `bbox_teste` --
-# a lógica dos adaptadores (data-pipeline/adapters/) não muda.
+# Layer configuration per source. Friday night, when the Resources
+# tab opens, what changes here is `product_id` / `test_bbox` --
+# the adapter logic (data-pipeline/adapters/) does not change.
 
 layers:
-  # Smoke test: produto CONFIRMADO contra o GetCapabilities real do
-  # Mars Trek (testado em 2026-11-10) -- usar para validar que o
-  # adaptador/pipeline está funcionando, não é a camada final da
-  # feature 01 (é um mosaico de referência global, não CTX/HiRISE).
-  # Mantido no bbox antigo (perto do pouso) só pra smoke test -- não
-  # precisa ser a área real do boxwork.
+  # Smoke test: product CONFIRMED against the real Mars Trek
+  # GetCapabilities (tested on 2026-11-10) -- use it to validate that the
+  # adapter/pipeline is working, it is not the final feature 01 layer
+  # (it is a global reference mosaic, not CTX/HiRISE).
+  # Kept on the old bbox (near the landing site) just for the smoke test -- it does
+  # not need to be the real boxwork area.
   smoke_test:
     adapter: MarsTrekWMTSAdapter
-    categoria: optica
+    category: optical
     product_id: "msss_atlas_simp_clon"
     region: "Mars/EQ"
-    bbox_teste:
+    test_bbox:
       min_lon: 137.40
       min_lat: -4.61
       max_lon: 137.48
       max_lat: -4.57
 
-  # CTX real -- CONFIRMADO em 2026-11-11 via DevTools no trek.nasa.gov/mars
-  # (busca "Gale Crater" > "MRO CTX, Gale Crater Mosaic" > Add).
-  # Mosaico específico de Gale (melhor que um global genérico pro boxwork).
-  ctx_optica:
+  # Real CTX -- CONFIRMED on 2026-11-11 via DevTools on trek.nasa.gov/mars
+  # (search "Gale Crater" > "MRO CTX, Gale Crater Mosaic" > Add).
+  # Gale-specific mosaic (better than a generic global one for the boxwork).
+  ctx_optical:
     adapter: MarsTrekWMTSAdapter
-    categoria: optica
+    category: optical
     product_id: "Gale_CTX_BlockAdj_dd"
     region: "Mars/EQ"
-    # bbox REAL da campanha de boxwork (sol ~4500-4684), confirmado em
-    # 2026-11-13 via MSL_waypoints.json (MMGIS oficial) -- 3x3km
-    # centrado na posição de verdade do rover, não mais o chute
-    # inicial perto do pouso (que ficava 13.3km de distância).
-    bbox_teste:
+    # REAL bbox of the boxwork campaign (sol ~4500-4684), confirmed on
+    # 2026-11-13 via MSL_waypoints.json (official MMGIS) -- 3x3km
+    # centered on the rover's real position, no longer the initial
+    # guess near the landing site (which was 13.3km away).
+    test_bbox:
       min_lon: 137.3586
       min_lat: -4.8263
       max_lon: 137.4094
       max_lat: -4.7757
 
-  # DTM HiRISE 1m de Gale -- CONFIRMADO em 2026-11-11 via
+  # Gale 1m HiRISE DTM -- CONFIRMED on 2026-11-11 via
   # scripts/lookup_mars_trek_product.py "Gale Crater" --details.
-  # Resolve a pendência do item 6 da tabela da feature 01: valores reais
-  # de elevação (F32).
+  # Resolves item 6 of the feature 01 table: real elevation
+  # values (F32).
   dtm_hirise_1m:
     adapter: ArcGISImageServerAdapter
-    categoria: topografica
+    category: topographic
     image_server_url: "https://trek.nasa.gov/mars/trekarcgis/rest/services/Gale_DEM_SMG_1m/ImageServer"
     spatial_ref_wkid: 104905
-    bbox_teste:
+    test_bbox:
       min_lon: 137.3586
       min_lat: -4.8263
       max_lon: 137.4094
       max_lat: -4.7757
 
-  # Óptica detalhe HiRISE 25cm (item 1 da tabela) -- CONFIRMADO em
+  # HiRISE 25cm detail optical (item 1 of the table) -- CONFIRMED on
   # 2026-11-11 via lookup_mars_trek_product.py "HiRISE Curiosity".
-  # Mosaico específico ao longo do trajeto do rover (não é cobertura
-  # global -- HiRISE só fotografa pontos específicos).
-  hirise_optica:
+  # Mosaic specific to the rover's traverse (not global coverage
+  # -- HiRISE only images specific spots).
+  hirise_optical:
     adapter: MarsTrekWMTSAdapter
-    categoria: optica
+    category: optical
     product_id: "curiosity_hirise_mosaic"
     region: "Mars/EQ"
-    bbox_teste:
+    test_bbox:
       min_lon: 137.3586
       min_lat: -4.8263
       max_lon: 137.4094
       max_lat: -4.7757
 
-  # MOLA regional (item 3 da tabela) -- CONFIRMADO em 2026-11-11 via
-  # lookup_mars_trek_product.py "MOLA". Produto global.
-  mola_topografia_regional:
+  # Regional MOLA (item 3 of the table) -- CONFIRMED on 2026-11-11 via
+  # lookup_mars_trek_product.py "MOLA". Global product.
+  mola_regional_topography:
     adapter: ArcGISImageServerAdapter
-    categoria: topografica
+    category: topographic
     image_server_url: "https://trek.nasa.gov/mars/trekarcgis/rest/services/mola128_mola64_merge_90Nto90S_SimpleC_clon0/ImageServer"
     spatial_ref_wkid: 104905
-    bbox_teste:
+    # Regional (±1°, ~60 km): distant horizon for insolation -- Mount
+    # Sharp (peak ~137.85E, -5.08) is outside the 3 km crop and casts
+    # shade with a low sun. 463 m/px native -> 256x256.
+    test_bbox:
+      min_lon: 136.384
+      min_lat: -5.801
+      max_lon: 138.384
+      max_lat: -3.801
+    size: "256x256"
+
+  # HiRISE DTM at native resolution (1 m/px, 3011x2999) -- CONFIRMED on
+  # 2026-11-14 (service pixelSize = 1.687e-5° = 1.0 m). Separate file:
+  # only insolation uses it. Route, slope and the risk calibration stay
+  # on the 512x512 crop (~5.9 m), on which they were tuned.
+  dtm_hirise_1m_native:
+    adapter: ArcGISImageServerAdapter
+    category: topographic
+    image_server_url: "https://trek.nasa.gov/mars/trekarcgis/rest/services/Gale_DEM_SMG_1m/ImageServer"
+    spatial_ref_wkid: 104905
+    test_bbox:
       min_lon: 137.3586
       min_lat: -4.8263
       max_lon: 137.4094
       max_lat: -4.7757
+    size: "3011x2999"
 
-  # THEMIS térmica (item 4 da tabela) -- CONFIRMADO em 2026-11-11 via
-  # lookup_mars_trek_product.py "THEMIS". Só tem WMTS (imagem IR
-  # renderizada, ~100m/px) -- sem endpoint ArcGIS, não dá pra fazer
-  # sampling de valor de temperatura real, só exibir como camada visual.
-  themis_termica:
+  # THEMIS thermal (item 4 of the table) -- CONFIRMED on 2026-11-11 via
+  # lookup_mars_trek_product.py "THEMIS". It only has WMTS (rendered IR
+  # image, ~100m/px) -- no ArcGIS endpoint, so real temperature values
+  # cannot be sampled, only displayed as a visual layer.
+  themis_thermal:
     adapter: MarsTrekWMTSAdapter
-    categoria: termica
+    category: thermal
     product_id: "THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018"
     region: "Mars/EQ"
-    bbox_teste:
+    test_bbox:
       min_lon: 137.3586
       min_lat: -4.8263
       max_lon: 137.4094
       max_lat: -4.7757
 
-  # THEMIS inércia térmica QUANTITATIVA (substitui a Day IR visual) --
-  # CONFIRMADO em 2026-11-14: rasterio lê a janela via /vsicurl/ (o
-  # servidor aceita Range, o .cub inteiro tem 2,5 GB e não é baixado).
-  # Valor real em unidades de TI (J m^-2 K^-1 s^-1/2), 100 m/px,
-  # simplecilíndrica (eqc, R=3396190). Mosaico global multi-ano do USGS.
+  # QUANTITATIVE THEMIS thermal inertia (replaces the visual Day IR) --
+  # CONFIRMED on 2026-11-14: rasterio reads the window via /vsicurl/ (the
+  # server accepts Range, the whole .cub is 2.5 GB and is not downloaded).
+  # Real value in TI units (J m^-2 K^-1 s^-1/2), 100 m/px,
+  # simple cylindrical (eqc, R=3396190). Multi-year global USGS mosaic.
   themis_ti:
-    categoria: termica
+    category: thermal
     url: "https://asc-astropedia.s3.us-west-2.amazonaws.com/Mars/Odyssey/THEMIS-Global-Thermal-Inertia-Mosaic/Quantitative-32-Bit/THEMIS_TI_Mosaic_Quant_30S120E_100mpp.cub"
-    bbox_teste:
+    test_bbox:
       min_lon: 137.3586
       min_lat: -4.8263
       max_lon: 137.4094
