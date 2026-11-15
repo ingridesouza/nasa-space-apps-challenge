@@ -36,7 +36,7 @@ web/
     lightbox.js         # PhotoLightbox
     util.js             # esc(), num(), veredito (VerdictBadge), feição mais próxima
   lib/maplibre/         # 6.17.0 (hash conferido com o package-lock): .mjs + worker .mjs + .css + LICENSE
-  fonts/                # copiadas de subprojetos/f03-f04-victoria/h2g2-f03/web/fonts/
+  fonts/                # copiadas do antigo front do F03/F04 (já removido)
 ```
 
 **Biblioteca vendorizada: só o MapLibre GL.** Justificativa: renderiza os tiles raster locais, as camadas GeoJSON (rota, fotos, trilha) e os controles de zoom. Reescrever isso não compensa. O Leaflet do subprojeto F03 não substitui o MapLibre, porque o `map.js` usa `setPaintProperty`, camadas `circle`/`line` e `maxzoom` por camada.
@@ -119,6 +119,6 @@ Estimativa: 1–2 dias para uma pessoa. As fases 0 e 4 são as maiores.
 ## 8. Riscos e decisões em aberto
 
 - **Fontes:** o subprojeto só tem Chakra Petch 400/500/600. O React pede 700 também. Usar 600 no lugar ou baixar o 700 no build.
-- **Dois fronts puros:** `subprojetos/f03-f04-victoria/h2g2-f03/web/` (F03/F04, Leaflet + Pannellum) continua separado. A fusão dos dois é outra tarefa. Este plano só evita divergência de estilo, reaproveitando as mesmas fontes e tokens.
+- **Dois fronts puros:** o antigo front do F03/F04 (Leaflet + Pannellum, já removido de `subprojetos/`) continua separado. A fusão dos dois é outra tarefa. Este plano só evita divergência de estilo, reaproveitando as mesmas fontes e tokens.
 - **Sem TypeScript:** perde-se a checagem do contrato `/api/point`. Isso é mitigado pela regra do `CLAUDE.md` de só acrescentar chaves, e pelo teste manual da fase 2.
 - **Paridade visual:** os `style={{…}}` inline espalhados pelos `.tsx` precisam virar classes com cuidado. É o ponto com mais chance de regressão visual.

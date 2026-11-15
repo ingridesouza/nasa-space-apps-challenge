@@ -1,14 +1,13 @@
-// F08 voice: "Marvin, route to Altadena" → local Whisper → "Confirm?" → "yes" → route on the map → spoken summary.
+// F08 voice: "Marvin, route to Altadena" → local Whisper → "Confirm?" → "yes" → route on the map. No speech output: replies show on the pill.
 // Hands-free (energy-based speech detector) or "hold space". Plan: docs/feature-08-voz-plano-execucao.md
 import { sendVoice } from '../api.js'
-import { speak } from './agent.js'
 
 const RATE = 16000
 const START_S = 0.15 // speech starts after this much above the threshold
 const END_S = 1.2 // and ends after this much silence (free speech has pauses: "I'm in the middle of a route… and")
 const BEFORE_S = 0.3 // keeps the start of the word that triggered the detector
 const MAX_S = 59 // the API rejects more than 60 s
-const CONFIRM_MS = 8000 // window for the "yes" after the system finishes speaking
+const CONFIRM_MS = 8000 // window for the "yes" after the "Confirm?" shows on the pill
 const LISTEN_MS = 8000 // after a bare "Hey Marvin", waits for the request this long
 
 /** Resamples to 16 kHz by averaging each window (no aliasing from skipping samples). */
@@ -45,7 +44,7 @@ export function routeSummary(data, name) {
 /**
  * button: turns hands-free on/off; status: state line (aria-live).
  * currentPoint() → {lat, lon} | null; route(origin, destination) → Promise<data from /api/route | null>;
- * ask(text): sends to the assistant, which shows and speaks the answer.
+ * ask(text): sends to the assistant, which shows the answer.
  * execute(cmd) → {ok, text}: interface command (F11); context() → {openBlocks, focus}.
  */
 export function initVoice(button, status, { currentPoint, route, ask, execute, context }) {
@@ -104,8 +103,7 @@ export function initVoice(button, status, { currentPoint, route, ask, execute, c
     const now = Date.now()
     if (holding) return recording.push(f)
     if (now < muteUntil) return
-    if (busy || speechSynthesis.speaking) {
-      // microphone muted while the system speaks: do not hear itself
+    if (busy) {
       if (pending) confirmUntil = now + CONFIRM_MS
       recording = null
       above = 0
@@ -113,7 +111,7 @@ export function initVoice(button, status, { currentPoint, route, ask, execute, c
     }
     if (pending && now > confirmUntil && !recording) {
       pending = null
-      speak('No confirmation. Cancelled.')
+      show('No confirmation. Cancelled.')
       return
     }
     if (listenUntil && now > listenUntil && !recording) {
@@ -171,8 +169,7 @@ export function initVoice(button, status, { currentPoint, route, ask, execute, c
       if (r.text) show(`heard: “${r.text}”`)
       await act(r, confirming, activated)
     } catch (e) {
-      show(`voice: ${e.message}`)
-      speak('Voice failed. Try again.')
+      show(`voice: ${e.message.split(' (')[0]}`) // on-screen only, never spoken
     } finally {
       busy = false
     }
@@ -182,10 +179,10 @@ export function initVoice(button, status, { currentPoint, route, ask, execute, c
     if (confirming) {
       const action = pending
       pending = null
-      if (r.intent !== 'yes') return speak('Cancelled.')
+      if (r.intent !== 'yes') return show('Cancelled.')
       if (action.command) return runInterface(action.command)
-      speak(`Computing the route to ${action.name}.`)
-      return speak(routeSummary(await route(action.origin, action.destination), action.name))
+      show(`Computing the route to ${action.name}.`)
+      return show(routeSummary(await route(action.origin, action.destination), action.name))
     }
     if (r.intent === 'listen') {
       beep()
@@ -195,19 +192,19 @@ export function initVoice(button, status, { currentPoint, route, ask, execute, c
     if (r.intent === 'route' && r.destination) {
       pending = { origin: r.origin, destination: { lat: r.destination.lat, lon: r.destination.lon }, name: short(r.destination.name) }
       confirmUntil = Date.now() + CONFIRM_MS
-      return speak(r.speech)
+      return show(r.speech)
     }
-    if (r.intent === 'route') return speak(r.speech) // "mark on the map where you are"
+    if (r.intent === 'route') return show(r.speech) // "mark on the map where you are"
     if (r.intent === 'interface') {
-      if (!r.command) return speak(r.speech) // missing argument or ambiguous block: the speech says what
+      if (!r.command) return show(r.speech) // missing argument or ambiguous block: the speech says what
       if (!r.confirm) return runInterface(r.command)
       pending = { command: r.command }
       confirmUntil = Date.now() + CONFIRM_MS
-      return speak(r.speech)
+      return show(r.speech)
     }
     if (r.intent === 'question') return ask(r.question)
-    if (r.intent === 'yes' || r.intent === 'no') return speak('There is nothing to confirm.')
-    if (activated && r.speech) speak(r.speech) // "I didn't understand." only when the person pressed to talk
+    if (r.intent === 'yes' || r.intent === 'no') return show('There is nothing to confirm.')
+    if (activated && r.speech) show(r.speech) // "I didn't understand." only when the person pressed to talk
     else idle()
   }
 
@@ -215,7 +212,6 @@ export function initVoice(button, status, { currentPoint, route, ask, execute, c
   async function runInterface(cmd) {
     const res = await execute(cmd)
     show(`${res.ok ? '✓' : '✕'} ${res.text}`)
-    if (!res.ok) speak(res.text)
   }
 
   const typing = (e) => e.target.closest?.('input, textarea, select, [contenteditable]')
@@ -223,7 +219,6 @@ export function initVoice(button, status, { currentPoint, route, ask, execute, c
     if (e.code !== 'Space' || typing(e)) return
     e.preventDefault()
     if (e.repeat || holding || busy) return
-    speechSynthesis.cancel() // talking over the system interrupts it
     try {
       await startMicrophone()
     } catch (err) {

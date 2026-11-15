@@ -61,16 +61,22 @@ def _model(name: str):
         return _load(name)
 
 
-def transcribe(audio: np.ndarray, model: str = MODEL) -> dict:
+# The "Confirm?" answer only has to contain yes/no, so a lower confidence is safe there: small heard
+# "one, yes." at -0.70 and "no concept" at -0.93, and the -0.6 cut cancelled every route.
+# shortcut: calibrated with one person's yes/no; recalibrate with make voice-measure and more voices.
+MIN_LOGPROB_CONFIRM = -1.2
+
+
+def transcribe(audio: np.ndarray, model: str = MODEL, language: str | None = None, min_logprob: float = MIN_LOGPROB) -> dict:
     """audio: float32 mono 16 kHz. Returns {text, language, confidence};
     text None when there is no clear speech -- never an invented phrase."""
     m = _model(model)
-    language = choose_language(dict(m.detect_language(audio, vad_filter=True)[2])) if LANGUAGE == "auto" else LANGUAGE
+    language = language or (choose_language(dict(m.detect_language(audio, vad_filter=True)[2])) if LANGUAGE == "auto" else LANGUAGE)
     segments, _ = m.transcribe(
         audio, language=language, beam_size=5, hotwords=VOCABULARY,
         condition_on_previous_text=False, vad_filter=True,
         vad_parameters={"min_silence_duration_ms": 600, "speech_pad_ms": 400})
-    good = [s for s in segments if s.no_speech_prob < MAX_NO_SPEECH and s.avg_logprob > MIN_LOGPROB]
+    good = [s for s in segments if s.no_speech_prob < MAX_NO_SPEECH and s.avg_logprob > min_logprob]
     text = " ".join(s.text.strip() for s in good).strip()
     if not text:
         return {"text": None, "language": language, "confidence": None}
@@ -100,9 +106,14 @@ def words(text: str) -> list[str]:
     return re.findall(r"[a-z0-9]+", plain.lower())
 
 
-def _similar(word: str, vocabulary) -> bool:
+# Destination names need a stricter cut: "fast" vs "east" is 0.75 and opened a route to "Boxwork east
+# contact"; real misspellings sit well above ("altadina" 0.88, "sarjama" 0.92, "totorol" 0.86).
+NAME_CUTOFF = 0.8
+
+
+def _similar(word: str, vocabulary, cutoff: float = 0.75) -> bool:
     """Tolerates the typical Whisper error ("rout" for "route") without matching short words by accident."""
-    return word in vocabulary or (len(word) >= 4 and bool(get_close_matches(word, vocabulary, n=1, cutoff=0.75)))
+    return word in vocabulary or (len(word) >= 4 and bool(get_close_matches(word, vocabulary, n=1, cutoff=cutoff)))
 
 
 def destination_keys(name: str) -> set[str]:
@@ -117,7 +128,7 @@ def mentioned_destination(text: str, destinations: list[dict]) -> dict | None:
     best, n = None, 0
     for d in destinations:
         keys = d.get("keys") or destination_keys(d["name"])
-        hits = sum(any(_similar(x, {k}) for x in w) for k in keys)
+        hits = sum(any(_similar(x, {k}, NAME_CUTOFF) for x in w) for k in keys)
         if hits >= min(2, len(keys)) and hits > n:
             best, n = d, hits
     return best
@@ -159,7 +170,7 @@ def interpret(text: str, destinations: list[dict], require_activation: bool = Tr
         return {**base, "intent": "question"}
     for d in destinations:
         keys = d.get("keys") or destination_keys(d["name"])
-        if any(_similar(x, keys) for x in rest):
+        if any(_similar(x, keys, NAME_CUTOFF) for x in rest):
             return {**base, "intent": "route", "destination": d}
     home = next((d for d in destinations if d.get("base")), None)
     if going_back and home:

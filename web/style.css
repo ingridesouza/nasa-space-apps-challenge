@@ -51,11 +51,10 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 
 /* ---------- layout: viewer fills everything, cards float ---------- */
 .app{position:relative;height:100vh;height:100dvh}
-.viewer{position:absolute;inset:0;background-color:#000;overflow:hidden}
+.viewer{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 35%,rgba(0,0,0,.85) 100%),linear-gradient(rgba(0,0,0,.6),rgba(0,0,0,.6)),#000 url('/img/mars-pano.jpg') center/cover no-repeat;overflow:hidden}
 .viewer-hud{position:absolute;top:16px;left:20px;z-index:13;display:flex;flex-direction:column;gap:4px;pointer-events:none;text-shadow:0 1px 3px #000}
 .viewer-stage{position:absolute;inset:0;display:grid;place-items:center}
 .viewer-stage #pano-bg{width:100%;height:100%}
-.viewer-empty{color:var(--dim);font-size:12px;letter-spacing:.08em}
 .viewer-img{max-width:100%;max-height:100%;object-fit:contain}
 .viewer-close{position:absolute;top:80px;left:20px;z-index:9}
 
@@ -117,7 +116,7 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .map-open #g-images{z-index:12}
 .map-open.viewer-front .viewer{z-index:11}
 .map-open #g-route{z-index:13}
-.map-open .science-cards{z-index:12}
+.map-open .answer-cards{z-index:12}
 
 .layers-panel{position:absolute;z-index:12;top:72px;left:20px;width:250px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
 .lyr-top{display:flex;align-items:center;justify-content:flex-end;margin-bottom:4px}
@@ -196,16 +195,16 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .group.collapsed > :not(.group-toggle){display:none}
 .group-toggle{position:absolute;top:0;left:6px;z-index:1;pointer-events:auto;flex:none}
 .group.collapsed .group-toggle{position:static}
-.science-cards{transition:opacity .22s ease,visibility 0s}
+.answer-cards{transition:opacity .22s ease,visibility 0s}
 @keyframes group-in{from{opacity:0}}
 .card{flex:none;pointer-events:auto;padding:12px;backdrop-filter:blur(10px);
   background:linear-gradient(160deg,rgba(32,56,98,.55),rgba(18,18,20,.88) 58%);box-shadow:0 20px 60px rgba(0,0,0,.55)}
 #c-status[hidden]{display:none}
 #c-status .kv:last-child{border-bottom:0}
-.science-cards{position:absolute;z-index:7;right:calc(var(--panel-w) * .74 + 76px);bottom:20px;width:340px;max-height:calc(100% - 40px);
+.answer-cards{position:absolute;z-index:7;right:calc(var(--panel-w) * .74 + 76px);bottom:20px;width:340px;max-height:calc(100% - 40px);
   display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none}
-.science-cards.collapsed{opacity:0;visibility:hidden;transition:opacity .22s ease,visibility 0s .22s}
-.science-cards > *{pointer-events:auto}
+.answer-cards.collapsed{opacity:0;visibility:hidden;transition:opacity .22s ease,visibility 0s .22s}
+.answer-cards > *{pointer-events:auto}
 .empty{margin:0;color:var(--dim);font-size:13px}
 .empty.error{color:#FF9C7D}
 .empty.loading{display:flex;align-items:center;gap:8px}
@@ -232,13 +231,13 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .photo img{display:block;width:100%;height:80px;object-fit:cover;background:#000}
 .photo p{margin:0;padding:5px 6px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mut)}
 
-.science-card,.route-card{padding:0}
-.science-card summary,.route-card summary{list-style:none;display:flex;align-items:center;gap:10px;padding:12px;cursor:pointer;user-select:none}
-.science-card summary::-webkit-details-marker,.route-card summary::-webkit-details-marker{display:none}
-.science-card summary::after,.route-wrap > summary::after{content:"+";margin-left:auto;font-family:'JetBrains Mono',monospace;color:var(--dim)}
-.science-card[open] summary::after,.route-wrap[open] > summary::after{content:"–"}
-.science-name{font-family:'Chakra Petch',sans-serif;font-weight:600;font-size:16px}
-.science-body{padding:0 12px 12px;max-height:42vh;overflow:hidden}
+.answer-card,.route-card{padding:0}
+.answer-card summary,.route-card summary{list-style:none;display:flex;align-items:center;gap:10px;padding:12px;cursor:pointer;user-select:none}
+.answer-card summary::-webkit-details-marker,.route-card summary::-webkit-details-marker{display:none}
+.answer-card summary::after,.route-wrap > summary::after{content:"+";margin-left:auto;font-family:'JetBrains Mono',monospace;color:var(--dim)}
+.answer-card[open] summary::after,.route-wrap[open] > summary::after{content:"–"}
+.answer-name{font-family:'Chakra Petch',sans-serif;font-weight:600;font-size:16px}
+.answer-body{padding:0 12px 12px;max-height:42vh;overflow:hidden}
 .science-head{display:grid;grid-template-columns:88px 1fr;gap:12px;align-items:start}
 .science-img{width:88px;height:88px;object-fit:cover;background:#000;border:1px solid var(--line)}
 .science-head .tags{display:flex;flex-wrap:wrap;gap:6px}
@@ -248,6 +247,29 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .sci-sec{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
 .sci-txt{margin:4px 0;font-size:13px;line-height:1.45;color:var(--tx)}
 .warning{color:var(--amber)}
+/* F08 answer card: verdict tag in the summary, one answer line, then rule-built blocks */
+.answer-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.answer-tag{flex:none}
+.ans-line{margin:0 0 8px;font-size:14px;line-height:1.45;color:var(--tx)}
+.ans-because,.ans-facts,.ans-options{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
+.ans-because li{border-left:2px solid var(--amber);padding-left:8px}
+.ans-because.stop li{border-left-color:var(--mars2)}
+.ans-because .sci-txt{margin:0}
+.ans-fact{border-top:1px solid var(--line);padding-top:6px}
+.ans-fact-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.ans-fact .caption{margin-top:2px}
+.ans-value{font-size:13px;color:var(--tx);text-align:right}
+.ans-fact-top.long{display:block}
+.ans-fact-top.long .ans-value{display:block;margin-top:2px;text-align:left}
+.ans-more{margin-top:10px}
+.ans-options{gap:4px}
+.ans-option{display:flex;gap:8px;width:100%;text-align:left;padding:4px 8px;background:var(--n850);color:var(--tx);border:1px solid var(--line);border-radius:2px;cursor:pointer;font:inherit;font-size:13px}
+.ans-option:hover{border-color:var(--b400)}
+.ans-option.suggested{border-color:var(--b300)}
+.ans-option .caption{display:block;margin-top:0;line-height:1.35}
+.ans-option .tag{padding:1px 5px;font-size:9px}
+.ans-option-n{flex:none;width:18px;color:var(--b300)}
+.ans-missing{color:var(--dim)}
 .science-txt{margin:10px 0;font-size:13px;line-height:1.5;color:var(--mut)}
 
 /* ---------- F02 + F06: route card ---------- */
@@ -318,7 +340,7 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
   .coords{bottom:auto;top:auto;bottom:12px}
   .layers-panel{top:110px;width:220px}
   .pill{left:auto;right:16px;transform:none}
-  .science-cards{right:12px;left:12px;width:auto}
+  .answer-cards{right:12px;left:12px;width:auto}
 }
 .route-top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
 .route-top .link-btn{margin-left:auto;font-size:12px;white-space:nowrap}
@@ -336,11 +358,11 @@ html,body,.app{overflow:hidden}
 .page-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:8px}
 .route-card > .page-nav{margin:0 0 10px}
 /* block id (m-A…), small and discreet on top; the spoken name is in the title */
-[data-modal]:not(.frame)::before,.modal-id{content:attr(data-modal);position:absolute;z-index:4;top:2px;left:50%;transform:translateX(-50%);
+[data-modal]:not(.frame)::before,.modal-id{content:attr(data-modal-label);text-transform:uppercase;position:absolute;z-index:4;top:2px;left:50%;transform:translateX(-50%);
   font-family:'JetBrains Mono',monospace;font-size:9px;line-height:1;letter-spacing:.12em;color:var(--dim);opacity:.8;pointer-events:none}
 .map-box[data-modal]::before{top:8px;z-index:3;text-shadow:0 1px 2px #000}
 .viewer[data-modal]::before,.map-open .map-box[data-modal]::before{top:auto;bottom:6px}
-.science-card[data-modal]::before{top:1px}
+.answer-card[data-modal]::before{top:1px}
 /* triggered by a command: the badge lights up for an instant */
 .modal-triggered[data-modal]:not(.frame)::before,.modal-triggered .modal-id{animation:modal-blink .7s ease}
 @keyframes modal-blink{0%,60%{color:var(--b200);opacity:1;text-shadow:0 0 8px var(--hud-cyan)}}

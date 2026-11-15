@@ -12,9 +12,10 @@ export async function initCommands() {
     const el = b.selector && document.querySelector(b.selector)
     if (!el) continue // "sys": global actions, no block on screen
     el.dataset.modal = b.id
+    el.dataset.modalLabel = b.spoken[0]
     el.dataset.modalTitle = `${b.id} · ${b.spoken[0]} · ${b.name}`
     // .frame already uses ::before/::after on the corners: the badge goes in as an element
-    if (el.classList.contains('frame')) el.insertAdjacentHTML('afterbegin', `<span class="modal-id mono" aria-hidden="true">${b.id}</span>`)
+    if (el.classList.contains('frame')) el.insertAdjacentHTML('afterbegin', `<span class="modal-id mono" aria-hidden="true">${b.spoken[0]}</span>`)
   }
 }
 
@@ -51,9 +52,13 @@ export async function execute(cmd) {
     r = `${b.name}: failed (${e.message})`
   }
   focus = b.id
+  if (r && typeof r === 'object') { // {ok, text}: a successful result that carries text to show (no speech)
+    if (r.ok) flash(b)
+    return { ok: r.ok, text: r.text }
+  }
   const ok = r === undefined || r === true
   if (ok) flash(b)
-  return { ok, text: ok ? `${b.id} · ${b.name}: ${a.desc}` : (typeof r === 'string' ? r : `${b.name}: nothing to ${cmd.action} right now`) }
+  return { ok, text: ok ? `${b.spoken[0]} · ${b.name}: ${a.desc}` : (typeof r === 'string' ? r : `${b.name}: nothing to ${cmd.action} right now`) }
 }
 
 function flash(b) {

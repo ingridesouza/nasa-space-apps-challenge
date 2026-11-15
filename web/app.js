@@ -7,7 +7,8 @@ import {
 } from './api.js'
 import { TOGGLEABLE_LAYERS } from './layers.js'
 import * as map from './map.js'
-import { initAssistant, speak } from './ui/agent.js'
+import { initAssistant } from './ui/agent.js'
+import { initAnswerCard } from './ui/answer-card.js'
 import { arrivalHour, renderLayers } from './ui/layers-panel.js'
 import { initRoute, routeForAgent, showOptions } from './ui/route.js'
 import { initVoice } from './ui/voice.js'
@@ -35,15 +36,17 @@ const state = {
 let awaitingStop = false
 let awaitingPosition = false // "📍 I am here": the next click becomes the astronaut's position (no GPS)
 
-// ---------------- Place (position or destination): status, panorama, photos, science card ----------------
+// ---------------- Place (position or destination): status, panorama, photos, answer card ----------------
 let placeSeq = 0
 let last = null // {pano} of the current place, to redraw the status
+let answersShown = 0 // a question asked while a place loads must not be overwritten by that place's science card
 
 async function loadPlace(place) {
   const mine = ++placeSeq
+  const answersAtStart = answersShown
   state.place = place
   loading()
-  showScience('loading')
+  answerCard.showPlace('loading')
   const { lat, lon } = place
   const [pano, photos, science] = (await Promise.allSettled([
     getPanorama(lat, lon), getPhotosNear(lat, lon), getScienceCard(lat, lon),
@@ -53,7 +56,7 @@ async function loadPlace(place) {
   map.setPanorama(pano?.found ? pano : null)
   if (pano) showPano(pano)
   else clearPano()
-  showScience(science ?? 'error')
+  if (answersShown === answersAtStart) answerCard.showPlace(science ?? 'error')
   if (photos) showPhotos(photos)
   else $('c-photos').hidden = true
 }
@@ -66,14 +69,14 @@ function clearBar() {
   clearPano()
   closePhoto()
   map.setPanorama(null)
-  for (const id of ['c-status', 'c-photos', 'c-science']) $(id).hidden = true
+  for (const id of ['c-status', 'c-photos', 'c-answer']) $(id).hidden = true
   collapseGroup('g-images', false)
 }
 
 const samePoint = (a, b) => a && b && a.lat === b.lat && a.lon === b.lon
 
 function loading() {
-  for (const id of ['c-pano', 'c-photos', 'c-science']) $(id).hidden = true
+  for (const id of ['c-pano', 'c-photos', 'c-answer']) $(id).hidden = true
 }
 
 function card(id, html) { $(id).innerHTML = html; $(id).hidden = false }
@@ -149,20 +152,20 @@ function collapseGroup(id, c) {
   t.setAttribute('aria-expanded', String(!c))
   if (id === 'g-route' && !c) requestAnimationFrame(() => paginate($('c-route'))) // hidden, it measured 0 px
   if (id === 'g-images') {
-    $('science-cards').classList.toggle('collapsed', c)
-    if (!c) requestAnimationFrame(() => { viewer?.resize(); placeScienceCards() }) // pannellum measured 0 px while hidden
+    $('answer-cards').classList.toggle('collapsed', c)
+    if (!c) requestAnimationFrame(() => { viewer?.resize(); placeAnswerCards() }) // pannellum measured 0 px while hidden
   }
 }
-// science cards left of the images bar (bottom, CSS); on mobile they sit above the bottom sheet
-function placeScienceCards() {
-  const f = $('science-cards')
+// answer card left of the images bar (bottom, CSS); on mobile it sits above the bottom sheet
+function placeAnswerCards() {
+  const f = $('answer-cards')
   f.style.bottom = mobile() ? innerHeight - $('floating').getBoundingClientRect().top + 8 + 'px' : ''
 }
 {
-  const ro = new ResizeObserver(placeScienceCards)
+  const ro = new ResizeObserver(placeAnswerCards)
   for (const id of ['floating', 'c-route', 'c-status', 'c-pano', 'c-photos']) ro.observe($(id))
-  addEventListener('resize', placeScienceCards)
-  $('floating').addEventListener('scroll', placeScienceCards)
+  addEventListener('resize', placeAnswerCards)
+  $('floating').addEventListener('scroll', placeAnswerCards)
 }
 for (const t of document.querySelectorAll('.group-toggle')) {
   t.addEventListener('click', () => { const g = t.parentElement; collapseGroup(g.id, !g.classList.contains('collapsed')) })
@@ -180,7 +183,6 @@ function expand() {
     hotSpots: hotSpots(), hfov: HFOV_BG, pitch: voff * CENTER_BG, yaw: viewer.getYaw(),
   }))
   roPano.observe(d)
-  $('viewer-empty').hidden = true
   $('viewer-close').hidden = false
   inViewer = true
   viewerInFront(true)
@@ -192,7 +194,6 @@ function expand() {
 function collapse() {
   if (viewerBg) { viewerBg.destroy(); viewerBg = null }
   $('pano-bg')?.remove()
-  $('viewer-empty').hidden = !!viewer
   $('viewer-close').hidden = true
   inViewer = false
   collapseGroup('g-images', false)
@@ -253,7 +254,6 @@ function openPhoto(ph) {
   $('viewer-img').src = ph.img
   $('viewer-img').alt = ph.label
   $('viewer-img').hidden = false
-  $('viewer-empty').hidden = true
   $('viewer-close').hidden = false
   viewerInFront(true)
 }
@@ -263,27 +263,22 @@ function closePhoto() {
   openedPhoto = null
   $('viewer-img').hidden = true
   $('viewer-img').removeAttribute('src')
-  $('viewer-empty').hidden = inViewer
   $('viewer-close').hidden = !inViewer
 }
 function closeViewer() { if (inViewer) collapse(); closePhoto(); viewerInFront(false) }
 $('viewer-close').addEventListener('click', closeViewer)
 
-// ---------------- Science card (F04, science-card.js) ----------------
-function showScience(d, open = false) {
-  const wasOpen = $('c-science').open
-  $('c-science').hidden = false
-  $('c-science').open = open || (d !== 'loading' && wasOpen)
-  const [name, type] = H2G2Card.title(d)
-  $('science-name').textContent = name
-  $('science-type').textContent = type
-  $('science').innerHTML = H2G2Card.html(d)
-  requestAnimationFrame(() => { paginateScience(); placeScienceCards() })
-}
-// F11: card without scrolling, in pages; the list of lines breaks item by item
-const paginateScience = () => paginate($('science'), { sel: ':scope > :not(ul), :scope > ul > li', max: () => innerHeight * 0.42 })
-$('c-science').addEventListener('toggle', () => { if ($('c-science').open) paginateScience() })
-addEventListener('resize', () => { paginateScience(); paginate($('c-route')); paginate($('assistant')) })
+// ---------------- Answer card (F08, ui/answer-card.js; replaced the F04 science card) ----------------
+// structured answer to the question asked during the walk; with no question, the destination science card
+const answerCard = initAnswerCard($('c-answer'), {
+  onRouteType: (type) => {
+    if (!state.route) return
+    collapseGroup('g-route', false)
+    $('c-route').querySelector(`[data-type="${type}"]`)?.click()
+  },
+  onRender: () => placeAnswerCards(),
+})
+addEventListener('resize', () => { answerCard.paginate(); paginate($('c-route')); paginate($('assistant')) })
 
 // ---------------- Map: circle <-> full screen ----------------
 const layers = () => renderLayers($('layers-panel'), state)
@@ -371,7 +366,7 @@ const updateRoute = initRoute($('c-route'), {
   onOpenTarget: async (target) => {
     if (!target?.lat) return
     if (state.map !== 'viewer') await closeMap()
-    getScienceCard(target.lat, target.lon).then((f) => showScience(f, true), () => showScience('error', true))
+    getScienceCard(target.lat, target.lon).then((f) => answerCard.showPlace(f, true), () => answerCard.showPlace('error', true))
   },
 })
 
@@ -442,12 +437,7 @@ let readoutSeq = 0
 async function mapClick(lat, lon) {
   const p = { lat, lon }
   if (state.map === 'route') {
-    if (awaitingPosition) { // the followed route does not change: only where the new options start from
-      awaitingPosition = false
-      instruction(null)
-      state.position = { lat, lon, label: 'the marked position', source: 'marked on the map', kind: 'position' }
-      return map.setOrigin(state.position)
-    }
+    if (awaitingPosition) return markPosition(lat, lon)
     if (awaitingStop) {
       awaitingStop = false
       instruction(null)
@@ -461,6 +451,14 @@ async function mapClick(lat, lon) {
     return setDestination(p)
   }
   return readPoint(lat, lon) // explore: quick readout of lat, lon and elevation
+}
+
+/** "📍 I am here" (click or voice): the followed route does not change, only where the new options start from. */
+function markPosition(lat, lon) {
+  awaitingPosition = false
+  instruction(null)
+  state.position = { lat, lon, label: 'the marked position', source: 'marked on the map', kind: 'position' }
+  map.setOrigin(state.position)
 }
 
 /** Writes (and returns) lat, lon and elevation of the point in the readout line. */
@@ -497,15 +495,17 @@ $('layers-panel').addEventListener('click', (e) => {
   const c = state.layers[id]
   c.visible = !c.visible
   map.setLayerVisible(id, c.visible)
-  if (id === 'insolation' && c.visible && !state.insolation.started) {
-    // first time: starts at the arrival hour (if there is a route) or the current one
-    const h = arrivalHour(state) ?? state.clock?.ltst
-    if (h !== undefined) state.insolation.hour = quarter(h)
-    state.insolation.started = true
-    updateInsolation()
-  }
+  if (id === 'insolation' && c.visible) startInsolation()
   layers()
 })
+/** First time the sun layer turns on: starts at the arrival hour (if there is a route) or the current one. */
+function startInsolation() {
+  if (state.insolation.started) return
+  const h = arrivalHour(state) ?? state.clock?.ltst
+  if (h !== undefined) state.insolation.hour = quarter(h)
+  state.insolation.started = true
+  updateInsolation()
+}
 // insolation hour: 'change' (slider release), not 'input' -- each hour is a new grid on the server
 // with a destination set, the query already tells whether IT is in sun or shade at the chosen hour
 function updateInsolation() {
@@ -592,7 +592,7 @@ function showReplanning(res, origin) {
 }
 
 const assistant = initAssistant($('assistant'), () => state.place ?? state.position, routeForAgent, openRouteTo, showReplanning,
-  () => state.position)
+  () => state.position, (item) => { answersShown++; answerCard.showAnswer(item) })
 
 // ---------------- F08: voice ("Hey guide, route to …" or a spoken question) ----------------
 // the route always starts at the current position (tracker); voice only chooses the destination
@@ -600,8 +600,7 @@ initVoice($('btn-voice'), $('voice-status'), {
   currentPoint: () => state.position,
   route: (_origin, destination) => openRouteTo(destination),
   ask: (text) => {
-    if ($('assistant').hidden) assistant.open(true)
-    return assistant.send(text, true)
+    return assistant.send(text) // the answer card opens by itself; the assistant history stays closed
   },
   execute,
   context,
@@ -622,7 +621,15 @@ function setLayer(layer, visible, opacity) {
   c.visible = visible
   if (opacity !== undefined) { c.opacity = opacity; map.setLayerOpacity(layer, opacity) }
   map.setLayerVisible(layer, visible)
+  if (layer === 'insolation' && visible) startInsolation()
   layers()
+}
+/** Voice: chosen hour turns the sun layer on (and wins over the automatic first hour). */
+function setInsolationHour(h) {
+  state.insolation.started = true
+  state.insolation.hour = quarter(h)
+  setLayer('insolation', true)
+  updateInsolation()
 }
 register('m-A', {
   expand: () => { if (state.map !== 'viewer') return 'The map is already open.'; openMap('explore') },
@@ -636,13 +643,26 @@ register('m-A', {
     if (!c) return 'The map has not loaded yet.'
     if (state.map === 'viewer') openMap('explore')
     $('readout').hidden = false
-    speak((await readPoint(c.lat, c.lon)).replaceAll('·', ',').replace('°E', ' degrees east'))
+    await readPoint(c.lat, c.lon) // the readout line shows lat, lon and elevation
   },
 })
 register('m-B', {
   show: ({ layer }) => setLayer(layer, true),
   hide: ({ layer }) => setLayer(layer, false),
   opacity: ({ layer, value }) => setLayer(layer, true, value / 100),
+  hour: ({ hour }) => { setInsolationHour(hour) },
+  hour_preset: ({ moment }) => {
+    const h = moment === 'now' ? state.clock?.ltst : arrivalHour(state)
+    if (h == null) return moment === 'now' ? 'The solar clock has not loaded yet.' : 'There is no route: no arrival hour.'
+    setInsolationHour(h)
+  },
+  variable: ({ variable }) => {
+    const { geo, error } = state.atmosphere
+    if (!geo) return error ? `No atmospheric data: ${error}` : 'The atmospheric data is still loading.'
+    state.atmosphere.variable = variable
+    map.setAtmosphere(geo, variable, true)
+    setLayer('atmosphere_track', true)
+  },
 })
 register('m-C', {
   plan: () => { openMap('route') },
@@ -661,6 +681,11 @@ register('m-C', {
     $('lat').value = c.lat.toFixed(6)
     $('lon').value = c.lon.toFixed(6)
     setDestination(c)
+  },
+  here: () => {
+    const c = map.mapCenter()
+    if (!c) return 'The map has not loaded yet.'
+    markPosition(c.lat, c.lon)
   },
   stop: () => {
     const c = map.mapCenter()
@@ -718,21 +743,21 @@ register('m-E', {
   expand: () => { collapseGroup('g-images', false) },
 })
 register('m-F', {
-  open: () => { if ($('c-science').hidden) return 'No science card open.'; $('c-science').open = true },
-  close: () => { $('c-science').open = false },
-  next: () => changePage($('science'), 1) || 'Science card: already on the last page.',
-  previous: () => changePage($('science'), -1) || 'Science card: already on the first page.',
+  open: () => { if ($('c-answer').hidden) return 'No answer card open.'; $('c-answer').open = true },
+  close: () => { $('c-answer').open = false },
+  next: () => changePage($('answer'), 1) || 'Answer card: already on the last page.',
+  previous: () => changePage($('answer'), -1) || 'Answer card: already on the first page.',
+  science: () => {
+    const b = $('c-answer').querySelector('[data-science]')
+    if ($('c-answer').hidden || !b) return 'The answer has no science details.'
+    b.click()
+  },
 })
 register('m-G', {
   open: () => { assistant.open(true) },
   close: () => { assistant.open(false) },
   next: () => changePage($('assistant'), 1) || 'Assistant: there is no older answer.',
   previous: () => changePage($('assistant'), -1) || 'Assistant: already on the newest.',
-  listen: () => {
-    const b = $('assistant').querySelector('.h2g2-asst-item:not(.page-out) [data-listen]')
-    if (!b) return 'There is no answer to listen to.'
-    b.click()
-  },
 })
 register('m-H', {
   close: () => { if ($('viewer-close').hidden) return 'The viewer is already empty.'; closeViewer() },
@@ -746,13 +771,12 @@ register('m-I', {
   },
 })
 register('m-J', {
-  read: () => { if ($('c-status').hidden) return 'There is no warning.'; speak($('c-status').textContent.trim()) },
+  read: () => ($('c-status').hidden ? 'There is no warning.' : { ok: true, text: $('c-status').textContent.trim() }),
 })
 register('sys', {
   back: () => { if (!$('assistant').hidden) assistant.open(false); else back() },
-  silence: () => { speechSynthesis.cancel() },
   microphone: () => { if ($('btn-voice').getAttribute('aria-pressed') !== 'true') return 'The microphone is already off.'; $('btn-voice').click() },
-  help: () => { speak(describeOpen()) },
+  help: () => ({ ok: true, text: describeOpen() }),
 })
 initCommands().catch((e) => console.warn('command catalog unavailable:', e))
 

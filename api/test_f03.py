@@ -159,7 +159,7 @@ def test_rule_based_pds_summary():
 
 
 @pytest.mark.skipif(not BUNDLE_BUILT, reason="bundle not built")
-def test_altadena_card_with_real_chemin():
+def test_altadena_card_shows_only_the_latest_measurement():
     import sqlite3
     from science_card import science_card
     from panorama import R_CARD
@@ -168,6 +168,7 @@ def test_altadena_card_with_real_chemin():
         "SELECT lat, lon FROM waypoints WHERE rmc = '116_1944'").fetchone()
     j = science_card(lat, lon, R_CARD)
     assert j["target"]["name"] == "Altadena"
-    assert any(l["instrument"] == "CheMin" and l["confidence"] == "measured"
-               and l["source_file"].startswith("cmb_") for l in j["rows"])
+    measured = [l for l in j["rows"] if l["section"] in ("chemistry", "mineralogy")]
+    assert len(measured) == 1 and measured[0]["confidence"] == "measured"  # latest only, not one per sol
+    assert measured[0]["sol"] == 4570 and measured[0]["instrument"] == "APXS"
     assert not any(l["confidence"] == "mock" for l in j["rows"])

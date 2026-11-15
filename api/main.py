@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 
 from atmosphere import track_geojson
 from insolation import at_point as insolation_at_point, sun_at_hour
+import answer_card
 from agent import (DISTRESS, AgentUnavailable, ask as ask_agent, build_context, context_as_text, context_sources,
                    distress_answer, group_alerts, strip_repeated_danger, suggestion_as_text)
 from alerts import BASE_LAT_LON, point_alerts, route_alerts, sol_time_and_alerts, stops_in_bbox
@@ -47,7 +48,7 @@ from vector_queries import all_photos, all_science_targets, nearby_photos, neare
 import science_card
 import panorama
 from voice import (CONFIRM_MODEL, MODEL as WHISPER_MODEL, RATE_HZ, _model as _whisper_model, asks_nearest_target, asks_path,
-                   interpret, mentioned_destination, transcribe)
+                   MIN_LOGPROB, MIN_LOGPROB_CONFIRM, interpret, mentioned_destination, transcribe)
 
 # Mission reference sol -- real cached data (it is not "today",
 # it is the same sol used in the REMS/RAD tests, see NEXT-STEPS.md).
@@ -472,8 +473,14 @@ def ask(q: Question, request: Request):
     """Feature 08, phase 2: natural-language question about the point,
     answered by the local model with the /api/point context and local tools."""
     point = get_point(q.lat, q.lon, request)
+    pos = (q.pos_lat, q.pos_lon) if q.pos_lat is not None and q.pos_lon is not None else tuple(get_position()[k] for k in ("lat", "lon"))
+    # with an open route lat/lon is the destination: "here" is where the astronaut is (marked or simulated)
+    pos_source = "simulated tracker (provisional base)" if pos == BASE_LAT_LON else "marked by the astronaut on the map (no GPS)"
     if DISTRESS.search(q.question):
-        return {"answer": distress_answer(point, BASE_LAT_LON), "distress": True,
+        here = get_point(*pos, request)  # distress is about where the astronaut is, never the destination
+        answer = distress_answer(here, BASE_LAT_LON)
+        card = answer_card.build(q.question, here, None, None, None, BASE_LAT_LON, intent="distress", position_source=pos_source)
+        return {"answer": answer, "distress": True, "card": {**card, "answer": answer},
                 "sources": ["HiRISE DTM (slope)", "base position (H2G2)"], "alerts": point["alerts"], "actions": []}
     conditions = get_cached_conditions(q.sol)
     if conditions:
@@ -487,8 +494,14 @@ def ask(q: Question, request: Request):
             ctx["route_forecast"] = get_route_forecast(**q.route.model_dump())
         except HTTPException as e:  # no path/outside the map: the agent says there is no forecast
             ctx["route_forecast"] = {"error": e.detail}
+    # answer card: built by rule before the model, so it exists even if the model is down
+    intent = answer_card.classify(q.question)
+    card_point = get_point(*pos, request) if q.route and intent in answer_card.HERE_INTENTS else point
+    c_lat, c_lon = card_point["point"]["lat"], card_point["point"]["lon"]
+    science = (science_card.science_card(lat=c_lat, lon=c_lon, radius=panorama.R_CARD)
+               if intent == "science" else None)
+    card = answer_card.build(q.question, card_point, conditions, ctx.get("route_forecast"), science, BASE_LAT_LON, intent)
     actions, tool_alerts, tool_sources = [], [], []
-    pos = (q.pos_lat, q.pos_lon) if q.pos_lat is not None and q.pos_lon is not None else tuple(get_position()[k] for k in ("lat", "lon"))
 
     def run_tool(name: str, args: dict) -> str:
         """Agent tools (tool calling). The argument comes from the model: validate before using."""
@@ -523,6 +536,8 @@ def ask(q: Question, request: Request):
             return f"no result: {e.detail}"
 
     problem = classify(q.question)
+    if problem == "obstacle" and answer_card.asks_identity(q.question):
+        problem = None  # "what is this rock?" is a science question, not an obstacle report
     if problem and (q.route or problem in ("dust", "oxygen")):  # with no open route, only going back makes sense
         try:
             res = get_replan(*pos, q.question, *((q.route.dest_lat, q.route.dest_lon) if q.route else (None, None)),
@@ -531,8 +546,10 @@ def ask(q: Question, request: Request):
             tool_sources.append("replanning: A* over the HiRISE DTM + H2G2 suggestion rule")
             # rule-based answer, like distress: e2b ignored the options ("I have no information about
             # rocks") or called plan_route on its own, and the normal route wiped the options off the screen
-            return {"answer": f"{res['problem_text']} {res['suggestion']['reason']} The options are on the map; you decide.",
-                    "sources": tool_sources, "alerts": point["alerts"], "actions": actions, "replanning": True}
+            answer = f"{res['problem_text']} {res['suggestion']['reason']} The options are on the map; you decide."
+            return {"answer": answer, "sources": tool_sources, "alerts": point["alerts"], "actions": actions, "replanning": True,
+                    "card": {**answer_card.replan(res, pos, BASE_LAT_LON, pos_source),
+                             "answer": answer_card.route_text(res["suggestion"]["reason"])}}
         except HTTPException as e:
             ctx["searches"] = [f"PROBLEM REPORTED, but no option with a path: {e.detail}"]
 
@@ -556,16 +573,17 @@ def ask(q: Question, request: Request):
         answer = ask_agent(q.question, ctx, run_tool)
     except AgentUnavailable as e:
         # 503 with the alerts: the safety rules do not depend on the model
-        raise HTTPException(status_code=503, detail={"message": str(e), "alerts": point["alerts"]})
+        raise HTTPException(status_code=503, detail={"message": str(e), "alerts": point["alerts"], "card": card})
     # Danger is stated by rule, before the answer: the small model sometimes omits it.
     route_alerts_ = (ctx.get("route_forecast") or {}).get("alerts", []) + tool_alerts
     danger_list = [a for a in group_alerts(point["alerts"] + route_alerts_) if a["level"] == "danger"]
     answer = strip_repeated_danger(answer, danger_list)
+    card["answer"] = answer  # the card shows the danger in its verdict, not repeated in the line
     dangers = " ".join(a["message"] for a in danger_list)
     if dangers:
         answer = f"Danger: {dangers} {answer}"
     return {"answer": answer, "sources": list(dict.fromkeys(context_sources(ctx) + tool_sources)),
-            "alerts": point["alerts"], "actions": actions}
+            "alerts": point["alerts"], "actions": actions, "card": card}
 
 
 AUDIO_LIMIT_BYTES = 60 * RATE_HZ * 4  # 60 s of float32 mono
@@ -639,7 +657,10 @@ async def voice(request: Request, activated: bool = False, confirming: bool = Fa
             if trigger["activated"] and trigger["intent"] == "none":  # only "Hey Marvin": listen now, without the big one (~6 s)
                 return {**quick, **trigger, "intent": "listen", "speech": None}
         model = CONFIRM_MODEL if confirming else WHISPER_MODEL
-        heard = await run_in_threadpool(transcribe, audio, model)  # heavy CPU: outside the API loop
+        # the "Confirm?" answer is matched against YES/NO, which are English: transcribe it in English even with
+        # H2G2_LANGUAGE=pt (in Portuguese, "Yes" came back empty and every route was cancelled)
+        heard = await run_in_threadpool(transcribe, audio, model, "en" if confirming else None,  # heavy CPU: outside the API loop
+                                        MIN_LOGPROB_CONFIRM if confirming else MIN_LOGPROB)
     except (ImportError, OSError, ValueError, RuntimeError) as e:
         raise HTTPException(status_code=503, detail=f"voice unavailable (local Whisper model: run make build): {e}")
     if heard["text"] is None:
