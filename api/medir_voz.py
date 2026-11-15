@@ -21,14 +21,14 @@ SEGUNDOS = 6
 DESTINOS = [{"nome": "a base", "lat": 0, "lon": 0, "chaves": ["base", "habitat"], "base": True}] + [
     {"nome": n, "lat": 0, "lon": 0} for n in ("Cristas de boxwork", "Altadena", "Totoral / Sillar")]
 FRASES = [
-    "Guia, qual a melhor rota até a base?",
-    "Guia, rota até Altadena.",
-    "Guia, me leva até as cristas de boxwork.",
-    "Guia, quero voltar para a base.",
-    "Guia, rota até Totoral.",
-    "Guia, posso subir aqui com segurança?",
-    "Guia, quanta radiação vou receber hoje?",
-    "Guia, tem alvo científico perto daqui?",
+    "Marvin, qual a melhor rota até a base?",
+    "Marvin, rota até Altadena.",
+    "Marvin, me leva até as cristas de boxwork.",
+    "Marvin, quero voltar para a base.",
+    "Marvin, rota até Totoral.",
+    "Marvin, posso subir aqui com segurança?",
+    "Marvin, quanta radiação vou receber hoje?",
+    "Marvin, tem alvo científico perto daqui?",
     "Sim.",
     "Não, cancela.",
 ]

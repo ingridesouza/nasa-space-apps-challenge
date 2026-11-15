@@ -34,7 +34,7 @@ export const contexto = () => ({ abertos: abertos(), foco })
 /** Ajuda falada: blocos abertos e as ações de cada um. */
 export function descreverAbertos() {
   const ids = abertos()
-  if (!ids.length) return 'Nenhum bloco aberto. Diga, por exemplo: Alfa, expandir.'
+  if (!ids.length) return 'Nenhum bloco aberto. Diga, por exemplo: Atlas, expandir.'
   return 'Blocos abertos: ' + ids.map((i) => `${modais[i].falado[0]}, ${modais[i].nome}: ${Object.keys(modais[i].acoes).join(', ').replaceAll('_', ' ')}`).join('. ') + '.'
 }
 

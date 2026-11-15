@@ -68,7 +68,7 @@ export function iniciarAssistente(el, botao, pontoAtual, { comando } = {}) {
     historico.length = Math.min(historico.length, MAX_HISTORICO)
     irPagina(el, 0)
     render()
-    // F11: digitado também pode ser comando ("Alfa aproxima"); falado já passou por isso na API
+    // F11: digitado também pode ser comando ("Atlas aproxima"); falado já passou por isso na API
     const feito = porVoz || !comando ? null : await comando(h.pergunta).catch(() => null)
     if (feito) {
       Object.assign(h, { resposta: feito, fontes: ['comando de interface'] })

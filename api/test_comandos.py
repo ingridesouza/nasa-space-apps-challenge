@@ -31,37 +31,37 @@ for m in CATALOGO["modais"]:
     for a in m["acoes"]:
         assert re.search(rf"\b{a}:", bloco.group(1)), f"{m['id']}.{a} sem handler em app.js"
 
-# por nome do bloco, alfabeto fonético ou sinônimo
-ok("Guia, diminuir o zoom do mapa", "m-A", "afastar", {"niveis": 1})
-ok("Alfa, aproxima dois", "m-A", "aproximar", {"niveis": 2})
+# por nome do bloco, nome de estrela ou sinônimo
+ok("Marvin, diminuir o zoom do mapa", "m-A", "afastar", {"niveis": 1})
+ok("Atlas, aproxima dois", "m-A", "aproximar", {"niveis": 2})
 ok("move o mapa para o norte", "m-A", "mover", {"direcao": "norte"})
 ok("liga o relevo", "m-B", "ligar", {"camada": "relevo_hillshade"})
-ok("Bravo opacidade risco 40", "m-B", "opacidade", {"camada": "risco_previsto", "valor": 40})
-ok("Charlie, rota mais rápida", "m-C", "tipo", {"tipo": "mais_rapida"})
-ok("charlie próximo sol", "m-C", "sol", {"delta": "1"})  # frase maior vence "próximo"
-ok("Delta gira para a esquerda 90 graus", "m-D", "girar", {"direcao": "esquerda", "graus": 90})
-ok("Eco abre a segunda", "m-E", "abrir", {"n": 2})
+ok("Vega opacidade risco 40", "m-B", "opacidade", {"camada": "risco_previsto", "valor": 40})
+ok("Polaris, rota mais rápida", "m-C", "tipo", {"tipo": "mais_rapida"})
+ok("polaris próximo sol", "m-C", "sol", {"delta": "1"})  # frase maior vence "próximo"
+ok("Orion gira para a esquerda 90 graus", "m-D", "girar", {"direcao": "esquerda", "graus": 90})
+ok("Rigel abre a segunda", "m-E", "abrir", {"n": 2})
 ok("fecha o visor", "m-H", "fechar")
-ok("India latitude menos 4,808 longitude 137,381", "m-I", "definir", {"lat": -4.808, "lon": 137.381})
-ok("Alfa, qual a elevação aqui", "m-A", "ler")
-ok("Charlie, adicionar parada", "m-C", "parada")
-ok("Charlie, remover parada dois", "m-C", "remover_parada", {"n": 2})
-ok("Charlie, sol 1200", "m-C", "ir_sol", {"sol": 1200})
-ok("Charlie, oxigênio 350", "m-C", "o2", {"litros": 350})
-ok("Charlie, registrar medição sol 4600 menos 80 menos 10 870", "m-C", "medicao",
+ok("Pollux latitude menos 4,808 longitude 137,381", "m-I", "definir", {"lat": -4.808, "lon": 137.381})
+ok("Atlas, qual a elevação aqui", "m-A", "ler")
+ok("Polaris, adicionar parada", "m-C", "parada")
+ok("Polaris, remover parada dois", "m-C", "remover_parada", {"n": 2})
+ok("Polaris, sol 1200", "m-C", "ir_sol", {"sol": 1200})
+ok("Polaris, oxigênio 350", "m-C", "o2", {"litros": 350})
+ok("Polaris, registrar medição sol 4600 menos 80 menos 10 870", "m-C", "medicao",
    {"sol": 4600.0, "minima": -80.0, "maxima": -10.0, "pressao": 870.0})  # dose é opcional
-ok("Charlie, apagar medição", "m-C", "apagar_medicao")
+ok("Polaris, apagar medição", "m-C", "apagar_medicao")
 ok("Delta, olhar para o ponto", "m-D", "centralizar")
 ok("recolher imagens", "m-E", "recolher")
-ok("Golf, repete", "m-G", "ouvir")
-ok("Juliet, ler", "m-J", "ler")
+ok("Draco, repete", "m-G", "ouvir")
+ok("Antares, ler", "m-J", "ler")
 ok("silêncio", "sis", "silencio")
 ok("fechar tudo", "sis", "voltar")
 ok("desligar microfone", "sis", "microfone")
 ok("ajuda", "sis", "ajuda")
 
 # "aproxima" não pode virar "próxima página" (casamento exato vem antes do aproximado)
-ok("Delta aproxima", "m-D", "aproximar")
+ok("Orion aproxima", "m-D", "aproximar")
 
 # sem bloco citado: decide pelos blocos abertos, depois pelo foco; empate pergunta
 ok("próxima", "m-E", "proxima", abertos=["m-E"])
@@ -76,9 +76,9 @@ assert r["comando"]["acao"] == "cancelar" and r["confirmar"] and r["fala"].endsw
 # argumento obrigatório ausente: não chuta, pergunta
 r = interpretar("liga a camada", usar_modelo=False)
 assert r["comando"] is None and "falta camada" in r["fala"], r
-assert cmd("India definir destino") is None  # sem coordenada dita, nada de coordenada inventada
+assert cmd("Pollux definir destino") is None  # sem coordenada dita, nada de coordenada inventada
 
-r = interpretar("Charlie, registrar medição sol 4600 menos 80 menos 10 870", usar_modelo=False)
+r = interpretar("Polaris, registrar medição sol 4600 menos 80 menos 10 870", usar_modelo=False)
 assert "sol 4600, minima -80, maxima -10, pressao 870. Confirma?" in r["fala"], r["fala"]
 
 # pergunta não é comando

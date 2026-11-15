@@ -26,11 +26,11 @@ MODELO_CONFIRMACAO = os.environ.get("H2G2_WHISPER_CONFIRMACAO", "small")
 IDIOMA = os.environ.get("H2G2_IDIOMA", "pt")
 TAXA_HZ = 16000
 # Palavras que o Whisper deve favorecer: ativação, domínio e destinos aceitos por voz.
-# "EVA" saiu: puxava "Ei guia" para "EVA". "Ei guia" entra inteiro, não só "Guia".
-VOCABULARIO = ("Ei guia, rota, base, habitat, boxwork, Curiosity, Altadena, Totoral, Sillar, "
+# "EVA" saiu: puxava "Ei marvin" para "EVA". "Ei Marvin" entra inteiro, não só "Marvin".
+VOCABULARIO = ("Ei Marvin, rota, base, habitat, boxwork, Curiosity, Altadena, Totoral, Sillar, "
                "cratera Gale, sol, inclinação, radiação, alvo científico, segurança, subir, "
                "emergência, gás tóxico, vazamento, oxigênio, traje, pressão, poeira, "
-               "Alfa, Bravo, Charlie, Delta, Eco, Foxtrot, Golf, Hotel, Índia, zoom, camada, panorama, ficha, próxima")
+               "Atlas, Vega, Polaris, Orion, Rigel, Altair, Draco, Castor, Pollux, Antares, zoom, camada, panorama, ficha, próxima")
 MAX_SEM_FALA = 0.6    # no_speech_prob acima disso: trecho é silêncio/ruído
 # avg_logprob abaixo disso: o modelo está chutando. -0,6 = confiança 0,55; na 1ª gravação real
 # (14/11, microfone de notebook) as frases inventadas vieram com 0,50-0,55 e as boas com 0,61+.
@@ -40,7 +40,7 @@ MIN_LOGPROB = -0.6
 
 def escolher_idioma(probs: dict[str, float]) -> str:
     """Português por padrão; inglês só se dominar com folga. Em frase curta
-    a detecção fica indecisa ("Guia, rota até Altadena" deu en 0,22 x pt 0,13)."""
+    a detecção fica indecisa ("Marvin, rota até Altadena" deu en 0,22 x pt 0,13)."""
     return "en" if probs.get("en", 0) > 0.5 and probs["en"] > 2 * probs.get("pt", 0) else "pt"
 
 
@@ -79,9 +79,9 @@ def transcrever(audio: np.ndarray, modelo: str = MODELO) -> dict:
 
 # ---- fase 2: entender o comando (regras, sem modelo: 5 destinos cabem numa lista) ----
 
-ATIVACAO = {"guia", "gia", "quia", "guias"}  # grafias curtas que o Whisper produz
-ATE_PALAVRA_ATIVACAO = 3  # "Olá guia, ..." / "Ei, guia, ..." / "Oi, ô guia, ..."
-# Comando de rota é curto ("Guia, me leva até as cristas de boxwork" = 7). Relato longo
+ATIVACAO = {"marvin", "marvim", "marvyn", "marven"}  # grafias que o Whisper produz
+ATE_PALAVRA_ATIVACAO = 3  # "Olá marvin, ..." / "Ei, marvin, ..." / "Oi, ô marvin, ..."
+# Comando de rota é curto ("Marvin, me leva até as cristas de boxwork" = 7). Relato longo
 # ("to no meio de uma rota e apareceu um gás") vai inteiro ao modelo, mesmo citando "rota".
 MAX_PALAVRAS_COMANDO = 8
 ROTA = {"rota", "caminho", "leva", "levar", "ir", "vai", "va", "route"}
@@ -114,10 +114,10 @@ def interpretar(texto: str, destinos: list[dict], exigir_ativacao: bool = True) 
     Nunca devolve coordenada fora da lista: destino desconhecido vira None."""
     p = palavras(texto)
     # grafias curtas só exatas: no aproximado, "qual" casaria com "quia"
-    i = next((i for i, w in enumerate(p[:ATE_PALAVRA_ATIVACAO]) if w in ATIVACAO or _parecida(w, {"guia"})), None)
+    i = next((i for i, w in enumerate(p[:ATE_PALAVRA_ATIVACAO]) if w in ATIVACAO or _parecida(w, {"marvin"})), None)
     ativado = i is not None
     resto = p[i + 1:] if ativado else p
-    # o que vem depois do "Guia", com acento e pontuação originais (mesma divisão em palavras)
+    # o que vem depois do "Marvin", com acento e pontuação originais (mesma divisão em palavras)
     tokens = list(re.finditer(r"[^\W_]+", texto))
     pergunta = texto[tokens[i].end():].lstrip(" ,.!?;:") if ativado and i < len(tokens) else texto.strip()
     base = {"ativado": ativado, "destino": None, "pergunta": pergunta}

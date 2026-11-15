@@ -1,4 +1,4 @@
-// F08 voz: "Guia, rota até Altadena" → Whisper local → "Confirma?" → "sim" → rota no mapa → resumo falado.
+// F08 voz: "Marvin, rota até Altadena" → Whisper local → "Confirma?" → "sim" → rota no mapa → resumo falado.
 // Mãos-livres (detector de fala por energia) ou "segure espaço". Plano: docs/feature-08-voz-plano-execucao.md
 import { enviarVoz } from '../api.js'
 import { falar } from './agente.js'
@@ -9,7 +9,7 @@ const FIM_S = 1.2 // e termina depois disso de silêncio (fala livre tem pausa: 
 const ANTES_S = 0.3 // guarda o começo da palavra que disparou o detector
 const MAX_S = 14 // a API recusa acima de 15 s
 const CONFIRMA_MS = 8000 // janela do "sim" depois que o sistema termina de falar
-const ESCUTA_MS = 8000 // depois de um "Ei guia" sozinho, espera o pedido por este tempo
+const ESCUTA_MS = 8000 // depois de um "Ei Marvin" sozinho, espera o pedido por este tempo
 
 /** Reamostra para 16 kHz pela média de cada janela (sem o serrilhado de pular amostras). */
 export function para16k(amostras, taxa) {
@@ -51,7 +51,7 @@ export function resumoRota(data, nome) {
 export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar, executar, contexto }) {
   let ctx = null
   let taxa = 48000
-  let maosLivres = true // como a Siri: sempre ouvindo pelo "Ei guia"; o botão desliga
+  let maosLivres = true // como a Siri: sempre ouvindo pelo "Ei Marvin"; o botão desliga
   let segurando = false
   let ocupado = false
   let gravando = null // quadros da fala atual
@@ -61,12 +61,12 @@ export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar, executa
   let ruido = 0.01
   let pendente = null // rota ou comando de interface esperando o "sim"
   let confirmarAte = 0
-  let escutaAte = 0 // > agora: a próxima fala já é com o Guia
+  let escutaAte = 0 // > agora: a próxima fala já é com o Marvin
   let mudoAte = 0
 
   const mostrar = (texto) => { status.textContent = texto; status.hidden = !texto }
   const ocioso = () => mostrar(!maosLivres ? ''
-    : ctx?.state === 'running' ? 'diga "Ei guia" · ou segure espaço' : 'clique na página para ligar o microfone')
+    : ctx?.state === 'running' ? 'diga "Ei Marvin" · ou segure espaço' : 'clique na página para ligar o microfone')
 
   async function ligarMicrofone() {
     if (ctx) return

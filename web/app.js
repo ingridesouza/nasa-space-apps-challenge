@@ -453,7 +453,7 @@ const assistente = iniciarAssistente($('assistente'), $('btn-assistente'), () =>
   },
 })
 
-// F08 voz: "Ei guia, rota até …" ou pergunta falada; a origem é sempre a posição atual
+// F08 voz: "Ei Marvin, rota até …" ou pergunta falada; a origem é sempre a posição atual
 iniciarVoz($('btn-voz'), $('voz-status'), {
   pontoAtual: () => estado.posicao,
   rota: (_origem, destino) => definirDestino({ ...destino, tipo: 'destino', rotulo: 'o destino da rota' }),

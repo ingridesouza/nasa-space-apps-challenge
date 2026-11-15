@@ -1,7 +1,7 @@
 """Feature 11 -- visor por voz: texto do astronauta -> UM comando do catálogo
 web/comandos.json ({alvo, acao, args}), que o front executa.
 
-Duas camadas: regras (instantâneo, cobre o grosso: "Alfa, aproxima dois")
+Duas camadas: regras (instantâneo, cobre o grosso: "Atlas, aproxima dois")
 e, só se as regras não entenderem e a frase tiver cara de comando, o Gemma
 local com a saída presa a um JSON schema (enum dos ids e ações). Tudo que
 sai daqui passa por validar(): ação ou argumento fora do catálogo não chega
@@ -26,7 +26,7 @@ MAX_PALAVRAS_MODELO = 12  # relato longo é pergunta, não comando: vai direto a
 # "um"/"uma" ficam: são número ("aproxima um").
 VAZIAS = {"o", "a", "os", "as", "do", "da", "dos", "das", "no", "na", "nos", "nas", "de", "em",
           "para", "pra", "pro", "por", "favor", "me", "e", "ai", "isso", "esse", "essa", "este", "esta",
-          "guia", "ei", "oi", "ola", "bloco", "modal", "card", "pagina"}
+          "marvin", "ei", "oi", "ola", "bloco", "modal", "card", "pagina"}
 NUMEROS = {"zero": 0, "um": 1, "uma": 1, "primeira": 1, "primeiro": 1, "dois": 2, "duas": 2, "segunda": 2,
            "segundo": 2, "tres": 3, "terceira": 3, "terceiro": 3, "quatro": 4, "quarta": 4, "cinco": 5,
            "seis": 6, "sete": 7, "oito": 8, "nove": 9, "dez": 10, "quinze": 15, "vinte": 20, "trinta": 30,

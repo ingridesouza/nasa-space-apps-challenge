@@ -376,12 +376,12 @@ async def voz(request: Request, ativado: bool = False, confirmando: bool = False
               abertos: str = "", foco: str | None = None):
     """Feature 08, voz: áudio bruto (float32 mono 16 kHz) -> texto -> comando.
     lat/lon: ponto marcado (onde o astronauta está). ativado: já veio de
-    "segure espaço" ou da janela do "Confirma?" -- dispensa a palavra "Guia".
+    "segure espaço" ou da janela do "Confirma?" -- dispensa a palavra "Marvin".
     confirmando: espera só "sim"/"não", então vai no modelo rápido.
     Mãos-livres (nenhum dos dois): o modelo rápido confere antes se a fala é com o
-    "Guia"; conversa de fundo não ocupa o modelo grande. Só "Ei guia" devolve
+    "Marvin"; conversa de fundo não ocupa o modelo grande. Só "Ei marvin" devolve
     intencao "escutar": o front bipa e trata a próxima fala como ativada.
-    O modelo grande também precisa ouvir o "guia" para a fala valer.
+    O modelo grande também precisa ouvir o "marvin" para a fala valer.
     Ver docs/feature-08-voz-plano-execucao.md."""
     corpo = await request.body()
     if len(corpo) > LIMITE_AUDIO_BYTES:
@@ -393,13 +393,13 @@ async def voz(request: Request, ativado: bool = False, confirmando: bool = False
         raise HTTPException(status_code=400, detail="áudio com valor inválido")
     try:
         if not (ativado or confirmando):
-            # o small só descarta o que ouviu com clareza e sem "guia"; na dúvida, o grande decide.
-            # Ele não confirma sozinho: com o vocabulário, ouviu "Hoje Guia" em "Hoje o dia".
+            # o small só descarta o que ouviu com clareza e sem "marvin"; na dúvida, o grande decide.
+            # Ele não confirma sozinho: com o vocabulário, ouviu "Hoje Marvin" em "Hoje o dia".
             rapido = await run_in_threadpool(transcrever, audio, MODELO_CONFIRMACAO)  # ~1 s
             gatilho = interpretar(rapido["texto"] or "", [], exigir_ativacao=True)
             if rapido["texto"] and not gatilho["ativado"]:
                 return {**rapido, "ativado": False, "intencao": "nenhuma", "destino": None, "fala": None}
-            if gatilho["ativado"] and gatilho["intencao"] == "nenhuma":  # só "Ei guia": escuta já, sem o grande (~6 s)
+            if gatilho["ativado"] and gatilho["intencao"] == "nenhuma":  # só "Ei marvin": escuta já, sem o grande (~6 s)
                 return {**rapido, **gatilho, "intencao": "escutar", "fala": None}
         modelo = MODELO_CONFIRMACAO if confirmando else MODELO
         ouvido = await run_in_threadpool(transcrever, audio, modelo)  # CPU pesada: fora do loop da API
@@ -411,9 +411,9 @@ async def voz(request: Request, ativado: bool = False, confirmando: bool = False
     destinos = destinos_por_voz(lat, lon)
     cmd = interpretar(ouvido["texto"], destinos, exigir_ativacao=not (ativado or confirmando))
     if cmd["ativado"] and cmd["intencao"] == "nenhuma" and not confirmando:
-        cmd["intencao"] = "escutar"  # só "Ei guia", sem pedido: o front bipa e espera a próxima fala
+        cmd["intencao"] = "escutar"  # só "Ei marvin", sem pedido: o front bipa e espera a próxima fala
     if cmd["intencao"] == "pergunta":
-        # F11: antes de virar pergunta ao agente, vê se é comando de interface ("Alfa, aproxima")
+        # F11: antes de virar pergunta ao agente, vê se é comando de interface ("Atlas, aproxima")
         ui = await run_in_threadpool(comandos.interpretar, cmd["pergunta"], [a for a in abertos.split(",") if a], foco)
         if ui["fala"]:
             return {**ouvido, **cmd, **ui, "intencao": "interface", "destino": None}

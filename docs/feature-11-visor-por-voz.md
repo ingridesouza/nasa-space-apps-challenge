@@ -22,27 +22,27 @@ comando ─▶ web/ui/comandos.js valida no catálogo ─▶ handler registrado 
 
 | Id | Fala | Bloco | Ações |
 |---|---|---|---|
-| m-A | Alfa | Mapa | expandir, recolher, aproximar, afastar, mover, centralizar, ler (elevação na mira) |
-| m-B | Bravo | Camadas | ligar, desligar, opacidade |
-| m-C | Charlie | Rota | planejar, destino_centro*, parada, remover_parada, tipo, sol, ir_sol, o2, medicao*, apagar_medicao*, alvo, próxima, anterior, recolher, expandir, cancelar* |
-| m-D | Delta | Panorama | expandir, recolher, girar, aproximar, afastar, centralizar (direção do ponto) |
-| m-E | Eco | Fotos (e barra de imagens) | abrir N, próxima, anterior, recolher, expandir |
-| m-F | Foxtrot | Ficha científica | abrir, fechar, próxima, anterior |
-| m-G | Golf | Assistente | abrir, fechar, próxima, anterior, ouvir |
-| m-H | Hotel | Visor | fechar |
-| m-I | Índia | Destino por coordenadas | definir lat/lon* |
-| m-J | Juliet | Status (avisos) | ler |
+| m-A | Atlas | Mapa | expandir, recolher, aproximar, afastar, mover, centralizar, ler (elevação na mira) |
+| m-B | Vega | Camadas | ligar, desligar, opacidade |
+| m-C | Polaris | Rota | planejar, destino_centro*, parada, remover_parada, tipo, sol, ir_sol, o2, medicao*, apagar_medicao*, alvo, próxima, anterior, recolher, expandir, cancelar* |
+| m-D | Orion | Panorama | expandir, recolher, girar, aproximar, afastar, centralizar (direção do ponto) |
+| m-E | Rigel | Fotos (e barra de imagens) | abrir N, próxima, anterior, recolher, expandir |
+| m-F | Altair | Ficha científica | abrir, fechar, próxima, anterior |
+| m-G | Draco | Assistente | abrir, fechar, próxima, anterior, ouvir |
+| m-H | Castor | Visor | fechar |
+| m-I | Pollux | Destino por coordenadas | definir lat/lon* |
+| m-J | Antares | Status (avisos) | ler |
 | `sis` | Sistema | sem bloco na tela | voltar (Esc), silêncio, microfone (desliga), ajuda |
 
 \* pede "Confirma?" antes, repetindo os valores ouvidos.
 
-Clique no mapa vira **mira**: o centro do mapa. "Alfa, ler", "Charlie, destino aqui" e "Charlie, parada" usam a mira; o astronauta move o mapa por voz ("Alfa, mover norte") até o ponto.
+Clique no mapa vira **mira**: o centro do mapa. "Atlas, ler", "Polaris, destino aqui" e "Polaris, parada" usam a mira; o astronauta move o mapa por voz ("Atlas, mover norte") até o ponto.
 
 ## Decisões
 
 | Decisão | Por quê |
 |---|---|
-| Na tela, `m-A`; na fala, alfabeto fonético ("Alfa") | Letra solta em português (bê/dê/ê/pê/tê) o Whisper confunde. É o padrão de rádio em EVA |
+| Na tela, `m-A`; na fala, nome de estrela ("Atlas") | Letra solta em português (bê/dê/ê/pê/tê) o Whisper confunde. Nomes de estrela são palavras comuns em inglês, distintas entre si. Evitados: Sirius ("serious"), Deneb ("denim"), Lyra ("Lara"). O agente se chama **Marvin** ("H2" não serve: o Whisper o escreve de vários jeitos) |
 | Regras antes do modelo | Instantâneo e determinístico. O Gemma (dezenas de segundos na CPU) só entra se as regras não entenderem **e** a frase citar bloco ou verbo do catálogo |
 | Gemma com `format` = JSON schema (enum de ids e ações) e `validar()` depois | O modelo só escolhe da lista; argumento fora da faixa é barrado |
 | Sem bloco citado: blocos abertos → último usado → pergunta "Qual bloco?" | "Próxima" com fotos e ficha abertas é ambíguo: perguntar é melhor que chutar |

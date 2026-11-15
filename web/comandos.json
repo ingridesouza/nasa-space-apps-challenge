@@ -1,13 +1,11 @@
 {
  "versao": 1,
- "nota": "Catálogo único dos blocos do visor e das ações que a voz pode disparar. Lido pelo front (web/ui/comandos.js) e pela API (api/comandos.py). 'falado' = nome no alfabeto fonético, que o Whisper transcreve bem (letra solta não: bê/dê/ê/pê/tê soam iguais). Ação nova: acrescentar aqui e registrar o handler em web/app.js.",
+ "nota": "Catálogo único dos blocos do visor e das ações que a voz pode disparar. Lido pelo front (web/ui/comandos.js) e pela API (api/comandos.py). 'falado' = nome de estrela, que o Whisper transcreve bem (letra solta não: bê/dê/ê/pê/tê soam iguais); o nome do agente é Marvin (api/voz.py: ATIVACAO). Ação nova: acrescentar aqui e registrar o handler em web/app.js.",
  "modais": [
   {
    "id": "m-A",
    "falado": [
-    "alfa",
-    "alpha",
-    "alfah"
+    "atlas"
    ],
    "nome": "Mapa",
    "seletor": "#mapa-box",
@@ -143,7 +141,8 @@
   {
    "id": "m-B",
    "falado": [
-    "bravo"
+    "vega",
+    "veiga"
    ],
    "nome": "Camadas",
    "seletor": "#camadas",
@@ -260,10 +259,8 @@
   {
    "id": "m-C",
    "falado": [
-    "charlie",
-    "charli",
-    "xarli",
-    "charles"
+    "polaris",
+    "polares"
    ],
    "nome": "Rota",
    "seletor": "#c-rota",
@@ -512,7 +509,8 @@
   {
    "id": "m-D",
    "falado": [
-    "delta"
+    "orion",
+    "orian"
    ],
    "nome": "Panorama",
    "seletor": "#c-pano",
@@ -620,9 +618,8 @@
   {
    "id": "m-E",
    "falado": [
-    "eco",
-    "echo",
-    "eko"
+    "rigel",
+    "rijel"
    ],
    "nome": "Fotos",
    "seletor": "#c-fotos",
@@ -695,9 +692,8 @@
   {
    "id": "m-F",
    "falado": [
-    "foxtrot",
-    "foxtrote",
-    "fox"
+    "altair",
+    "altaire"
    ],
    "nome": "Ficha científica",
    "seletor": "#c-ficha",
@@ -753,8 +749,8 @@
   {
    "id": "m-G",
    "falado": [
-    "golf",
-    "golfe"
+    "draco",
+    "drako"
    ],
    "nome": "Assistente",
    "seletor": "#assistente",
@@ -820,7 +816,8 @@
   {
    "id": "m-H",
    "falado": [
-    "hotel"
+    "castor",
+    "kastor"
    ],
    "nome": "Visor",
    "seletor": "#visor",
@@ -845,8 +842,8 @@
   {
    "id": "m-I",
    "falado": [
-    "india",
-    "indya"
+    "pollux",
+    "polux"
    ],
    "nome": "Destino por coordenadas",
    "seletor": "#coords",
@@ -884,9 +881,8 @@
   {
    "id": "m-J",
    "falado": [
-    "juliet",
-    "juliete",
-    "julieta"
+    "antares",
+    "antaris"
    ],
    "nome": "Status",
    "seletor": "#c-status",
