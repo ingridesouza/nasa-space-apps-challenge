@@ -19,7 +19,7 @@ function suggestionHtml(r, sg) {
   return `<div class="route-sec suggestion">
     <p class="suggestion-reason v-${VERDICT[sg.summary[0]?.label] ?? 'caution'}"><span class="fl-sec">System suggestion</span>${esc(sg.reason)}</p>
     ${sg.dust_warning ? `<p class="suggestion-reason v-caution">${esc(sg.dust_warning)}</p>` : ''}
-    <span class="fl-sec">${LABEL[s.label][0]} ${esc(routeName(r))}${r.type === sg.suggested ? ' · suggested ★' : ' · alternative'}</span>
+    <span class="fl-sec">${LABEL[s.label][0]} ${esc(routeName(r))}${r.type === sg.suggested ? ' · suggested <svg class="h2g2-star" viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" aria-hidden="true" style="vertical-align:-.1em"><polygon points="12.0,0.0 14.2,9.0 23.4,8.3 15.5,13.1 19.1,21.7 12.0,15.7 4.9,21.7 8.5,13.1 0.6,8.3 9.8,9.0"/></svg>' : ' · alternative'}</span>
     <ul class="suggestion-list">${s.pros.map((x) => li(x, 'pro', '+')).join('')}${s.cons.map((x) => li(x, 'con', '!')).join('')}</ul>
     <p class="caption mono" title="${esc(sg.method)}">dashed line on the map = other options${st.previous ? ' and the previous route' : ''} · you decide</p>
   </div>`

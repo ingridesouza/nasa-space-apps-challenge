@@ -13,17 +13,11 @@
     safety: "Safety", terrain_safety: "Terrain safety",
   };
 
-  function source(l) {
-    return esc(l.source_file || "source"); // file name only: an external link does not work offline
-  }
-
   function line(l) {
-    const meta = [l.instrument, l.sol != null ? `sol ${l.sol}` : null, l.scale].filter(Boolean).map(esc).join(" · ");
     return `<li class="sci-line">
       <div class="sci-top"><span class="sci-sec">${esc(SECTION[l.section] || l.section)}</span>
         <span class="tag ${BADGE[l.confidence] ?? ""}">${esc(l.confidence_label)}</span></div>
-      <p class="sci-txt">${esc(l.text)}</p>
-      <p class="caption mono">${meta ? meta + " · " : ""}${source(l)}</p></li>`;
+      <p class="sci-txt">${esc(l.text)}</p></li>`;
   }
 
   // state: "loading" | "error" | API data
@@ -40,20 +34,19 @@
       let h = "";
       const a = d.target;
       if (a) {
-        const tags = [`sol ${a.sol}`, a.rmc, a.distance_label].filter(Boolean)
+        const tags = [`sol ${a.sol}`, a.distance_label].filter(Boolean)
           .map((t) => `<span class="tag">${esc(t)}</span>`).join("");
         const img = d.mastcam
           ? `<img class="science-img" src="${esc(d.mastcam.img)}" alt="${esc(d.mastcam.label)}" onerror="this.style.visibility='hidden'">`
           : '<div class="science-img"></div>';
-        h += `<div class="science-head">${img}<div><p class="caption mono">${esc(a.name_label)}</p>
-          <div class="tags">${tags}</div></div></div>`;
+        h += `<div class="science-head">${img}<div><div class="tags">${tags}</div></div></div>`;
         if (d.position_warning) h += `<p class="caption mono warning">⚠ ${esc(d.position_warning)}</p>`;
       }
       if (d.message) h += `<p class="empty">${esc(d.message)}.</p>`;
-      const lines = (d.rows || []).concat(d.context || []);
+      // generic "Gale Crater" row is noise on a card that must stay short
+      const lines = (d.rows || []).filter((r) => r.section !== "name").concat(d.context || []);
       if (lines.length) h += `<ul class="sci-lines">${lines.map(line).join("")}</ul>`;
       if (d.mastcam) h += `<p class="caption mono">${esc(d.mastcam.label)} · ${esc(d.mastcam.credit)}</p>`;
-      h += '<p class="caption mono">Confidence: <b>measured</b> (Curiosity at the stop) · <b>inferred from orbit</b> (CRISM, ~18 m/px) · <b>context</b> (blog, nomenclature, H2G2 team)</p>';
       return h;
     },
   };
