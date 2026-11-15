@@ -1,12 +1,13 @@
-// F08: assistant always at hand (pill at the top or the "/" key). Answers about the destination
-// or, with no destination, about the current position. Local model: the wait is visible (counter).
+// F08: assistant history. Questions are asked only by voice (voice.js); this panel opens by itself
+// with the question and shows the answer. Answers about the destination or, with no destination,
+// about the current position. Local model: the wait is visible (counter).
 import { ask } from '../api.js'
 import { coord, esc } from './util.js'
 
 const MAX_HISTORY = 4
 
 /** Speech output: only local system voices, never network ones (offline). */
-function speak(text) {
+export function speak(text) {
   const voice = speechSynthesis.getVoices().find((v) => v.lang.startsWith('en') && v.localService)
   const u = new SpeechSynthesisUtterance(text)
   u.lang = 'en-US'
@@ -16,23 +17,23 @@ function speak(text) {
 }
 
 /**
- * el: <section id="assistant">; button: opens/closes.
+ * el: <section id="assistant">.
  * currentPoint(): {lat, lon, label} of the destination or current position, or null (the API uses the base).
+ * currentRoute(): open route (routeForAgent) or null; with it the API runs the route forecast.
+ * openRoute({lat, lon}): the agent planned a route (plan_route tool): opens it on the map, without choosing for you.
  */
-export function initAssistant(el, button, currentPoint) {
+export function initAssistant(el, currentPoint, currentRoute = () => null, openRoute = () => {}) {
   const history = [] // {question, about, answer?, sources?, error?, seconds}
   let busy = false
   let timer = null
 
   const about = () => {
+    if (currentRoute()) return 'the open route'
     const p = currentPoint()
     return p ? `${p.label ?? 'the point'} (${coord(p)})` : 'the base (no point chosen)'
   }
 
   function render() {
-    const field = el.querySelector('input[name=q]')
-    const typed = field?.value ?? ''
-    const focused = document.activeElement === field
     const items = history.map((h, i) => `
       <article class="h2g2-asst-item">
         <div class="h2g2-asst-q">› ${esc(h.question)} <span class="h2g2-dim h2g2-micro">about ${esc(h.about)}</span></div>
@@ -44,18 +45,11 @@ export function initAssistant(el, button, currentPoint) {
                <div class="h2g2-dim h2g2-micro">sources: ${esc(h.sources.join(' · ') || 'none')} · ${h.seconds}s
                ${'speechSynthesis' in window ? ` · <button type="button" class="h2g2-link-btn" data-listen="${i}">▶ listen</button>` : ''}</div>`}
       </article>`).join('')
-    el.innerHTML = `
-      <form class="h2g2-asst-form">
-        <input name="q" maxlength="500" required autocomplete="off" aria-label="Question for the assistant">
-        <button class="h2g2-mono" ${busy ? 'disabled' : ''}>ask</button>
-      </form>
-      ${items ? `<div class="h2g2-asst-hist">${items}</div>` : ''}`
-    const fresh = el.querySelector('input[name=q]')
-    fresh.value = typed
-    if (focused) fresh.focus()
+    el.innerHTML = `<div class="h2g2-asst-hist">${items || '<p class="h2g2-dim h2g2-small">Say "Hey guide" and ask the question.</p>'}</div>`
   }
 
-  async function send(question) {
+  /** byVoice: the question came from the microphone, so the answer is spoken too. */
+  async function send(question, byVoice = false) {
     if (busy || !question.trim()) return
     busy = true
     const h = { question: question.trim(), about: about(), seconds: 0 }
@@ -69,50 +63,37 @@ export function initAssistant(el, button, currentPoint) {
     }, 1000)
     const p = currentPoint()
     try {
-      const r = await ask(h.question, p?.lat, p?.lon)
+      const r = await ask(h.question, p?.lat, p?.lon, currentRoute())
       Object.assign(h, { answer: r.answer, sources: r.sources })
+      const route = r.actions?.findLast((a) => a.type === 'open_route')
+      if (route) openRoute({ lat: route.lat, lon: route.lon })
+      if (byVoice) speak(`You asked: ${h.question} ${r.answer}`) // repeats what it heard: a transcription error becomes audible
     } catch (err) {
       h.error = err.message
+      if (byVoice) speak('The assistant is offline. The alerts still apply.')
     } finally {
       clearInterval(timer)
       h.seconds = Math.round((performance.now() - start) / 1000)
       busy = false
       render()
-      el.querySelector('input[name=q]')?.focus()
     }
   }
 
   function open(isOpen = el.hidden) {
     el.hidden = !isOpen
-    button.classList.toggle('on', isOpen)
-    button.setAttribute('aria-expanded', String(isOpen))
-    if (isOpen) {
-      render()
-      el.querySelector('input[name=q]').focus()
-    }
+    if (isOpen) render()
   }
 
-  button.addEventListener('click', () => open())
-  el.addEventListener('submit', (e) => {
-    e.preventDefault()
-    const q = e.target.q.value
-    e.target.q.value = ''
-    send(q)
-  })
   el.addEventListener('click', (e) => {
     const i = e.target.closest('[data-listen]')?.dataset.listen
     if (i !== undefined && history[i]?.answer) speak(history[i].answer)
   })
-  // click outside the panel (and outside the pill) closes; "/" opens from anywhere (outside a text field); Esc closes
+  // click outside the panel or Esc closes; the next spoken question reopens it
   document.addEventListener('pointerdown', (e) => {
-    if (!el.hidden && !el.contains(e.target) && !button.contains(e.target)) open(false)
+    if (!el.hidden && !el.contains(e.target)) open(false)
   })
   document.addEventListener('keydown', (e) => {
-    const typing = e.target.closest?.('input, textarea')
-    if (e.key === '/' && !typing && el.hidden) {
-      e.preventDefault()
-      open(true)
-    } else if (e.key === 'Escape' && !el.hidden) open(false)
+    if (e.key === 'Escape' && !el.hidden) open(false)
   })
-  return { open, render }
+  return { open, render, send }
 }

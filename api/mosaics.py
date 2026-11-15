@@ -65,10 +65,17 @@ def build_mosaic_image(local_tile_path: str) -> Image.Image | None:
     return mosaic
 
 
-def build_mosaic_png(local_tile_path: str) -> bytes | None:
+def build_mosaic_png(local_tile_path: str, thermal_palette: bool = False) -> bytes | None:
+    """`thermal_palette=True` for layers whose mosaic is pure gray (today
+    only THEMIS) -- see `apply_thermal_palette`, same treatment used by
+    the tile server (api/tile_server.py), here for the layers panel
+    thumbnail (`/mosaics/{layer}.png`)."""
     mosaic = build_mosaic_image(local_tile_path)
     if mosaic is None:
         return None
+
+    if thermal_palette:
+        mosaic = Image.fromarray(apply_thermal_palette(np.array(mosaic)), mode="RGB")
 
     buf = io.BytesIO()
     mosaic.save(buf, format="PNG")
@@ -110,6 +117,19 @@ def build_hillshade_array(dtm_path: str, azimuth_deg: float = 315.0, altitude_de
     return np.clip(shade * 255, 0, 255).astype("uint8")
 
 
+def _stretch_contrast(gray: np.ndarray) -> np.ndarray:
+    """Contrast stretch (2-98 percentile) -- the boxwork is fairly flat, so
+    the raw shade is squeezed into a narrow gray band. This only rescales
+    the SAME real shading values to the full 0-255 range, as GDAL/QGIS
+    hillshade does by default; it does not invent relief. Not applied to
+    the overlay (build_hillshade_rgba), which measures the difference
+    from flat terrain on the unstretched values."""
+    low, high = np.percentile(gray, [2, 98])
+    if high <= low:
+        return gray
+    return np.clip((gray.astype("float64") - low) / (high - low) * 255, 0, 255).astype("uint8")
+
+
 def build_hillshade_rgba(dtm_path: str, azimuth_deg: float = 315.0, altitude_deg: float = 45.0) -> np.ndarray | None:
     """Hillshade as an OVERLAY layer, (4, h, w) uint8: only what differs from flat terrain.
 
@@ -135,12 +155,41 @@ def build_hillshade_rgba(dtm_path: str, azimuth_deg: float = 315.0, altitude_deg
 HILLSHADE_MAX_ALPHA = 200
 
 
+#: sequential palette ("inferno" style) to translate the already-real
+#: brightness value of the THEMIS mosaic into color -- only a visual
+#: translation of the SAME pixel (it does not calibrate real temperature
+#: in °C, which would need radiometric metadata we do not download),
+#: hence the name avoids "temperature". Without it THEMIS is pure gray
+#: and indistinguishable from the optical image below.
+_THERMAL_PALETTE_STOPS = [
+    (0, (0, 0, 4)),
+    (64, (87, 16, 110)),
+    (128, (188, 55, 84)),
+    (192, (249, 142, 8)),
+    (255, (252, 255, 164)),
+]
+
+
+def apply_thermal_palette(gray: np.ndarray) -> np.ndarray:
+    """Takes a 2D array (or RGB with r==g==b) 0-255 and returns RGB
+    (..., 3) colored by the sequential palette above -- same real pixel
+    value, only mapped to a color the human eye can tell apart."""
+    if gray.ndim == 3:
+        gray = gray[..., 0] if gray.shape[-1] in (3, 4) else gray[0]
+
+    xp = [s[0] for s in _THERMAL_PALETTE_STOPS]
+    r = np.interp(gray, xp, [s[1][0] for s in _THERMAL_PALETTE_STOPS])
+    g = np.interp(gray, xp, [s[1][1] for s in _THERMAL_PALETTE_STOPS])
+    b = np.interp(gray, xp, [s[1][2] for s in _THERMAL_PALETTE_STOPS])
+    return np.stack([r, g, b], axis=-1).astype("uint8")
+
+
 def build_hillshade_png(dtm_path: str, azimuth_deg: float = 315.0, altitude_deg: float = 45.0) -> bytes | None:
     shade_8bit = build_hillshade_array(dtm_path, azimuth_deg, altitude_deg)
     if shade_8bit is None:
         return None
 
-    img = Image.fromarray(shade_8bit, mode="L").convert("RGB")
+    img = Image.fromarray(_stretch_contrast(shade_8bit), mode="L").convert("RGB")
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()

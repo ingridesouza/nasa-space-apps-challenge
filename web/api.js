@@ -47,12 +47,21 @@ export const getPanorama = (lat, lon) => get(`/panoramas/nearest?lat=${lat}&lon=
 export const getPhotosNear = (lat, lon) => get(`/photos/near?lat=${lat}&lon=${lon}`)
 export const getScienceCard = (lat, lon) => get(`/science/card?lat=${lat}&lon=${lon}`)
 
+/** F08 voice: float32 mono 16 kHz audio → {text, intent, destination, origin, speech}. */
+export async function sendVoice(audio, { activated, confirming, lat, lon }) {
+  const q = new URLSearchParams({ activated, confirming, ...(lat !== undefined && { lat, lon }) })
+  const resp = await fetch(`/api/voice?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: audio })
+  const body = await resp.json().catch(() => null)
+  if (!resp.ok) throw new Error(body?.detail ?? `/api/voice failed: ${resp.status}`)
+  return body
+}
+
 /** F08: question to the local agent. 503 (model down) carries detail={message, alerts}. */
-export async function ask(question, lat, lon) { // without lat/lon: the API uses the base
+export async function ask(question, lat, lon, route = null) { // without lat/lon: the API uses the base
   const resp = await fetch('/api/ask', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(lat === undefined ? { question } : { question, lat, lon }),
+    body: JSON.stringify({ question, ...(lat !== undefined && { lat, lon }), ...(route && { route }) }),
   })
   const body = await resp.json().catch(() => null)
   if (!resp.ok) throw new Error(body?.detail?.message ?? `/api/ask failed: ${resp.status}`)

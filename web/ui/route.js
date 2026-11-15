@@ -5,6 +5,22 @@ import { SLOPE_COLOR_HEX } from '../layers.js'
 import { coord, esc, num } from './util.js'
 
 const TYPE_LABEL = { safest: 'Safest', fastest: 'Fastest', most_science: 'Most science' }
+// suggestion label (api/route_suggestions.py): fixed rule, not the model
+const LABEL = { ok: ['✅', 'no risk on the map'], caution: ['⚠️', 'caution'], danger: ['⛔', 'danger'] }
+
+/** F02 + F08: why this route -- pros and cons with source; the suggested one is only the order, all stay clickable. */
+function suggestionHtml(r, sg) {
+  const s = r.suggestion
+  if (!s || !sg) return ''
+  const li = (x, sign) => `<li title="source: ${esc(x.source)}">${sign} ${esc(x.text)}</li>`
+  return `<div class="route-sec suggestion">
+    <p class="suggestion-reason">${esc(sg.reason)}</p>
+    ${sg.dust_warning ? `<p class="suggestion-reason">⚠️ ${esc(sg.dust_warning)}</p>` : ''}
+    <span class="fl-sec">${LABEL[s.label][0]} Route ${esc(TYPE_LABEL[r.type] ?? r.type)}${r.type === sg.suggested ? ' · suggested' : ''}</span>
+    <ul class="suggestion-list">${s.pros.map((x) => li(x, '+')).join('')}${s.cons.map((x) => li(x, '−')).join('')}</ul>
+    <p class="caption mono">${esc(sg.method)} · you decide</p>
+  </div>`
+}
 
 /** Reference O2 capacity -- simulated, same language as the O2 model in
  * api/route_planning.py (not a suit spec). Editable: there is no suit telemetry. */
@@ -155,6 +171,13 @@ function evaSection(r) {
 
 const activeRoute = () => st.data?.routes.find((r) => r.type === st.type) ?? null
 
+/** F08: the open route, in the format /api/ask expects; null with no computed route. */
+export function routeForAgent() {
+  const { origin: o, destination: d } = st
+  if (!activeRoute() || !o || !d) return null
+  return { origin_lat: o.lat, origin_lon: o.lon, dest_lat: d.lat, dest_lon: d.lon, type: st.type, ...(st.solEva && { sol: st.solEva }) }
+}
+
 function render() {
   let body
   // legend for the track colors (same bands as api/route_planning.py)
@@ -173,9 +196,12 @@ function render() {
     if (st.error) body += `<p class="empty error">${esc(st.error)}</p>`
     if (st.data) {
       body += `<div class="types">${st.data.routes
-        .map((r) => `<button type="button" class="type ${r.type === st.type ? 'on' : ''}" data-type="${r.type}">${TYPE_LABEL[r.type] ?? esc(r.type)}</button>`).join('')}</div>`
+        .map((r) => {
+          const [icon, txt] = LABEL[r.suggestion?.label] ?? ['', '']
+          return `<button type="button" class="type ${r.type === st.type ? 'on' : ''}" data-type="${r.type}" aria-label="${esc(TYPE_LABEL[r.type] ?? r.type)}: ${txt}">${icon} ${TYPE_LABEL[r.type] ?? esc(r.type)}${r.type === st.data.suggestion?.suggested ? ' ★' : ''}</button>`
+        }).join('')}</div>`
       const r = activeRoute()
-      if (r) body += routeDetail(r, top)
+      if (r) body += suggestionHtml(r, st.data.suggestion) + routeDetail(r, top)
     }
     if (!activeRoute()) body += top // no route computed yet: the stop button is already at hand
   }
@@ -245,7 +271,7 @@ export function initRoute(container, callbacks) {
       const data = await getRoute(origin, destination, stops)
       if (mine !== request) return // points changed mid-computation
       st.data = data
-      st.type = 'safest'
+      st.type = data.suggestion?.suggested ?? 'safest'
     } catch (e) {
       if (mine !== request) return
       st.error = e.message
@@ -253,6 +279,7 @@ export function initRoute(container, callbacks) {
     st.loading = false
     cb.onActiveRoute(activeRoute())
     render()
+    return st.data // F08 voice: the spoken summary comes from these numbers
   }
   updateRoute.redraw = render
   return updateRoute

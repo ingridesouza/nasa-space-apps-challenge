@@ -10,6 +10,33 @@
 | 4 | Thermal — THEMIS | ✅ confirmed (visual only) | `THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018` (WMTS) |
 | 5 | Mineralogy — CRISM | ⚠️ blocked | only 3 observations in all of Gale, none in the bbox (see below) |
 | 6 | Local 1m topography — HiRISE DTM | ✅ confirmed | `Gale_DEM_SMG_1m` (ArcGIS) + visual hillshade |
+
+### Fix (2026-11-14): relief and thermal practically invisible on the map
+
+Reported by the user: even with the "Relief" and "Thermal" layers on and
+at the right zoom, no visual difference appeared. Investigated and
+confirmed it **was not a data, registry, layer name or cache bug** — both
+problems were of visual presentation:
+
+- **Relief (hillshade):** the boxwork is fairly flat, so the computed
+  shading was squeezed into a narrow gray band (very low contrast). The
+  map layer became a transparent overlay (`build_hillshade_rgba` in
+  `api/mosaics.py`: only what differs from flat terrain, with its own
+  98th-percentile stretch); the layers-panel thumbnail
+  (`build_hillshade_png`) gets a 2-98 percentile contrast stretch — the
+  same real shading values, only using the whole display range.
+- **Thermal (THEMIS):** the downloaded mosaic is pure gray (no color
+  band), so it was indistinguishable from the optical image below. Fixed
+  with a sequential palette (`apply_thermal_palette` in `api/mosaics.py`,
+  applied in `api/tile_server.py` and in the thumbnail endpoint
+  `/mosaics/{layer}.png` in `api/main.py`) — it translates the same real
+  brightness into color (black/purple → red/orange → light yellow).
+  **Important:** it is only a visual translation of relative brightness,
+  it does not calibrate real temperature in °C (we do not download that
+  radiometric metadata) — hence the name avoids the word "temperature".
+
+No data was invented or downloaded again; both fixes only change how the
+same real, already existing pixel is drawn on screen.
 | 7 | Weather — REMS | ✅ confirmed | PDS Atmospheres Node, RNV product per sol |
 | 8 | Radiation — RAD | ✅ confirmed | PDS-PPI (UCLA), detector E dose |
 | 9 | Rover photos — MSL | ✅ confirmed | 200 real photos, position via MMGIS |
@@ -146,6 +173,11 @@ Artemis 20° limit) in `raster_sampling.classify_slope`.
 
 ## Frontend ✅
 
+*(Note 2026-11-14: this section describes the original React front —
+replaced end to end by the plain HTML/JS in `web/`, see README and
+`docs/migracao-front-html-puro.md`. Kept as a historical record of when
+each piece was built, not as a description of the current front.)*
+
 `frontend/` (React + Vite + TS + MapLibre GL), HUD theme. Map with
 CTX/HiRISE/Relief/THEMIS (toggle+opacity each), click on a point →
 safety briefing + real nearby photos + science card + official name of
@@ -209,9 +241,10 @@ documented contract were found and **fixed**:
    additive) with per-layer detail, used by the frontend's "other
    elevation sources" panel. **Tested live**: I restarted the API and
    confirmed via `curl /api/point?lat=-4.80689&lon=137.37984` that the
-   shape matches the spec exactly. `frontend/src/api/types.ts` and
-   `PointInfoPanel.tsx` were updated to the new format;
-   `npx tsc --noEmit` clean.
+   shape matches the spec exactly. *(Note 2026-11-14: this was done before
+   the migration to the plain HTML/JS front — at the time the front was
+   still `frontend/src/api/types.ts` and `PointInfoPanel.tsx` in React/TS,
+   removed since then; see `docs/migracao-front-html-puro.md`.)*
 2. **Photo grid missing.** `NearbyPhotosSection.tsx` rendered only a
    text list (distance/direction/sol/camera), never the image — the
    spec (section 4) explicitly asks for a "grid/lightbox of static
@@ -272,6 +305,30 @@ JetBrains Mono) load via Google's CDN in `frontend/index.html`.
 Without internet, it falls back to the system default font -- nothing
 breaks, it just loses the chosen typography. Self-hosting would fully
 solve it; not done yet since it does not block the demo.
+
+## Feature 02 (route) — status of the O₂/time calculation sources
+
+Same table pattern as feature 01, but for the human values used in
+`api/route_planning.py` (walking time → O₂ consumption → comparison with
+suit capacity). Unlike the 12 sources of feature 01 (orbital/rover, all
+real), **these are human EVA physiology values — none comes from real
+telemetry of our suit (there is no physical suit in this project), and
+most had no verifiable source until this review.**
+
+| # | Value | Used in | Status | Source / note |
+|---|---|---|---|---|
+| 1 | O₂ consumption (L/min) | `O2_RATE_L_PER_MIN` (`route_planning.py`) | ✅ fixed (2026-11-14) | The old value (0.84) had only a vague comment ("Apollo EVA") with no link. **Applied**: NASA, *"Mars Exploration Portable Life Support System Schematic Study: Architecture Down-Selection"* (ICES-2026-158, NTRS 20260002884) — 350 W (1194 BTU/hr) average metabolic rate assumed for the Mars PLSS, used as a fixed value for 2 to 8 h EVAs. Converted by the standard caloric equivalent of O₂ (~5 kcal/L = ~20.92 kJ/L): 350 W × 60 s/min ÷ 20920 J/L ≈ **1.00 L/min**. Full source and math in the `route_planning.py` comment and in `docs/fontes-de-dados.md`. |
+| 2 | Walking speed (m/s) | `BASE_SPEED_M_S` (`route_planning.py`) | ⚠️ no confirmed real source for Mars | Current value (0.8) also has no verifiable source. Closest real data found: Apollo walking on flat terrain ~0.6 m/s — but it is **lunar** data, much lower gravity than Mars, so not directly applicable. No reference with a published number for walking in Martian gravity was found. |
+| 3 | Suit O₂ capacity (L) | default O₂ capacity (`web/ui/route.js`) | ⚠️ no official suit design source | Current value (400 L, editable in the panel) is the same order of magnitude as an 8 h EVA at ~1.0 L/min (~480 L), but it is not the official number of any NASA suit project (the real 2025 project cites ~8.6 kg of O₂ per 8 h EVA, which already includes margin/leak/pressurization, not only breathing). |
+| 4 | Base position (start/return point) | suit mode (`docs/raio-x-implementacao.md`) | ⚠️ provisional | Not yet defined with a real coordinate — it directly affects the round-trip O₂ calculation and the "return to base" alert. |
+
+**Important difference from feature 01:** there, "no source" almost
+always means "the real instrument does not cover this area/time"
+(CRISM, AI4Mars) — a documented and definitive absence of data. Here,
+instead, the numbers exist and run, but were written as if they cited
+real data without that citation existing — a different credibility risk
+(it looks like real data, it is not yet), not an orbital coverage
+limitation.
 
 ## Technical notes
 

@@ -16,13 +16,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import numpy as np
 from fastapi import FastAPI, HTTPException, Query, Request, Response
+from fastapi.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from atmosphere import track_geojson
 from insolation import at_point as insolation_at_point, sun_at_hour
-from agent import AgentUnavailable, ask as ask_agent, build_context, context_sources
+from agent import (DISTRESS, AgentUnavailable, ask as ask_agent, build_context, context_as_text, context_sources,
+                   distress_answer, group_alerts, strip_repeated_danger)
 from alerts import BASE_LAT_LON, point_alerts, route_alerts, sol_time_and_alerts, stops_in_bbox
 from conditions import get_cached_conditions
 from db import get_connection
@@ -31,12 +34,15 @@ from nomenclature import get_cached_nomenclature
 from thermal import inertia_at_point
 from forecast import delete_measurement, predicted_status, record_measurement, slope_risk, sol_forecast
 from raster_sampling import sample_all_rasters
+from route_forecast import forecast_route
 from route_planning import NoPathError, OutOfGridError, plan_route
+from route_suggestions import suggest
 from mars_time import local_time, now, sol_msl
 from tile_server import render_tile
-from vector_queries import all_photos, nearby_photos, nearest_science_target
+from vector_queries import all_photos, all_science_targets, nearby_photos, nearest_science_target
 import science_card
 import panorama
+from voice import CONFIRM_MODEL, MODEL as WHISPER_MODEL, RATE_HZ, _model as _whisper_model, interpret, transcribe
 
 # Mission reference sol -- real cached data (it is not "today",
 # it is the same sol used in the REMS/RAD tests, see NEXT-STEPS.md).
@@ -130,7 +136,7 @@ def get_mosaic(layer_name: str):
     if row["access_type"] == "derived_hillshade":
         png_bytes = build_hillshade_png(row["local_tile_path"])
     elif row["access_type"] == "tiles_wmts":
-        png_bytes = build_mosaic_png(row["local_tile_path"])
+        png_bytes = build_mosaic_png(row["local_tile_path"], thermal_palette=(layer_name == "themis_thermal"))
     else:
         raise HTTPException(status_code=404, detail=f"access_type {row['access_type']!r} does not become a mosaic")
 
@@ -340,11 +346,37 @@ def get_route(
         alerts.sort(key=lambda a: a["distance_m"])
         route["alerts"] = alerts
 
+    # feature 02 + 08: addition -- suggested order with the why; no route leaves the list
+    result["suggestion"] = suggest(result["routes"])
     return result
+
+
+@app.get("/api/route-forecast")
+def get_route_forecast(origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float,
+                       type: str = "safest", sol: int | None = None):
+    """Agent tool: predictive analysis of the route (terrain from Curiosity
+    history, climate and window on the EVA sol, forecast dose). See route_forecast.py."""
+    result = get_route(origin_lat, origin_lon, dest_lat, dest_lon, [], [])
+    route = next((r for r in result["routes"] if r["type"] == type), None)
+    if route is None:
+        raise HTTPException(status_code=404, detail=f"Variant {type!r} does not exist for these points")
+    return {**forecast_route(route, sol if sol is not None else sol_msl(now())),
+            "suggestion": result["suggestion"]}
+
+
+class QuestionRoute(BaseModel):
+    """Route open on screen: with it, the backend runs the tool before asking."""
+    origin_lat: float = Field(ge=-90, le=90)
+    origin_lon: float = Field(ge=-180, le=360)
+    dest_lat: float = Field(ge=-90, le=90)
+    dest_lon: float = Field(ge=-180, le=360)
+    type: str = "safest"
+    sol: int | None = Field(None, ge=1, le=20000)  # EVA sol; None = today
 
 
 class Question(BaseModel):
     question: str = Field(min_length=1, max_length=500)
+    route: QuestionRoute | None = None
     # with no chosen point, the assistant answers about the base (same as api/alerts.py)
     lat: float = Field(BASE_LAT_LON[0], ge=-90, le=90)
     lon: float = Field(BASE_LAT_LON[1], ge=-180, le=360)
@@ -354,23 +386,150 @@ class Question(BaseModel):
 @app.post("/api/ask")
 def ask(q: Question, request: Request):
     """Feature 08, phase 2: natural-language question about the point,
-    answered by the local model using only the /api/point context."""
+    answered by the local model with the /api/point context and local tools."""
     point = get_point(q.lat, q.lon, request)
+    if DISTRESS.search(q.question):
+        return {"answer": distress_answer(point, BASE_LAT_LON), "distress": True,
+                "sources": ["HiRISE DTM (slope)", "base position (H2G2)"], "alerts": point["alerts"], "actions": []}
     conditions = get_cached_conditions(q.sol)
     if conditions:
         conditions["time"], conditions["alerts"] = sol_time_and_alerts(q.sol)
         conditions["today_forecast"] = sol_forecast(conditions["time"]["sol_now"])
     ctx = build_context(point, conditions)
+    if q.route:
+        try:
+            ctx["route_forecast"] = get_route_forecast(**q.route.model_dump())
+        except HTTPException as e:  # no path/outside the map: the agent says there is no forecast
+            ctx["route_forecast"] = {"error": e.detail}
+    actions, tool_alerts, tool_sources = [], [], []
+
+    def run_tool(name: str, args: dict) -> str:
+        """Agent tools (tool calling). The argument comes from the model: validate before using."""
+        try:
+            if name == "list_science_targets":
+                conn = get_connection()
+                try:
+                    targets = all_science_targets(conn)
+                finally:
+                    conn.close()
+                tool_sources.append("science targets (F04)")
+                return "\n".join(f"- {t['name']}: lat {t['lat']}, lon {t['lon']}; {t['curiosity_measurement'] or 'no measurement'}"
+                                 for t in targets) or "no target registered"
+            if name == "query_point":
+                lat, lon = float(args["lat"]), float(args["lon"])
+                return context_as_text(build_context(get_point(lat, lon, request), None))
+            if name == "plan_route":
+                lat, lon = float(args["dest_lat"]), float(args["dest_lon"])
+                pos = get_position()  # the route starts at the astronaut, as in the front, not at the clicked point
+                r = get_route(pos["lat"], pos["lon"], lat, lon, [], [])
+                sg = r["suggestion"]
+                suggested = next(x for x in r["routes"] if x["type"] == sg["suggested"])
+                tool_alerts.extend(suggested["alerts"])
+                actions.append({"type": "open_route", "lat": lat, "lon": lon})
+                tool_sources.append("routes: A* over the HiRISE DTM + H2G2 suggestion rule")
+                return "\n".join([f"SYSTEM SUGGESTION: {sg['reason']}", *(f"- route {x['type']}: {x['label']} ({x['why']})" for x in sg["summary"]),
+                                  *(f"- route {x['type']}: {round(x['distance_m'])} m, ~{round(x['estimated_time_min'])} min" for x in r["routes"]),
+                                  *([sg["dust_warning"]] if sg["dust_warning"] else [])])
+            return f"unknown tool: {name}"
+        except (KeyError, TypeError, ValueError) as e:
+            return f"invalid argument for {name}: {e}"
+        except HTTPException as e:  # outside the map / no path: the model says there is none
+            return f"no result: {e.detail}"
+
     try:
-        answer = ask_agent(q.question, ctx)
+        answer = ask_agent(q.question, ctx, run_tool)
     except AgentUnavailable as e:
         # 503 with the alerts: the safety rules do not depend on the model
         raise HTTPException(status_code=503, detail={"message": str(e), "alerts": point["alerts"]})
-    # Danger is stated by rule, before the answer: the 3B model sometimes omits it.
-    dangers = " ".join(a["message"] for a in point["alerts"] if a["level"] == "danger")
+    # Danger is stated by rule, before the answer: the small model sometimes omits it.
+    route_alerts_ = (ctx.get("route_forecast") or {}).get("alerts", []) + tool_alerts
+    danger_list = [a for a in group_alerts(point["alerts"] + route_alerts_) if a["level"] == "danger"]
+    answer = strip_repeated_danger(answer, danger_list)
+    dangers = " ".join(a["message"] for a in danger_list)
     if dangers:
         answer = f"Danger: {dangers} {answer}"
-    return {"answer": answer, "sources": context_sources(ctx), "alerts": point["alerts"]}
+    return {"answer": answer, "sources": list(dict.fromkeys(context_sources(ctx) + tool_sources)),
+            "alerts": point["alerts"], "actions": actions}
+
+
+AUDIO_LIMIT_BYTES = 60 * RATE_HZ * 4  # 60 s of float32 mono
+
+
+@app.on_event("startup")
+def load_whisper():
+    """Loads the models in the background: without it the 1st utterance waits ~10 s more.
+    If the model is not downloaded, the thread fails in the log and /api/voice returns 503."""
+    import threading
+    for name in (WHISPER_MODEL, CONFIRM_MODEL):
+        threading.Thread(target=_whisper_model, args=(name,), daemon=True).start()
+
+
+def voice_destinations(lat: float | None, lon: float | None) -> list[dict]:
+    """Only what has a real coordinate: the base, the marked point and the database targets."""
+    destinations = [{"name": "the base", "lat": BASE_LAT_LON[0], "lon": BASE_LAT_LON[1],
+                     "keys": ["base", "habitat"], "base": True}]
+    if lat is not None and lon is not None:
+        destinations.append({"name": "the marked point", "lat": lat, "lon": lon, "keys": ["point", "marked"]})
+    conn = get_connection()
+    try:
+        destinations += [{"name": t["name"], "lat": t["lat"], "lon": t["lon"]} for t in all_science_targets(conn)]
+    finally:
+        conn.close()
+    return destinations
+
+
+@app.post("/api/voice")
+async def voice(request: Request, activated: bool = False, confirming: bool = False,
+                lat: float | None = Query(None, ge=-90, le=90), lon: float | None = Query(None, ge=-180, le=360)):
+    """Feature 08, voice: raw audio (float32 mono 16 kHz) -> text -> command.
+    lat/lon: marked point (where the astronaut is). activated: it already came from
+    "hold space" or from the "Confirm?" window -- the word "Guide" is not needed.
+    confirming: expects only "yes"/"no", so it goes to the fast model.
+    Hands-free (neither): the fast model first checks whether the speech is addressed
+    to the "Guide"; background talk does not occupy the big model. Only "Hey guide"
+    returns intent "listen": the front beeps and treats the next utterance as activated.
+    The big model must also hear "guide" for the utterance to count.
+    See docs/feature-08-voz-plano-execucao.md."""
+    body = await request.body()
+    if len(body) > AUDIO_LIMIT_BYTES:
+        raise HTTPException(status_code=413, detail="audio longer than 60 s")
+    if not body or len(body) % 4:
+        raise HTTPException(status_code=400, detail="body must be float32 mono 16 kHz")
+    audio = np.frombuffer(body, np.float32)
+    if not np.isfinite(audio).all():
+        raise HTTPException(status_code=400, detail="audio with an invalid value")
+    try:
+        if not (activated or confirming):
+            # small only discards what it heard clearly and without "guide"; when in doubt, the big one decides.
+            # It does not confirm on its own: with the vocabulary it may hear the wake word in similar speech.
+            quick = await run_in_threadpool(transcribe, audio, CONFIRM_MODEL)  # ~1 s
+            trigger = interpret(quick["text"] or "", [], require_activation=True)
+            if quick["text"] and not trigger["activated"]:
+                return {**quick, "activated": False, "intent": "none", "destination": None, "speech": None}
+            if trigger["activated"] and trigger["intent"] == "none":  # only "Hey guide": listen now, without the big one (~6 s)
+                return {**quick, **trigger, "intent": "listen", "speech": None}
+        model = CONFIRM_MODEL if confirming else WHISPER_MODEL
+        heard = await run_in_threadpool(transcribe, audio, model)  # heavy CPU: outside the API loop
+    except (ImportError, OSError, ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=503, detail=f"voice unavailable (local Whisper model: run make build): {e}")
+    if heard["text"] is None:
+        return {**heard, "intent": "none", "destination": None, "speech": "I didn't understand."}
+
+    destinations = voice_destinations(lat, lon)
+    cmd = interpret(heard["text"], destinations, require_activation=not (activated or confirming))
+    if cmd["activated"] and cmd["intent"] == "none" and not confirming:
+        cmd["intent"] = "listen"  # only "Hey guide", no request: the front beeps and waits for the next utterance
+    destination = cmd["destination"]
+    origin = {"lat": lat, "lon": lon} if lat is not None and lon is not None else {"lat": BASE_LAT_LON[0], "lon": BASE_LAT_LON[1]}
+    if destination and destination.get("keys") == ["point", "marked"]:
+        origin = {"lat": BASE_LAT_LON[0], "lon": BASE_LAT_LON[1]}  # route to the point starts at the base
+    short = lambda d: d["name"].split("—")[0].strip()  # noqa: E731
+    speech = None
+    if cmd["intent"] == "route" and destination and (destination["lat"], destination["lon"]) == (origin["lat"], origin["lon"]):
+        destination, speech = None, "Mark on the map where you are so I can compute the route."
+    elif cmd["intent"] == "route" and destination:
+        speech = f"Got it: route to {short(destination)}. Confirm?"
+    return {**heard, **cmd, "destination": destination, "origin": origin, "speech": speech}
 
 
 @app.get("/api/forecast")

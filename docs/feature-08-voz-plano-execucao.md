@@ -17,8 +17,8 @@ microfone ─▶ detector de fala (navegador) ─▶ Whisper (API) ─▶ palavr
 
 | Decisão | Escolha | Por quê |
 | --- | --- | --- |
-| Modelo de transcrição | `large-v3` se a fase 0 medir até ~5 s por frase; senão `turbo` | O `large-v3` é o Whisper mais preciso fora do inglês. O `turbo` tem só 4 camadas no decodificador e perde precisão nisso |
-| Idioma | Detectado, mas **só entre os permitidos** (`pt`, `en`) | A detecção livre erra em frase curta e transcreve português "em inglês" |
+| Modelo de transcrição | **`large-v3`** para o comando, **`small`** para o "sim/não" da confirmação | Medido em 14/11 (i5-13420H, frase sintética de 2,3 s): `large-v3` 5,8 s com a CPU livre, e ouviu "rota"; o `turbo` ouviu "hota" e ganha pouco, porque o peso na CPU está no codificador, igual nos dois. O `small` responde em 1,1 s |
+| Idioma | **Português fixo**; `H2G2_IDIOMA=auto` liga a detecção | A detecção dobra o tempo (16,9 s × 8,7 s) e errou em frase curta: "Sim." virou "Seeing." |
 | "Treino" para hoje | Lista de palavras do domínio e nomes de destinos passados ao Whisper | Fine-tuning precisa de horas de áudio rotulado e de GPU. Fica para depois, com o áudio gravado em uso real |
 | Como o áudio chega à API | O navegador já manda o áudio bruto em 16 kHz | Evita a biblioteca de decodificação de áudio do Python, hoje incompatível com o faster-whisper neste ambiente |
 | Ativação | Palavra **"Guia"** no início da frase, mais "segure espaço para falar" como plano B | Uma palavra comum em português o Whisper transcreve bem. "H2G2" ele escreveria de dez jeitos |
@@ -47,7 +47,7 @@ microfone ─▶ detector de fala (navegador) ─▶ Whisper (API) ─▶ palavr
 
 **API, `POST /api/voz/transcrever`**
 - O corpo é o áudio bruto (float32, 16 kHz, mono).
-- Limite de 15 s, cerca de 1 MB. Acima disso, responde 413.
+- Limite de 60 s, cerca de 3,8 MB. Acima disso, responde 413.
 
 **Front, `web/ui/voz.js` + `web/ui/voz-captura.js` (AudioWorklet)**
 - Microfone com cancelamento de eco, supressão de ruído e ganho automático.
@@ -81,7 +81,7 @@ microfone ─▶ detector de fala (navegador) ─▶ Whisper (API) ─▶ palavr
 - **Detector de fala no AudioWorklet, por energia, sem biblioteca:**
   - o limiar se adapta ao ruído de fundo medido nos primeiros 2 s;
   - a gravação começa depois de 150 ms acima do limiar e guarda os 300 ms anteriores;
-  - termina depois de 800 ms de silêncio, com no máximo 15 s.
+  - termina depois de 1,2 s de silêncio, com no máximo 59 s (a API aceita até 60 s).
 - A frase segue para a fase 1. Sem a palavra "Guia", é ignorada sem aviso.
 - Um interruptor "mãos-livres" liga e desliga esse modo. O "segure espaço" continua valendo.
 

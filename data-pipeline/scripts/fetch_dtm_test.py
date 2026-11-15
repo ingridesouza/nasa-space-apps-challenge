@@ -33,6 +33,21 @@ def main() -> None:
     layer_cfg = config["layers"]["dtm_hirise_1m"]
     out_dir = os.path.join(os.path.dirname(__file__), "..", "..", "data", "local", "tiles", "dtm_hirise_1m")
 
+    local_path = os.path.join(out_dir, "dem_512x512.tif")
+    if os.path.exists(local_path):
+        # already downloaded: do not depend on Mars Trek (slow/unstable) on every make build
+        print(f"[1-2/3] DEM already at {local_path}; skipping download (delete it to download again)")
+    else:
+        local_path = download(layer_cfg, out_dir)
+
+    print("[3/3] Validating elevation values with rasterio...")
+    with rasterio.open(local_path) as ds:
+        band = ds.read(1)
+        print(f"      crs={ds.crs} shape={ds.shape}")
+        print(f"      elevation min/max: {band.min():.1f} m / {band.max():.1f} m")
+
+
+def download(layer_cfg: dict, out_dir: str) -> str:
     adapter = ArcGISImageServerAdapter(
         image_server_url=layer_cfg["image_server_url"],
         spatial_ref_wkid=layer_cfg["spatial_ref_wkid"],
@@ -48,12 +63,7 @@ def main() -> None:
     results = adapter.fetch_tiles(bbox=bbox, tile_matrix="512x512", out_dir=out_dir)
     local_path = results[0].local_path
     print(f"      saved to {local_path}")
-
-    print("[3/3] Validating elevation values with rasterio...")
-    with rasterio.open(local_path) as ds:
-        band = ds.read(1)
-        print(f"      crs={ds.crs} shape={ds.shape}")
-        print(f"      elevation min/max: {band.min():.1f} m / {band.max():.1f} m")
+    return local_path
 
 
 if __name__ == "__main__":

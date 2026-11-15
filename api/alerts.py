@@ -156,7 +156,8 @@ def point_alerts(lat: float, lon: float, raster_values: dict, waypoints_path: st
 
 
 # Regional and global storms concentrate in the half of the year around perihelion
-# (southern spring and summer): Ls 180° to 360° (Mars24 / MCD climatology).
+# (southern spring and summer): Ls 180° to 360°. Source: NASA/JPL, Mars Climate Sounder (MRO),
+# "NASA Mars Orbiters Reveal Seasonal Dust Storm Pattern" (jpl.nasa.gov/news, 2016).
 DUST_LS = (180.0, 360.0)
 
 
@@ -177,7 +178,7 @@ def sol_time_and_alerts(data_sol: int, now: datetime | None = None) -> tuple[dic
     if DUST_LS[0] <= ls_now < DUST_LS[1]:
         alerts.append(_alert("caution", "dust_season",
                              f"Dust storm season (Ls {_num(ls_now)}°, higher risk between 180° and 360°).",
-                             "Mars24 (Ls) + dust climatology"))
+                             "Mars24 (Ls, NASA GISS) + seasonal dust pattern from MCS/MRO (NASA/JPL)"))
     return time_info, alerts
 
 

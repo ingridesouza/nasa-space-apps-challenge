@@ -66,8 +66,87 @@ SAND_WARNING = (
 # suit telemetry). Base speed on flat terrain ~0.8 m/s is the range
 # cited in lunar/Apollo EVA studies for cautious walking with a
 # pressurized suit; it drops as the slope rises.
+# BASE_SPEED_M_S: still without a confirmed real source for walking in
+# Martian gravity (see the survey in NEXT-STEPS.md, section
+# "Feature 02 (route)") -- previous value kept until a better
+# reference exists.
 BASE_SPEED_M_S = 0.8
-O2_RATE_L_PER_MIN = 0.84  # documented Apollo EVA consumption at rest/light walking
+
+# O2_RATE_L_PER_MIN: average metabolic rate assumed for a Mars EVA suit
+# is 350 W (1194 BTU/hr), NASA, "Mars Exploration Portable Life
+# Support System Schematic Study: Architecture Down-Selection"
+# (ICES-2026-158, NTRS 20260002884) -- fixed value used in the PLSS
+# schematic studies for 2 to 8 h EVAs (not a number "for 8 h"; it is
+# used for any duration in that range). Converted to L/min of O2 by the
+# standard caloric equivalent of O2 (~5 kcal/L = ~20.92 kJ/L):
+#   350 W * 60 s/min / 20920 J/L = ~1.00 L/min
+# Replaces the old value (0.84), which only had a vague comment
+# ("Apollo EVA") with no verifiable source.
+O2_RATE_L_PER_MIN = 1.00
+
+# Optimistic-pessimistic range of O2 consumption per segment (Phase 1, F02+F08).
+# Speed drops with slope as before (see BASE_SPEED_M_S above): optimistic
+# does not reduce it, pessimistic uses the same drop the module already
+# had. How much the O2 CONSUMPTION per minute grows with slope, however,
+# is no longer an arbitrary factor -- it comes from the Pandolf equation
+# (Pandolf, Givoni & Goldman, 1977), in the form NASA/JSC uses today to
+# estimate the metabolic cost of EVA walking, including for Mars:
+#   Kim, K.J., Hoffmann, B., Estep, P., Marshall-Goebel, K., Buckland, D.
+#   "Improving Metabolic Workload Estimation Accuracy for Planning and
+#   Analyzing Exploration Traverses". IEEE EMBC 2024. Funded by the
+#   NASA Mars Campaign Office. Equation (2) of the paper:
+#     MP = 1.5*W + 2.0*(W+L)*(L/W)^2 + eta*(W+L)*(1.5*V^2 + 0.35*V*G)
+#   W = body mass (kg), L = external load/suit (kg), V = speed (m/s),
+#   G = grade in % (100*tan of the segment angle), eta = terrain
+#   coefficient (dimensionless).
+# See PANDOLF_* right below for the source of each constant.
+OPTIMISTIC_SPEED_FACTOR = 0.0   # optimistic: speed does not drop with slope
+PESSIMISTIC_SPEED_FACTOR = 0.6  # pessimistic: same drop as BASE_SPEED_M_S before
+
+# W (body mass, 82 kg = 180 lbm) and L (suit+PLSS mass, 104 kg = 230 lbm,
+# initial mass budget target for a Mars suit): NASA, "Mars Suit Mass
+# Considerations" (NTRS 20260003038, ICES 2026).
+# eta=1.0 (asphalt/treadmill): Soule & Goldman (1972), base value of the
+# terrain table used with the Pandolf equation -- eta does not vary per
+# pixel, the same decision this module already made for soil texture
+# (see SAND_WARNING: sand risk is a qualitative warning, not a numeric
+# factor, for lack of per-pixel texture data for this region).
+PANDOLF_BODY_MASS_KG = 82.0
+PANDOLF_SUIT_MASS_KG = 104.0
+PANDOLF_TERRAIN_COEF = 1.0
+PANDOLF_GRADE_COEF = 0.35
+
+
+def _pandolf_metabolic_w(speed_m_s: float, grade_pct: float) -> float:
+    """Metabolic rate (watts) by the Pandolf equation -- see the comment of
+    PESSIMISTIC_SPEED_FACTOR above for the source of the equation and of
+    the PANDOLF_* constants.
+
+    Known and accepted limitation: the equation imposes no ceiling of
+    sustainable effort (VO2 max). So the "optimistic" side (speed not
+    reduced) can come out, on a real mixed-terrain route, BELOW the old
+    `estimated_o2_l` -- not because slope costs less oxygen, but because
+    the total exposure time drops more than the rate rises. It is an
+    accepted result of the model, not a bug: the "pessimistic" side (used
+    in every safety decision) keeps growing with slope on any terrain.
+    Fixing it would need a sustained VO2 max limit -- we do not impose a
+    value without a source; see docs/fontes-de-dados.md."""
+    w, l = PANDOLF_BODY_MASS_KG, PANDOLF_SUIT_MASS_KG
+    return (
+        1.5 * w
+        + 2.0 * (w + l) * (l / w) ** 2
+        + PANDOLF_TERRAIN_COEF
+        * (w + l)
+        * (1.5 * speed_m_s**2 + PANDOLF_GRADE_COEF * speed_m_s * grade_pct)
+    )
+
+
+# Normalizes the Pandolf equation by the base case (flat terrain, base
+# speed) to turn it into a RATIO over O2_RATE_L_PER_MIN -- so the old key
+# estimated_o2_l (which uses only O2_RATE_L_PER_MIN) does not change, and the
+# ratio is exactly 1.0 on flat terrain in both cases (optimistic and
+# pessimistic have the same speed when the slope is zero).
+_BASE_METABOLIC_W = _pandolf_metabolic_w(BASE_SPEED_M_S, 0.0)
 
 
 class NoPathError(Exception):
@@ -216,6 +295,8 @@ def _build_route(kind: str, path_rc, elevation, slope_deg, transform, pixel_size
     profile = [{"cumulative_distance_m": 0.0, "elevation_m": float(elevation[path_rc[0]])}]
     risk_segments = []
     time_s = 0.0
+    o2_optimistic_l = 0.0
+    o2_pessimistic_l = 0.0
     for i in range(1, len(path_rc)):
         r1, c1 = path_rc[i - 1]
         r2, c2 = path_rc[i]
@@ -234,6 +315,24 @@ def _build_route(kind: str, path_rc, elevation, slope_deg, transform, pixel_size
         # declared model (see BASE_SPEED_M_S above), not a real sensor.
         speed = BASE_SPEED_M_S * max(1 - (s / SLOPE_DANGER_LIMIT_DEG) * 0.6, 0.25)
         time_s += d / speed
+
+        # Optimistic-pessimistic range of the segment (Phase 1): same form as
+        # the speed/time above, with the factors declared at the top of
+        # the file -- see *_SPEED_FACTOR.
+        speed_optimistic = BASE_SPEED_M_S * max(1 - (s / SLOPE_DANGER_LIMIT_DEG) * OPTIMISTIC_SPEED_FACTOR, 0.25)
+        speed_pessimistic = BASE_SPEED_M_S * max(1 - (s / SLOPE_DANGER_LIMIT_DEG) * PESSIMISTIC_SPEED_FACTOR, 0.25)
+        segment_min_optimistic = (d / speed_optimistic) / 60.0
+        segment_min_pessimistic = (d / speed_pessimistic) / 60.0
+
+        # Pandolf ratio (see _pandolf_metabolic_w above) between the real
+        # segment (with the slope and speed of each case) and the flat base
+        # case -- this is what makes the O2 rate rise with slope, with a
+        # declared source.
+        grade_pct = 100.0 * math.tan(math.radians(s))
+        o2_rate_optimistic = O2_RATE_L_PER_MIN * (_pandolf_metabolic_w(speed_optimistic, grade_pct) / _BASE_METABOLIC_W)
+        o2_rate_pessimistic = O2_RATE_L_PER_MIN * (_pandolf_metabolic_w(speed_pessimistic, grade_pct) / _BASE_METABOLIC_W)
+        o2_optimistic_l += o2_rate_optimistic * segment_min_optimistic
+        o2_pessimistic_l += o2_rate_pessimistic * segment_min_pessimistic
 
         profile.append({
             "cumulative_distance_m": round(distance_m, 1),
@@ -263,6 +362,10 @@ def _build_route(kind: str, path_rc, elevation, slope_deg, transform, pixel_size
         "distance_m": round(distance_m, 1),
         "estimated_time_min": round(time_min, 1),
         "estimated_o2_l": round(o2_l, 2),
+        "estimated_o2_l_range": {
+            "optimistic": round(o2_optimistic_l, 2),
+            "pessimistic": round(o2_pessimistic_l, 2),
+        },
         "estimated_rad_dose_ugy": rad_dose_ugy,
         "elevation_profile": profile,
         "risk_segments": risk_segments,

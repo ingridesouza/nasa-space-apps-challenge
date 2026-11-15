@@ -9,7 +9,8 @@ import { TOGGLEABLE_LAYERS } from './layers.js'
 import * as map from './map.js'
 import { initAssistant } from './ui/agent.js'
 import { arrivalHour, renderLayers } from './ui/layers-panel.js'
-import { initRoute } from './ui/route.js'
+import { initRoute, routeForAgent } from './ui/route.js'
+import { initVoice } from './ui/voice.js'
 import { esc } from './ui/util.js'
 
 const $ = (id) => document.getElementById(id)
@@ -353,7 +354,7 @@ function setDestination(p) {
   map.setStops([])
   instruction(null)
   $('btn-route').textContent = 'Edit route'
-  updateRoute(state.position, p, [])
+  return updateRoute(state.position, p, []) // F08 voice: the spoken summary comes from these numbers
 }
 
 function cancelRoute() {
@@ -529,7 +530,24 @@ document.addEventListener('keydown', (e) => {
 })
 
 // ---------------- F08: assistant ----------------
-initAssistant($('assistant'), $('btn-assistant'), () => state.place ?? state.position)
+const assistant = initAssistant($('assistant'), () => state.place ?? state.position, routeForAgent, (destination) => {
+  state.routeActive = true // same as "Plan route" and the voice route
+  return setDestination(destination)
+})
+
+// ---------------- F08: voice ("Hey guide, route to …" or a spoken question) ----------------
+// the route always starts at the current position (tracker); voice only chooses the destination
+initVoice($('btn-voice'), $('voice-status'), {
+  currentPoint: () => state.position,
+  route: (_origin, destination) => {
+    state.routeActive = true // same as "Plan route"
+    return setDestination({ lat: destination.lat, lon: destination.lon })
+  },
+  ask: (text) => {
+    if ($('assistant').hidden) assistant.open(true)
+    return assistant.send(text, true)
+  },
+})
 
 // ---------------- Initial load ----------------
 getPosition()

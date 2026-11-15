@@ -30,7 +30,15 @@ from PIL import Image
 from rasterio.warp import Resampling, reproject
 
 from geo import MARS_RADIUS_M
-from mosaics import build_hillshade_rgba, build_mosaic_image
+from mosaics import apply_thermal_palette, build_hillshade_rgba, build_mosaic_image
+
+#: 'tiles_wmts' layers whose real mosaic is pure gray (no color band) --
+#: apply a sequential palette instead of showing gray, which is
+#: indistinguishable from the optical layer below (see mosaics.py). Fixed,
+#: small list (today only THEMIS) instead of inferring "is gray" pixel by
+#: pixel, which could color a real optical layer that happens to have low
+#: saturation in some area.
+THERMAL_PALETTE_LAYERS = {"themis_thermal"}
 
 TILE_SIZE = 256
 
@@ -199,6 +207,9 @@ def render_tile(
         img = Image.fromarray(destination).convert("L").convert("RGB")
     elif array.shape[0] == 4:
         img = Image.fromarray(np.moveaxis(destination, 0, -1), mode="RGBA")
+    elif layer_name in THERMAL_PALETTE_LAYERS:
+        colored = apply_thermal_palette(np.moveaxis(destination, 0, -1))
+        img = Image.fromarray(colored, mode="RGB")
     else:
         img = Image.fromarray(np.moveaxis(destination, 0, -1)).convert("RGB")
 
