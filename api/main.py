@@ -435,9 +435,13 @@ def ask(q: Question, request: Request):
     """Feature 08, phase 2: natural-language question about the point,
     answered by the local model with the /api/point context and local tools."""
     point = get_point(q.lat, q.lon, request)
+    pos = (q.pos_lat, q.pos_lon) if q.pos_lat is not None and q.pos_lon is not None else tuple(get_position()[k] for k in ("lat", "lon"))
+    # with an open route lat/lon is the destination: "here" is where the astronaut is (marked or simulated)
+    pos_source = "simulated tracker (provisional base)" if pos == BASE_LAT_LON else "marked by the astronaut on the map (no GPS)"
     if DISTRESS.search(q.question):
-        answer = distress_answer(point, BASE_LAT_LON)
-        card = answer_card.build(q.question, point, None, None, None, BASE_LAT_LON, intent="distress")
+        here = get_point(*pos, request)  # distress is about where the astronaut is, never the destination
+        answer = distress_answer(here, BASE_LAT_LON)
+        card = answer_card.build(q.question, here, None, None, None, BASE_LAT_LON, intent="distress", position_source=pos_source)
         return {"answer": answer, "distress": True, "card": {**card, "answer": answer},
                 "sources": ["HiRISE DTM (slope)", "base position (H2G2)"], "alerts": point["alerts"], "actions": []}
     conditions = get_cached_conditions(q.sol)
@@ -452,11 +456,12 @@ def ask(q: Question, request: Request):
             ctx["route_forecast"] = {"error": e.detail}
     # answer card: built by rule before the model, so it exists even if the model is down
     intent = answer_card.classify(q.question)
-    science = (science_card.science_card(lat=q.lat, lon=q.lon, radius=panorama.R_CARD)
+    card_point = get_point(*pos, request) if q.route and intent in answer_card.HERE_INTENTS else point
+    c_lat, c_lon = card_point["point"]["lat"], card_point["point"]["lon"]
+    science = (science_card.science_card(lat=c_lat, lon=c_lon, radius=panorama.R_CARD)
                if intent == "science" else None)
-    card = answer_card.build(q.question, point, conditions, ctx.get("route_forecast"), science, BASE_LAT_LON, intent)
+    card = answer_card.build(q.question, card_point, conditions, ctx.get("route_forecast"), science, BASE_LAT_LON, intent)
     actions, tool_alerts, tool_sources = [], [], []
-    pos = (q.pos_lat, q.pos_lon) if q.pos_lat is not None and q.pos_lon is not None else tuple(get_position()[k] for k in ("lat", "lon"))
 
     def run_tool(name: str, args: dict) -> str:
         """Agent tools (tool calling). The argument comes from the model: validate before using."""
@@ -491,6 +496,8 @@ def ask(q: Question, request: Request):
             return f"no result: {e.detail}"
 
     problem = classify(q.question)
+    if problem == "obstacle" and answer_card.asks_identity(q.question):
+        problem = None  # "what is this rock?" is a science question, not an obstacle report
     if problem and (q.route or problem in ("dust", "oxygen")):  # with no open route, only going back makes sense
         try:
             res = get_replan(*pos, q.question, *((q.route.dest_lat, q.route.dest_lon) if q.route else (None, None)),
@@ -501,7 +508,8 @@ def ask(q: Question, request: Request):
             # rocks") or called plan_route on its own, and the normal route wiped the options off the screen
             answer = f"{res['problem_text']} {res['suggestion']['reason']} The options are on the map; you decide."
             return {"answer": answer, "sources": tool_sources, "alerts": point["alerts"], "actions": actions, "replanning": True,
-                    "card": {**answer_card.replan(res, pos, BASE_LAT_LON), "answer": res["suggestion"]["reason"]}}
+                    "card": {**answer_card.replan(res, pos, BASE_LAT_LON, pos_source),
+                             "answer": answer_card.route_text(res["suggestion"]["reason"])}}
         except HTTPException as e:
             ctx["searches"] = [f"PROBLEM REPORTED, but no option with a path: {e.detail}"]
 

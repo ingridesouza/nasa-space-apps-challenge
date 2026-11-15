@@ -58,6 +58,18 @@ O foco do H2G2 deixou de ser planejar a rota (não é um "Waze de Marte") e pass
 - Classificação de intenção pelo modelo.
 - Gráficos no cartão, histórico de várias trocas, monitoramento proativo.
 
+## Validação (15/11/2026)
+
+Cada fato foi comparado com o dado cru (`/api/point`, paradas do MMGIS, haversine e rumo recalculados à parte) num ponto real do boxwork (parada do sol 4309): inclinação 11,0° (cru 10,98°), chance 27% (20 de 73 paradas), rover 22,4°, inércia 389, base 2 029 m a sudoeste. Todos batem.
+
+Correções feitas na validação:
+- **"Aqui" com rota aberta:** com rota aberta o `lat/lon` da pergunta é o destino. Terreno, ciência, recursos, outros e emergência agora usam a posição do astronauta (`pos_lat/pos_lon`). Antes, "I fell" dizia a posição do destino.
+- **Fonte da posição:** "marcada pelo astronauta" só quando ela difere da base; senão, "rastreador simulado (base provisória)".
+- **"What is this rock?" com rota aberta** caía no replan (a palavra "rock" é obstáculo no `replan.py`). Pergunta de identidade sem "ahead/blocking/in front" agora fica em ciência.
+- **"from here" nos alertas de rota** virou "from the route": o alerta foi calculado num ponto da rota, não onde o astronauta está.
+- **Terreno sem inclinação no mapa** dá **NO DATA**, não NO ALERT.
+- Rótulos: pressão é média do sol; radiação diária = média horária × 24 (MSL RAD); janela de EVA em LMST; fonte de poeira igual à do `alerts.py`; linha científica sem arquivo usa a URL como texto; dose da caminhada ausente vira "sem dado".
+
 ## Decisões (15/11/2026)
 
 - Intenção por **palavra-chave** (lista fechada), não pelo modelo: rápida, testável e não depende do Ollama.

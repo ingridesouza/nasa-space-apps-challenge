@@ -34,9 +34,27 @@ VERDICT_TYPES = {
 }
 VERDICT = {"danger": ("stop", "STOP"), "caution": ("caution", "CAUTION")}
 ROUTE_NAME = {"safest": "Safest", "fastest": "Fastest", "most_science": "Most science"}
+DUST_SOURCE = "Mars24 (Ls, NASA GISS) + seasonal dust pattern from MCS/MRO (NASA/JPL)"  # same as alerts.py
 SPOKEN_HEADING = {"N": "north", "NE": "northeast", "E": "east", "SE": "southeast",
                   "S": "south", "SW": "southwest", "W": "west", "NW": "northwest"}
 MAX_FACTS = 4
+# intents about "here": with an open route the API sends the astronaut's position, not the destination
+HERE_INTENTS = {"terrain_here", "science", "resources", "other"}
+
+
+# "what is this rock?" asks what it is; "there is a rock ahead" reports an obstacle (replan.py)
+IDENTITY = re.compile(r"\bwhat(\s+is|'s|\s+are|\s+kind|\s+type)\s+(of\s+)?(this|that|these|those|it|the|rock)\b"
+                      r"|\bwhat\s+(rock|stone|mineral)\b|\bidentify\b|\bmade of\b|\bmineral", re.I)
+BLOCKING = re.compile(r"\b(ahead|blocking|blocked|in the way|in front|on the (path|route)|can'?t pass|cannot pass)\b", re.I)
+
+
+def asks_identity(question: str) -> bool:
+    return bool(IDENTITY.search(question)) and not BLOCKING.search(question) and classify(question) == "science"
+
+
+def route_text(text: str) -> str:
+    """Route alerts were computed at route samples: "from here" there means from the route, not from the astronaut."""
+    return text.replace(" from here", " from the route")
 
 
 def classify(question: str) -> str:
@@ -126,12 +144,14 @@ def _resources(point: dict, rf: dict | None, base: tuple[float, float]) -> tuple
                            "A* over the HiRISE DTM", "estimated"))
         w = (rf.get("climate") or {}).get("eva_window")
         if w:
-            facts.append(_fact("EVA window", f"{w['start_lmst']}–{w['end_lmst']} local solar time",
+            facts.append(_fact("EVA window", f"{w['start_lmst']}–{w['end_lmst']} LMST (local mean solar time)",
                                rf["climate"]["source"], "estimated"))
         d = rf.get("dose")
         if d:
             facts.append(_fact("Radiation on the walk", f"{d['value_ugy']} µGy" + (f" ±{d['error_ugy']}" if d["error_ugy"] else ""),
                                d["source"], "estimated"))
+        else:
+            missing.append("Radiation dose for the walk (no RAD forecast)")
     else:
         missing.append("No open route: no time estimate")
     missing.append("Suit oxygen level (not reported to the system)")
@@ -148,9 +168,9 @@ def _environment(conditions: dict | None) -> tuple[list, list]:
     else:
         missing.append("Air temperature")
     if rems.get("pressure_pa") is not None:
-        facts.append(_fact("Pressure", f"{rems['pressure_pa']} Pa", f"REMS sol {sol}", "measured"))
+        facts.append(_fact("Pressure (sol mean)", f"{rems['pressure_pa']} Pa", f"REMS sol {sol}", "measured"))
     if rad.get("estimated_dose_ugy_per_day") is not None:
-        facts.append(_fact("Radiation", f"{rad['estimated_dose_ugy_per_day']} µGy/day", f"RAD sol {sol}", "estimated"))
+        facts.append(_fact("Radiation", f"{rad['estimated_dose_ugy_per_day']} µGy/day", f"MSL RAD sol {sol} (mean hourly dose × 24)", "estimated"))
     else:
         missing.append("Radiation (RAD)")
     fc = conditions.get("today_forecast")
@@ -160,6 +180,11 @@ def _environment(conditions: dict | None) -> tuple[list, list]:
     else:
         missing.append("Forecast for today")
     return facts, missing
+
+
+def _row_source(row: dict) -> str:
+    """instrument · PDS file; the file can be empty when the row only has a URL (shown as text, never fetched)."""
+    return " · ".join(x for x in (row.get("instrument"), row.get("source_file") or row.get("source_url")) if x)
 
 
 def _science(point: dict, card: dict | None) -> tuple[list, list]:
@@ -172,10 +197,10 @@ def _science(point: dict, card: dict | None) -> tuple[list, list]:
         for sec, label in (("mineralogy", "Mineralogy"), ("chemistry", "Chemistry")):
             row = next((r for r in card["rows"] if r["section"] == sec), None)
             if row:
-                facts.append(_fact(label, row["text"], f"{row['instrument']} · {row['source_file']}", row["confidence"]))
+                facts.append(_fact(label, row["text"], _row_source(row), row["confidence"]))
     orbit = next((r for r in (card or {}).get("rows", []) if r["section"] == "orbit"), None)
     if orbit:
-        facts.append(_fact("From orbit", orbit["text"], orbit["source_file"], orbit["confidence"]))
+        facts.append(_fact("From orbit", orbit["text"], _row_source(orbit), orbit["confidence"]))
     return facts, missing
 
 
@@ -185,7 +210,7 @@ def _route(rf: dict | None) -> tuple[list, list, list, list]:
         return [], [], ["No open route to compare" if not rf else f"No route forecast: {rf['error']}"], []
     sg = rf.get("suggestion") or {}
     options = [{"n": i + 1, "type": s["type"], "name": ROUTE_NAME.get(s["type"], s["type"]), "status": s["label"],
-                "why": s["why"], "suggested": s["type"] == sg.get("suggested")} for i, s in enumerate(sg.get("summary", []))]
+                "why": route_text(s["why"]), "suggested": s["type"] == sg.get("suggested")} for i, s in enumerate(sg.get("summary", []))]
     facts = [_fact("Open route", f"{ROUTE_NAME.get(rf['type'], rf['type'])} · {rf['distance_m']:,.0f} m · ~{rf['estimated_time_min']:.0f} min",
                    "A* over the HiRISE DTM", "estimated")]
     w = rf["terrain"].get("worst_segment")
@@ -193,11 +218,12 @@ def _route(rf: dict | None) -> tuple[list, list, list, list]:
         facts.append(_fact("Worst segment", f"{w['distance_m']:,.0f} m from the start · map {w['map_slope_deg']}° · {w['chance_pct']}% chance ≥ {rf['terrain']['limit_deg']}°",
                            rf["terrain"]["source"], "estimated"))
     if sg.get("dust_warning"):
-        facts.append(_fact("Season", sg["dust_warning"], "Mars24 + MCS/MRO (NASA)", "context"))
-    return facts, options, [], rf.get("alerts", [])
+        facts.append(_fact("Season", sg["dust_warning"], DUST_SOURCE, "context"))
+    alerts = [{**a, "message": route_text(a["message"])} for a in rf.get("alerts", [])]
+    return facts, options, [], alerts
 
 
-def replan(res: dict, origin: tuple[float, float], base: tuple[float, float]) -> dict:
+def replan(res: dict, origin: tuple[float, float], base: tuple[float, float], origin_source: str) -> dict:
     """Card for a problem reported mid-walk (/api/replan output). The options are the new A* routes;
     the system only orders them, the astronaut chooses."""
     sg = res["suggestion"]
@@ -206,16 +232,16 @@ def replan(res: dict, origin: tuple[float, float], base: tuple[float, float]) ->
     for i, s in enumerate(sg.get("summary", [])):
         r = by_type[s["type"]]
         options.append({"n": i + 1, "type": s["type"], "name": r.get("title", s["type"]).capitalize(), "status": s["label"],
-                        "why": f"{r['distance_m']:,.0f} m · ~{r['estimated_time_min']:.0f} min · {s['why']}",
+                        "why": f"{r['distance_m']:,.0f} m · ~{r['estimated_time_min']:.0f} min · {route_text(s['why'])}",
                         "suggested": s["type"] == sg.get("suggested")})
-    facts = [_fact("Marked position", f"lat {origin[0]:.5f}, lon {origin[1]:.5f}", "marked by the astronaut (no GPS)", "context")]
+    facts = [_fact("Start of the options", f"lat {origin[0]:.5f}, lon {origin[1]:.5f}", origin_source, "context")]
     ob = res.get("obstacle")
     if ob:
         facts.append(_fact("Obstacle avoided", f"{ob['radius_m']} m circle around lat {ob['lat']:.5f}, lon {ob['lon']:.5f}",
                            "placed from the report, not measured (H2G2 replan rule)", "assumed"))
     facts.append(_base_fact(*origin, base))
     if sg.get("dust_warning"):
-        facts.append(_fact("Season", sg["dust_warning"], "Mars24 + MCS/MRO (NASA)", "context"))
+        facts.append(_fact("Season", sg["dust_warning"], DUST_SOURCE, "context"))
     verdict = {"level": "caution", "label": "REPLAN",
                "because": [{"text": res["problem_text"], "source": "astronaut report · H2G2 replan rule"}],
                "note": "Options computed by A* over the HiRISE DTM. You decide."}
@@ -224,17 +250,18 @@ def replan(res: dict, origin: tuple[float, float], base: tuple[float, float]) ->
 
 
 def build(question: str, point: dict, conditions: dict | None, route_forecast: dict | None,
-          science: dict | None, base: tuple[float, float], intent: str | None = None) -> dict:
+          science: dict | None, base: tuple[float, float], intent: str | None = None,
+          position_source: str = "point asked about") -> dict:
     """science: /science/card output (only needed for the science intent; None otherwise)."""
     intent = intent or classify(question)
     lat, lon = point["point"]["lat"], point["point"]["lon"]
     alerts, options, target = point["alerts"], [], None
     if intent == "distress":
         r = point["raster_values"]
-        facts = [_fact("Position", f"lat {lat:.5f}, lon {lon:.5f}", "point asked about", "context"),
+        facts = [_fact("Position", f"lat {lat:.5f}, lon {lon:.5f}", position_source, "context"),
                  _base_fact(lat, lon, base)]
         if r.get("slope_deg") is not None:
-            facts.insert(1, _fact("Map slope", f"{r['slope_deg']:.1f}°", "HiRISE DTM (Mars Trek)", "inferred from orbit"))
+            facts.insert(1, _fact("Map slope", f"{r['slope_deg']:.1f}°", "HiRISE DTM (Mars Trek), mean over ~12 m", "inferred from orbit"))
         verdict = {"level": "stop", "label": "STOP", "because": [{"text": "Stop and check the suit. Tell the base now.",
                                                                   "source": "H2G2 team procedure (no NASA checklist yet)"}]}
         return {"intent": intent, "title": INTENT_LABEL[intent], "verdict": verdict, "facts": facts,
@@ -261,7 +288,9 @@ def build(question: str, point: dict, conditions: dict | None, route_forecast: d
     else:
         types = VERDICT_TYPES.get(intent)
         relevant = [a for a in alerts if types is None or a["type"] in types]
-        verdict = _verdict(relevant, has_data=bool(facts))
+        # terrain without the map slope: the slope rules could not run, so silence is NO DATA, not NO ALERT
+        no_slope = intent in ("terrain_here", "other") and point["raster_values"].get("slope_deg") is None
+        verdict = _verdict(relevant, has_data=bool(facts) and not no_slope)
     missing += [m for m in _missing(point["alerts"]) if intent in ("terrain_here", "other")]
     return {"intent": intent, "title": INTENT_LABEL[intent], "verdict": verdict, "facts": facts[:MAX_FACTS],
             "options": options, "target": target, "missing": list(dict.fromkeys(missing)), "answer": None}
