@@ -161,9 +161,11 @@ def interpret(text: str, destinations: list[dict], require_activation: bool = Tr
         return {**base, "intent": "none"}
     if not rest:
         return {**base, "intent": "none"}
-    if len(rest) <= 3 and any(_similar(x, YES) for x in rest):
+    # exact, not fuzzy: "open" is 0.75 from "nope" and "Marvin, Atlas, open" became a "no"; the
+    # spellings Whisper really writes ("yeah", "yep", "nope") are already in the sets
+    if len(rest) <= 3 and any(x in YES for x in rest):
         return {**base, "intent": "yes"}
-    if len(rest) <= 3 and any(_similar(x, NO) for x in rest):
+    if len(rest) <= 3 and any(x in NO for x in rest):
         return {**base, "intent": "no"}
     going_back = any(_similar(x, RETURN) for x in rest)
     if len(rest) > MAX_COMMAND_WORDS or not (going_back or any(_similar(x, ROUTE) for x in rest)):
