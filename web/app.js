@@ -3,7 +3,7 @@
 // The current position comes from the tracker (simulated at /api/position) and is the route origin.
 import {
   getAtmosphereTrack, getConditions, getScienceCard, getInsolation, getClock, getPhotosNear, getLayers, getPanorama,
-  getPoint, getPosition,
+  getPoint, getPosition, getEarthSyncStatus, applyEarthSync,
 } from './api.js'
 import { TOGGLEABLE_LAYERS } from './layers.js'
 import * as map from './map.js'
@@ -88,12 +88,52 @@ function card(id, html) { $(id).innerHTML = html; $(id).hidden = false }
 // in the system. Reuses the same .suggestion-reason.v-* styling the route
 // card already uses for its own alerts (visual language stays consistent).
 function renderConditions(data) {
-  if (!data?.alerts?.length) { $('c-status').hidden = true; return }
-  const rows = data.alerts
+  if (!data?.alerts?.length && !earthSync.pending) { $('c-status').hidden = true; return }
+  const rows = (data?.alerts ?? [])
     .map((a) => `<p class="suggestion-reason v-${a.level === 'danger' ? 'danger' : a.level === 'caution' ? 'caution' : 'safe'}" title="source: ${esc(a.source)}">${esc(a.message)}</p>`)
     .join('')
-  card('c-status', rows)
+  card('c-status', rows + earthSyncHtml())
 }
+
+// ---------------- Earth-Mars sync (feature 09, simulated -- see docs/feature-09-earth-mars-sync.md) ----------------
+// No network call here: the "new" data was already fetched at build time by
+// data-pipeline/scripts/fetch_earth_sync_package.py. This only reveals a local
+// file, simulating the moment a scheduled relay pass (MRO/Odyssey) would have
+// delivered it. The waiting animation below is a real pause for the demo's
+// sake, not a live transmission -- the real one-way delay (4-24 min, NASA/JPL,
+// see api/earth_sync.py) cannot be reproduced live here.
+const earthSync = { pending: false, sol: null, syncing: false, result: null }
+
+function earthSyncHtml() {
+  if (earthSync.result) {
+    const r = earthSync.result
+    const hazard = r.alerts.find((a) => a.type !== 'stale_data') // the sol just arrived: it is never "stale" relative to itself
+    return `<p class="suggestion-reason v-safe"><span class="fl-sec">Earth sync received</span>New real reading for sol ${esc(r.sol)}` +
+      (hazard ? `: ${esc(hazard.message)}` : ' -- no hazard in this one, dose and weather in range.') + '</p>'
+  }
+  if (earthSync.syncing) {
+    return '<p class="caption mono" role="status"><i class="spinner"></i>simulating transmission delay (real Earth-Mars one-way range: 4-24 min, NASA/JPL)…</p>'
+  }
+  if (!earthSync.pending) return ''
+  return `<button type="button" class="link-btn" data-action="sync-earth">⟳ Sync with Earth · sol ${esc(earthSync.sol)} waiting</button>`
+}
+
+$('c-status').addEventListener('click', async (e) => {
+  if (!e.target.closest('[data-action="sync-earth"]')) return
+  earthSync.syncing = true
+  card('c-status', earthSyncHtml())
+  // Real delay is 4-24 min; a demo cannot wait that long, so this is a short,
+  // clearly-labeled stand-in for it -- never presented as the real wait.
+  await new Promise((resolve) => setTimeout(resolve, 3000))
+  try {
+    earthSync.result = await applyEarthSync()
+    earthSync.pending = false
+  } catch (err) {
+    earthSync.result = null
+  }
+  earthSync.syncing = false
+  card('c-status', earthSyncHtml())
+})
 
 // ---------------- Panorama ----------------
 let viewer = null // preview (always in the panel)
@@ -789,7 +829,10 @@ getPosition()
   })
   .catch((e) => card('c-status', `<p class="empty error">No position: ${esc(e.message)}</p>`))
 
-getConditions().then(renderConditions).catch(() => {}) // no cached sol yet: stay quiet, not an error worth a banner
+getEarthSyncStatus()
+  .then((s) => { earthSync.pending = s.pending; earthSync.sol = s.sol })
+  .catch(() => {})
+  .then(() => getConditions().then(renderConditions).catch(() => renderConditions(null)))
 
 try {
   const metas = await getLayers()

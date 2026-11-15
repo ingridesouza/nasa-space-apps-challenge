@@ -14,6 +14,10 @@ async function get(path) {
 export const getPosition = () => get('/api/position')
 export const getPoint = (lat, lon) => get(`/api/point?lat=${lat}&lon=${lon}`)
 export const getConditions = (sol) => get(`/api/conditions${sol ? `?sol=${sol}` : ''}`)
+/** F09 (simulated): is a real, pre-fetched Earth packet waiting to be revealed? No network call. */
+export const getEarthSyncStatus = () => get('/api/earth-sync/status')
+/** F09 (simulated): reveal the waiting packet locally -- see docs/feature-09-earth-mars-sync.md. */
+export const applyEarthSync = () => fetch('/api/earth-sync/apply', { method: 'POST' }).then((r) => r.json())
 /** F06: habitat/suit sensor measurement. 422 carries detail (text or pydantic list). */
 export async function postMeasurement(m) {
   const resp = await fetch('/api/measurement', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(m) })
