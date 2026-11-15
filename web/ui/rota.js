@@ -5,6 +5,22 @@ import { SLOPE_COLOR_HEX } from '../layers.js'
 import { coord, esc, num } from './util.js'
 
 const TIPO_LABEL = { mais_segura: 'Mais segura', mais_rapida: 'Mais rápida', mais_ciencia: 'Mais ciência' }
+// rótulo da sugestão (api/sugestao_rotas.py): regra fixa, não o modelo
+const ROTULO = { ok: ['✅', 'sem risco no mapa'], atencao: ['⚠️', 'atenção'], perigo: ['⛔', 'perigo'] }
+
+/** F02 + F08: por que esta rota -- prós e contras com fonte; a sugerida é só a ordem, todas ficam clicáveis. */
+function sugestaoHtml(r, sg) {
+  const s = r.sugestao
+  if (!s || !sg) return ''
+  const li = (x, sinal) => `<li title="fonte: ${esc(x.fonte)}">${sinal} ${esc(x.texto)}</li>`
+  return `<div class="rota-sec sugestao">
+    <p class="sugestao-motivo">${esc(sg.motivo)}</p>
+    ${sg.aviso_poeira ? `<p class="sugestao-motivo">⚠️ ${esc(sg.aviso_poeira)}</p>` : ''}
+    <span class="fl-sec">${ROTULO[s.rotulo][0]} Rota ${esc(TIPO_LABEL[r.tipo] ?? r.tipo)}${r.tipo === sg.sugerida ? ' · sugerida' : ''}</span>
+    <ul class="sugestao-lista">${s.pros.map((x) => li(x, '+')).join('')}${s.contras.map((x) => li(x, '−')).join('')}</ul>
+    <p class="rotulo mono">${esc(sg.metodo)} · quem decide é você</p>
+  </div>`
+}
 
 /** Capacidade de O2 de referência -- simulada, mesma linguagem do modelo de O2 em
  * api/route_planning.py (não é spec de traje). Editável: não há telemetria de traje. */
@@ -155,6 +171,13 @@ function secaoEva(r) {
 
 const rotaAtiva = () => st.data?.rotas.find((r) => r.tipo === st.tipo) ?? null
 
+/** F08: a rota aberta, no formato que /api/ask espera; null sem rota calculada. */
+export function rotaParaAgente() {
+  const { origem: o, destino: d } = st
+  if (!rotaAtiva() || !o || !d) return null
+  return { origin_lat: o.lat, origin_lon: o.lon, dest_lat: d.lat, dest_lon: d.lon, tipo: st.tipo, ...(st.solEva && { sol: st.solEva }) }
+}
+
 function render() {
   let corpo
   // legenda das cores do traçado (mesmas faixas de api/route_planning.py)
@@ -172,9 +195,12 @@ function render() {
     if (st.erro) corpo += `<p class="vazio erro">${esc(st.erro)}</p>`
     if (st.data) {
       corpo += `<div class="tipos">${st.data.rotas
-        .map((r) => `<button type="button" class="tipo ${r.tipo === st.tipo ? 'on' : ''}" data-tipo="${r.tipo}">${TIPO_LABEL[r.tipo] ?? esc(r.tipo)}</button>`).join('')}</div>`
+        .map((r) => {
+          const [ico, txt] = ROTULO[r.sugestao?.rotulo] ?? ['', '']
+          return `<button type="button" class="tipo ${r.tipo === st.tipo ? 'on' : ''}" data-tipo="${r.tipo}" aria-label="${esc(TIPO_LABEL[r.tipo] ?? r.tipo)}: ${txt}">${ico} ${TIPO_LABEL[r.tipo] ?? esc(r.tipo)}${r.tipo === st.data.sugestao?.sugerida ? ' ★' : ''}</button>`
+        }).join('')}</div>`
       const r = rotaAtiva()
-      if (r) corpo += detalheRota(r, topo)
+      if (r) corpo += sugestaoHtml(r, st.data.sugestao) + detalheRota(r, topo)
     }
     if (!rotaAtiva()) corpo += topo // sem rota calculada ainda: o botão de parada já fica à mão
   }
@@ -244,7 +270,7 @@ export function iniciarRota(container, callbacks) {
       const data = await getRoute(origem, destino, escalas)
       if (meu !== pedido) return // pontos mudaram no meio do cálculo
       st.data = data
-      st.tipo = 'mais_segura'
+      st.tipo = data.sugestao?.sugerida ?? 'mais_segura'
     } catch (e) {
       if (meu !== pedido) return
       st.erro = e.message
@@ -252,5 +278,6 @@ export function iniciarRota(container, callbacks) {
     st.carregando = false
     cb.onRotaAtiva(rotaAtiva())
     render()
+    return st.data // F08 voz: o resumo falado sai destes números
   }
 }

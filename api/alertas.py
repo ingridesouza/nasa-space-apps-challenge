@@ -156,7 +156,8 @@ def alertas_do_ponto(lat: float, lon: float, raster_values: dict, waypoints_path
 
 
 # Tempestades regionais e globais se concentram na metade do ano com o periélio
-# (primavera e verão do sul): Ls 180° a 360° (Mars24 / climatologia MCD).
+# (primavera e verão do sul): Ls 180° a 360°. Fonte: NASA/JPL, Mars Climate Sounder (MRO),
+# "NASA Mars Orbiters Reveal Seasonal Dust Storm Pattern" (jpl.nasa.gov/news, 2016).
 LS_POEIRA = (180.0, 360.0)
 
 
@@ -177,7 +178,7 @@ def tempo_e_alertas_do_sol(sol_dado: int, agora: datetime | None = None) -> tupl
     if LS_POEIRA[0] <= ls_agora < LS_POEIRA[1]:
         alertas.append(_alerta("atencao", "temporada_poeira",
                                f"Temporada de tempestades de poeira (Ls {_num(ls_agora)}°, risco maior entre 180° e 360°).",
-                               "Mars24 (Ls) + climatologia de poeira"))
+                               "Mars24 (Ls, NASA GISS) + padrão sazonal de poeira do MCS/MRO (NASA/JPL)"))
     return tempo, alertas
 
 

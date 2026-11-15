@@ -9,7 +9,8 @@ import { TOGGLEABLE_LAYERS } from './layers.js'
 import * as mapa from './map.js'
 import { iniciarAssistente } from './ui/agente.js'
 import { renderCamadas } from './ui/camadas.js'
-import { iniciarRota } from './ui/rota.js'
+import { iniciarRota, rotaParaAgente } from './ui/rota.js'
+import { iniciarVoz } from './ui/voz.js'
 import { esc } from './ui/util.js'
 
 const $ = (id) => document.getElementById(id)
@@ -315,7 +316,7 @@ function definirDestino(p) {
   mapa.setEscalas([])
   instrucao(null)
   $('btn-rota').textContent = 'Editar rota'
-  atualizarRota(estado.posicao, p, [])
+  return atualizarRota(estado.posicao, p, []) // F08 voz: o resumo falado sai destes números
 }
 
 function cancelarRota() {
@@ -423,7 +424,24 @@ document.addEventListener('keydown', (e) => {
 })
 
 // ---------------- F08: assistente ----------------
-iniciarAssistente($('assistente'), $('btn-assistente'), () => estado.local ?? estado.posicao)
+const assistente = iniciarAssistente($('assistente'), () => estado.local ?? estado.posicao, rotaParaAgente, (destino) => {
+  estado.rotaAtiva = true // igual ao "Planejar rota" e à rota por voz
+  return definirDestino(destino)
+})
+
+// ---------------- F08: voz ("Ei guia, rota até …" ou pergunta falada) ----------------
+// a rota sempre sai da posição atual (rastreador); a voz só escolhe o destino
+iniciarVoz($('btn-voz'), $('voz-status'), {
+  pontoAtual: () => estado.posicao,
+  rota: (_origem, destino) => {
+    estado.rotaAtiva = true // igual ao "Planejar rota"
+    return definirDestino({ lat: destino.lat, lon: destino.lon })
+  },
+  perguntar: (texto) => {
+    if ($('assistente').hidden) assistente.abrir(true)
+    return assistente.enviar(texto, true)
+  },
+})
 
 // ---------------- Carga inicial ----------------
 getPosicao()
