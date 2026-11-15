@@ -86,8 +86,30 @@ const BANDEIRA = `<svg viewBox="0 0 24 28" width="24" height="28" aria-hidden="t
 
 const vazio = () => ({ type: 'FeatureCollection', features: [] })
 
-/** Cria o mapa. callbacks: onClick(lat, lon), onLoad(). */
-export function criarMapa(container, metas, { onClick, onLoad }) {
+// botão ✕ de fechar o mapa expandido: fica logo abaixo dos seletores de zoom (mesmo grupo)
+let aoFechar = () => {}
+const ControleFechar = {
+  onAdd() {
+    const grupo = document.createElement('div')
+    grupo.className = 'maplibregl-ctrl maplibregl-ctrl-group'
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.className = 'h2g2-fechar-mapa'
+    b.title = 'Fechar mapa (Esc)'
+    b.setAttribute('aria-label', 'Fechar mapa')
+    b.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+    // stopPropagation: senão o clique chega ao #mapa-box, que reabre o mapa logo após fechar
+    b.addEventListener('click', (e) => { e.stopPropagation(); aoFechar() })
+    grupo.appendChild(b)
+    this._grupo = grupo
+    return grupo
+  },
+  onRemove() { this._grupo.remove() },
+}
+
+/** Cria o mapa. callbacks: onClick(lat, lon), onLoad(), onFechar(). */
+export function criarMapa(container, metas, { onClick, onLoad, onFechar }) {
+  aoFechar = onFechar ?? (() => {})
   const bounds = dataBounds(metas)
   const base = new Set(TOGGLEABLE_LAYERS.filter((l) => l.grupo === 'base').map((l) => l.id))
   const baseBounds = dataBounds(metas.filter((m) => base.has(m.layer_name)))
@@ -102,6 +124,8 @@ export function criarMapa(container, metas, { onClick, onLoad }) {
     minZoom: baseBounds ? minZoomToCover(baseBounds, rect.width, rect.height) : undefined,
     attributionControl: false,
   })
+  // o de baixo entra primeiro: na faixa inferior o último adicionado fica em cima
+  map.addControl(ControleFechar, 'bottom-left')
   map.addControl(new NavigationControl({ showCompass: false }), 'bottom-left')
 
   const dot = document.createElement('div')

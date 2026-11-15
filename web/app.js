@@ -51,7 +51,7 @@ async function carregarLocal(local) {
   else $('c-fotos').hidden = true
 }
 
-// barra fechada e travada (sem toggle) até haver destino com rota calculada
+// barra de imagens vazia (e fechada pelo :has do CSS) até haver destino com rota calculada
 function limparBarra() {
   seqLocal++
   estado.local = null
@@ -60,23 +60,16 @@ function limparBarra() {
   fecharFoto()
   mapa.setPanorama(null)
   for (const id of ['c-status', 'c-fotos', 'c-ficha']) $(id).hidden = true
-  $('flutuante-toggle').hidden = true
-  colapsarBarra(false)
-  $('flutuante').hidden = $('c-rota').hidden
+  colapsarGrupo('g-imagens', false)
 }
 
 const mesmoPonto = (a, b) => a && b && a.lat === b.lat && a.lon === b.lon
 
 function carregando() {
   for (const id of ['c-pano', 'c-fotos', 'c-ficha']) $(id).hidden = true
-  $('flutuante-toggle').hidden = false
-  const primeira = $('flutuante').hidden
-  if (primeira) colapsarBarra(true) // nasce transparente e faz fade-in
-  posicionarToggle()
-  if (primeira) requestAnimationFrame(() => requestAnimationFrame(() => colapsarBarra(false)))
 }
 
-function card(id, html) { $(id).innerHTML = html; $(id).hidden = false; $('flutuante').hidden = false }
+function card(id, html) { $(id).innerHTML = html; $(id).hidden = false }
 
 // ---------------- Panorama ----------------
 let viewer = null // preview (sempre no painel)
@@ -100,8 +93,7 @@ function mostrarPano(p) {
   limparPano()
   if (!p.found) return
   $('c-pano').hidden = false
-  $('pano-rotulo').innerHTML = `${esc(p.rotulo)} · ${esc(p.credito)}` +
-    (p.page_url ? ` · <a href="${esc(p.page_url)}" target="_blank" rel="noopener">NASA</a>` : '')
+  $('pano-rotulo').textContent = `${p.rotulo} · ${p.credito}`
   voff = p.pannellum.vOffset || 0
   cfgPano = Object.assign({}, p.pannellum, {
     showControls: false, compass: false,
@@ -115,40 +107,38 @@ function mostrarPano(p) {
   }))
 }
 
-// barra da direita: colapsa/expande
-function colapsarBarra(c) {
-  $('flutuante').classList.toggle('colapsada', c)
-  $('flutuante-toggle').textContent = c ? '‹' : '›'
-  $('flutuante-toggle').title = c ? 'Expandir barra' : 'Recolher barra'
-  $('flutuante-toggle').setAttribute('aria-expanded', String(!c))
-  $('fichas').classList.toggle('colapsada', c)
-  posicionarToggle()
+// duas barras independentes na coluna da direita (rota e imagens), cada uma com seu botão
+function colapsarGrupo(id, c) {
+  const g = $(id)
+  g.classList.toggle('colapsada', c)
+  const t = g.querySelector('.grupo-toggle')
+  t.textContent = c ? '‹' : '›'
+  t.title = `${c ? 'Expandir' : 'Recolher'} ${t.dataset.nome}`
+  t.setAttribute('aria-expanded', String(!c))
+  if (id === 'g-imagens') {
+    $('fichas').classList.toggle('colapsada', c)
+    if (!c) requestAnimationFrame(() => { viewer?.resize(); posicionarFichas() }) // pannellum mediu 0 px escondido
+  }
 }
-// botão fica à esquerda do primeiro card (largura variável); recolhido, vai para a borda
-function posicionarToggle() {
-  const t = $('flutuante-toggle'), s = $('c-status').hidden ? $('c-rota') : $('c-status')
-  const colap = $('flutuante').classList.contains('colapsada')
-  t.style.right = mobile() ? '' : (colap || s.hidden) ? '20px' : (20 + s.offsetWidth + 8) + 'px'
-}
-// fichas ancoradas na base do bloco de fotos (ou topo da barra no mobile), crescem para cima
+// fichas à esquerda da barra de imagens (embaixo, CSS); no mobile ficam acima da folha inferior
 function posicionarFichas() {
-  const f = $('fichas'), fl = $('flutuante')
-  if (fl.hidden) return
-  const ref = mobile() || $('c-fotos').hidden ? fl.getBoundingClientRect() : $('c-fotos').getBoundingClientRect()
-  f.style.bottom = (mobile() ? innerHeight - ref.top + 8 : Math.max(20, innerHeight - ref.bottom)) + 'px'
+  const f = $('fichas')
+  f.style.bottom = mobile() ? innerHeight - $('flutuante').getBoundingClientRect().top + 8 + 'px' : ''
 }
 {
-  const ro = new ResizeObserver(() => { posicionarFichas(); posicionarToggle() })
+  const ro = new ResizeObserver(posicionarFichas)
   for (const id of ['flutuante', 'c-rota', 'c-status', 'c-pano', 'c-fotos']) ro.observe($(id))
-  addEventListener('resize', () => { posicionarFichas(); posicionarToggle() })
+  addEventListener('resize', posicionarFichas)
   $('flutuante').addEventListener('scroll', posicionarFichas)
 }
-$('flutuante-toggle').addEventListener('click', () => colapsarBarra(!$('flutuante').classList.contains('colapsada')))
+for (const t of document.querySelectorAll('.grupo-toggle')) {
+  t.addEventListener('click', () => { const g = t.parentElement; colapsarGrupo(g.id, !g.classList.contains('colapsada')) })
+}
 
 // visor ganha um 2º viewer (mesma imagem, yaw atual); o preview continua no painel
 function expandir() {
   if (!viewer) return
-  colapsarBarra(true)
+  colapsarGrupo('g-imagens', true)
   fecharFoto()
   const d = document.createElement('div')
   d.id = 'pano-fundo'
@@ -170,12 +160,12 @@ function recolher() {
   $('visor-vazio').hidden = !!viewer
   $('visor-fechar').hidden = true
   noVisor = false
-  colapsarBarra(false)
+  colapsarGrupo('g-imagens', false)
 }
 $('pano-expandir').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); noVisor ? recolher() : expandir() })
 
 // ---------------- Fotos ----------------
-const FOTOS_POR_PAG = 4
+const FOTOS_POR_PAG = 3
 let fotosLista = [], fotosPag = 0
 
 function mostrarFotos(f) {
@@ -234,7 +224,6 @@ function mostrarFicha(d, abrir = false) {
   $('ficha-nome').textContent = nome
   $('ficha-tipo').textContent = tipo
   $('ficha').innerHTML = H2G2Card.html(d)
-  $('flutuante').hidden = false
   requestAnimationFrame(posicionarFichas)
 }
 
@@ -248,15 +237,8 @@ function instrucao(texto) {
   $('instrucao').textContent = texto ?? ''
 }
 
-// card de rota: aberto no mapa, recolhido no visor (deixa ver os dados do destino)
-function rotaAberta(aberta) {
-  const d = $('c-rota').querySelector('details.rota-corpo')
-  if (d) d.open = aberta
-}
-
 function abrirMapa(modo) {
   estado.mapa = modo
-  rotaAberta(true)
   document.body.classList.add('mapa-aberto')
   $('mapa-box').removeAttribute('title')
   camadas()
@@ -281,7 +263,6 @@ function fecharMapa() {
   for (const id of ['camadas', 'coords', 'leitura']) $(id).hidden = true
   instrucao(null)
   mapa.setModo('visor')
-  rotaAberta(false)
   let carga = Promise.resolve()
   if (estado.rotaAtiva && !estado.destino) cancelarRota()
   depoisDaTransicao(() => {
@@ -292,7 +273,6 @@ function fecharMapa() {
   return carga
 }
 
-$('btn-expandir').addEventListener('click', () => abrirMapa('explorar'))
 $('mapa-box').addEventListener('click', () => { if (estado.mapa === 'visor') abrirMapa('explorar') })
 $('btn-rota').addEventListener('click', () => abrirMapa('rota'))
 
@@ -328,7 +308,7 @@ const atualizarRota = iniciarRota($('c-rota'), {
 function definirDestino(p) {
   if (!mesmoPonto(estado.local, p)) limparBarra() // dados do destino anterior saem já
   $('c-rota').hidden = false
-  $('flutuante').hidden = false
+  colapsarGrupo('g-rota', false)
   estado.destino = p
   estado.escalas = []
   mapa.setDestino(p)
@@ -421,7 +401,6 @@ async function cliqueNoMapa(lat, lon) {
 
 // ---------------- Camadas (delegação: o HTML é refeito a cada render) ----------------
 $('camadas').addEventListener('click', (e) => {
-  if (e.target.closest('[data-minimizar]')) return fecharMapa()
   const id = e.target.closest('[data-toggle]')?.dataset.toggle
   if (!id) return
   const c = estado.camadas[id]
@@ -460,6 +439,7 @@ try {
   $('mapa-status').remove()
   mapa.criarMapa($('mapa'), metas, {
     onClick: cliqueNoMapa,
+    onFechar: fecharMapa,
     onLoad: () => {
       if (estado.posicao) { mapa.setOrigem(estado.posicao); mapa.centrar(estado.posicao) }
     },

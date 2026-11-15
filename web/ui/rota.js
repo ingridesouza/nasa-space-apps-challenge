@@ -2,7 +2,7 @@
 // com a janela da EVA da previsão local. A origem é sempre a posição atual.
 import { apagarMedicao, getPrevisao, getRoute, postMedicao } from '../api.js'
 import { SLOPE_COLOR_HEX } from '../layers.js'
-import { coord, esc, num, veredito } from './util.js'
+import { coord, esc, num } from './util.js'
 
 const TIPO_LABEL = { mais_segura: 'Mais segura', mais_rapida: 'Mais rápida', mais_ciencia: 'Mais ciência' }
 
@@ -15,7 +15,7 @@ const NOME = { temp_min_c: 'mínima', temp_max_c: 'máxima', pressao_pa: 'press�
 const st = {
   origem: null, destino: null, escalas: [],
   data: null, erro: null, carregando: false, tipo: 'mais_segura',
-  capacidade: 400, avisosAbertos: true,
+  capacidade: 400,
   solEva: null, prev: undefined, prevChave: null, msgMedicao: null,
 }
 let el, cb
@@ -23,13 +23,6 @@ let pedido = 0
 let pedidoPrev = 0
 
 const kv = (k, v, extra = '') => `<div class="kv"${extra}><span>${k}</span><span>${v}</span></div>`
-
-function piorStatus(rota) {
-  const s = (t) => t.status_previsto ?? t.slope_status // F06: inclui a previsão
-  if (rota.trechos_risco.some((t) => s(t) === 'perigo')) return 'perigo'
-  if (rota.trechos_risco.some((t) => s(t) === 'atencao')) return 'atencao'
-  return 'seguro'
-}
 
 /** Mini perfil de elevação -- SVG inline, sem lib. */
 function perfilSvg(perfil) {
@@ -82,21 +75,13 @@ function o2Html(r) {
       <div class="o2-ida" style="width:${pct(ida)}%;background:${cor(ida)}"></div>
       <div class="o2-reserva" style="left:${100 - RESERVA_MINIMA_PCT * 100}%" title="reserva mínima de 20%"></div>
     </div>
-    <p class="rotulo mono">ida ${num(ida, 1)} L · ida + volta ${num(volta, 1)} L de ${cap} L · reserva 20%</p>
   </div>`
 }
 
-function detalheRota(r) {
-  const status = piorStatus(r)
-  const limite = (1 - RESERVA_MINIMA_PCT) * st.capacidade
-  const dose = r.dose_rad_estimada_ugy
+function detalheRota(r, topo = '') {
   const alvo = r.alvo_cientifico
-  return `${veredito(status, [
-      { ok: status !== 'perigo', label: 'Nenhum trecho acima do limite de 20°' },
-      { ok: r.o2_estimado_l <= limite, label: 'O₂ da ida dentro da reserva de 20%' },
-      { ok: r.o2_estimado_l * 2 <= limite, label: 'O₂ alcança para voltar (ida + volta)' },
-    ])}
-    ${o2Html(r)}
+  return `${o2Html(r)}
+    ${topo}
     ${alvo ? `<div class="rota-sec"><span class="fl-sec">Passa perto de</span>
       <button type="button" class="alvo-btn" data-acao="alvo">◇ ${esc(alvo.nome)} <span class="mono">abrir ficha ›</span></button></div>` : ''}`
 }
@@ -175,10 +160,10 @@ function render() {
   // legenda das cores do traçado (mesmas faixas de api/route_planning.py)
   const legenda = st.data ? `<div class="legenda-rota mono"><span class="legenda-titulo">Inclinação</span><div>${[['seguro', '< 15°'], ['atencao', '15–20°'], ['perigo', '≥ 20°']]
     .map(([k, t]) => `<span><i style="background:${SLOPE_COLOR_HEX[k]}"></i>${t}</span>`).join('')}</div></div>` : ''
+  const topo = st.destino ? `<div class="rota-sec rota-topo">${legenda}<button type="button" class="link-btn" data-acao="adicionar-escala">+ parada no caminho</button></div>` : ''
   if (!st.destino) corpo = '<p class="vazio">Clique no mapa ou digite as coordenadas do destino.</p>'
   else {
     corpo = `<div class="rota-sec">
-      ${kv('Origem', 'posição atual')}
       ${st.escalas.map((p, i) => kv(`Parada ${i + 1}`, `${coord(p)} <button type="button" class="link-btn" data-acao="remover-escala" data-i="${i}" aria-label="Remover parada ${i + 1}">×</button>`)).join('')}
       ${kv('Destino', coord(st.destino))}
       ${rotaAtiva() ? kv('Comprimento da rota', `${num(rotaAtiva().distancia_m)} m`) + kv('Tempo · ida + volta', `~${num(rotaAtiva().tempo_estimado_min * 2)} min`) : ''}
@@ -189,19 +174,14 @@ function render() {
       corpo += `<div class="tipos">${st.data.rotas
         .map((r) => `<button type="button" class="tipo ${r.tipo === st.tipo ? 'on' : ''}" data-tipo="${r.tipo}">${TIPO_LABEL[r.tipo] ?? esc(r.tipo)}</button>`).join('')}</div>`
       const r = rotaAtiva()
-      if (r) corpo += detalheRota(r)
-      if (st.data.avisos.length) {
-        corpo += `<details class="rota-sec avisos"${st.avisosAbertos ? ' open' : ''}><summary class="fl-sec">⚠ Avisos gerais da região</summary>
-          ${st.data.avisos.map((a) => `<p class="rotulo mono aviso">${esc(a)}</p>`).join('')}</details>`
-      }
+      if (r) corpo += detalheRota(r, topo)
     }
+    if (!rotaAtiva()) corpo += topo // sem rota calculada ainda: o botão de parada já fica à mão
   }
-  const aberto = el.querySelector('details.rota-corpo')?.open ?? true
-  el.innerHTML = `<details class="rota-corpo"${aberto ? ' open' : ''}>
-    <summary><span class="ficha-nome">Rota</span><span class="tag">${st.data ? esc(TIPO_LABEL[st.tipo] ?? '') : st.destino ? 'calculando' : 'sem destino'}</span></summary>
-    <div class="rota-body">${st.destino ? `<div class="rota-topo">${legenda}<button type="button" class="link-btn" data-acao="adicionar-escala">+ parada no caminho</button></div>` : ''}${corpo}
+  el.innerHTML = `<div class="rota-corpo">
+    <div class="rota-body">${corpo}
       <button type="button" class="link-btn rota-cancelar" data-acao="cancelar">✕ cancelar rota</button></div>
-  </details>`
+  </div>`
 }
 
 /** callbacks: onCancelar(), onRotaAtiva(rota|null), onAdicionarEscala(), onRemoverEscala(i), onAbrirAlvo(alvo). */
@@ -231,7 +211,6 @@ export function iniciarRota(container, callbacks) {
     render()
   })
   el.addEventListener('toggle', (e) => {
-    if (e.target.matches('details.avisos')) st.avisosAbertos = e.target.open
   }, true)
   // 'change' (não 'input'): render() troca o innerHTML e derrubaria o foco a cada tecla
   el.addEventListener('change', (e) => {

@@ -27,7 +27,7 @@
     </div>
 
     <!-- F08: assistente local -->
-    <button id="btn-assistente" class="pilula mono" type="button" aria-expanded="false" aria-controls="assistente">◎ Perguntar ao H2G2 <kbd>/</kbd></button>
+    <button id="btn-assistente" class="pilula frame mono" type="button" aria-expanded="false" aria-controls="assistente">Send your request</button>
     <section id="assistente" class="card panel assistente" hidden aria-label="Assistente H2G2"></section>
 
     <!-- MAPA (F01): o mesmo elemento vira círculo (minimizado) ou tela cheia -->
@@ -39,7 +39,6 @@
       <p id="mapa-status" class="mapa-status mono">carregando mapa…</p>
     </div>
     <div id="mapa-acoes" class="mapa-acoes">
-      <button id="btn-expandir" class="ibtn" type="button" title="Expandir mapa">⤢</button>
       <button id="btn-rota" class="btn btn-red btn-sm" type="button">Planejar rota</button>
     </div>
     <div id="camadas" class="card panel camadas" hidden></div>
@@ -58,26 +57,33 @@
       <p id="coords-msg" class="coords-msg mono" hidden></p>
     </form>
 
-    <!-- CARDS FLUTUANTES: rota, status/segurança, panorama, fotos -->
-    <div id="flutuante" class="flutuante" hidden>
-      <section id="c-rota" class="card panel rota-card" hidden></section>
-      <section id="c-status" class="card panel" hidden></section>
+    <!-- BARRAS DA DIREITA: rota e imagens, independentes (cada uma com seu botão de abrir/fechar) -->
+    <div id="flutuante" class="flutuante">
+      <div id="g-rota" class="grupo">
+        <button class="ibtn ibtn-sm grupo-toggle" type="button" data-nome="rota" title="Recolher rota" aria-expanded="true">›</button>
+        <section id="c-rota" class="card panel rota-card" hidden></section>
+      </div>
 
-      <section id="c-pano" class="card panel" hidden>
-        <div class="pano-slot"><div id="pano"></div>
-          <button id="pano-expandir" class="ibtn ibtn-sm" type="button" title="Expandir no visor">⤢</button>
-        </div>
-        <p id="pano-rotulo" class="rotulo mono"></p>
-      </section>
+      <div id="g-imagens" class="grupo">
+        <button class="ibtn ibtn-sm grupo-toggle" type="button" data-nome="imagens" title="Recolher imagens" aria-expanded="true">›</button>
+        <section id="c-status" class="card panel" hidden></section>
 
-      <section id="c-fotos" class="card panel" hidden>
-        <div id="fotos" class="fotos"></div>
-        <div id="fotos-nav" class="fotos-nav" hidden>
-          <button type="button" id="fotos-prev" class="fotos-seta" aria-label="Página anterior">‹</button>
-          <span id="fotos-pag" class="fotos-pag"></span>
-          <button type="button" id="fotos-next" class="fotos-seta" aria-label="Próxima página">›</button>
-        </div>
-      </section>
+        <section id="c-pano" class="card panel" hidden>
+          <div class="pano-slot"><div id="pano"></div>
+            <button id="pano-expandir" class="ibtn ibtn-sm" type="button" title="Expandir no visor">⤢</button>
+          </div>
+          <p id="pano-rotulo" class="rotulo mono"></p>
+        </section>
+
+        <section id="c-fotos" class="card panel" hidden>
+          <div id="fotos" class="fotos"></div>
+          <div id="fotos-nav" class="fotos-nav" hidden>
+            <button type="button" id="fotos-prev" class="fotos-seta" aria-label="Página anterior">‹</button>
+            <span id="fotos-pag" class="fotos-pag"></span>
+            <button type="button" id="fotos-next" class="fotos-seta" aria-label="Próxima página">›</button>
+          </div>
+        </section>
+      </div>
     </div>
     <!-- FICHAS (F04): coluna à esquerda da barra, empilha para cima -->
     <div id="fichas" class="fichas">
@@ -86,7 +92,6 @@
         <div id="ficha" class="ficha-body"></div>
       </details>
     </div>
-    <button id="flutuante-toggle" class="ibtn ibtn-sm flutuante-toggle" type="button" title="Recolher barra" aria-expanded="true" aria-controls="flutuante" hidden>›</button>
   </div>
 
   <script src="lib/pannellum/pannellum.js"></script>
