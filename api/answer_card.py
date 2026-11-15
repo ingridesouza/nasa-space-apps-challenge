@@ -23,7 +23,8 @@ INTENTS = [
     ("science", r"\b(rock|mineral\w*|sample|target|drill\w*|science|scientific|ridge|boxwork|crism|measured|geolog\w*|what is (this|that|here))\b"),
 ]
 INTENT_LABEL = {"terrain_here": "Terrain here", "resources": "Time and return", "environment": "Environment",
-                "science": "Science here", "route": "Route choice", "distress": "Distress", "other": "Point"}
+                "science": "Science here", "route": "Route choice", "distress": "Distress", "other": "Point",
+                "replan": "Problem on the way"}
 # alert types that decide the verdict of each intent (the others stay out of the card)
 VERDICT_TYPES = {
     "terrain_here": {"slope", "historical_terrain", "no_history", "predicted_risk"},
@@ -194,6 +195,32 @@ def _route(rf: dict | None) -> tuple[list, list, list, list]:
     if sg.get("dust_warning"):
         facts.append(_fact("Season", sg["dust_warning"], "Mars24 + MCS/MRO (NASA)", "context"))
     return facts, options, [], rf.get("alerts", [])
+
+
+def replan(res: dict, origin: tuple[float, float], base: tuple[float, float]) -> dict:
+    """Card for a problem reported mid-walk (/api/replan output). The options are the new A* routes;
+    the system only orders them, the astronaut chooses."""
+    sg = res["suggestion"]
+    by_type = {r["type"]: r for r in res["routes"]}
+    options = []
+    for i, s in enumerate(sg.get("summary", [])):
+        r = by_type[s["type"]]
+        options.append({"n": i + 1, "type": s["type"], "name": r.get("title", s["type"]).capitalize(), "status": s["label"],
+                        "why": f"{r['distance_m']:,.0f} m · ~{r['estimated_time_min']:.0f} min · {s['why']}",
+                        "suggested": s["type"] == sg.get("suggested")})
+    facts = [_fact("Marked position", f"lat {origin[0]:.5f}, lon {origin[1]:.5f}", "marked by the astronaut (no GPS)", "context")]
+    ob = res.get("obstacle")
+    if ob:
+        facts.append(_fact("Obstacle avoided", f"{ob['radius_m']} m circle around lat {ob['lat']:.5f}, lon {ob['lon']:.5f}",
+                           "placed from the report, not measured (H2G2 replan rule)", "assumed"))
+    facts.append(_base_fact(*origin, base))
+    if sg.get("dust_warning"):
+        facts.append(_fact("Season", sg["dust_warning"], "Mars24 + MCS/MRO (NASA)", "context"))
+    verdict = {"level": "caution", "label": "REPLAN",
+               "because": [{"text": res["problem_text"], "source": "astronaut report · H2G2 replan rule"}],
+               "note": "Options computed by A* over the HiRISE DTM. You decide."}
+    return {"intent": "replan", "title": INTENT_LABEL["replan"], "verdict": verdict, "facts": facts[:MAX_FACTS],
+            "options": options, "target": None, "missing": res.get("warnings", []), "answer": None}
 
 
 def build(question: str, point: dict, conditions: dict | None, route_forecast: dict | None,

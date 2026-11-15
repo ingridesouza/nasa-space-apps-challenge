@@ -18,7 +18,7 @@ O foco do H2G2 deixou de ser planejar a rota (não é um "Waze de Marte") e pass
 
 ```json
 {
-  "intent": "terrain_here | resources | environment | science | route | distress | other",
+  "intent": "terrain_here | resources | environment | science | route | distress | replan | other",
   "title": "Terrain here",
   "verdict": {"level": "stop|caution|no_alert|unknown", "label": "STOP", "because": [{"text", "source"}], "note"},
   "facts": [{"label", "value", "source", "confidence", "hint"}],
@@ -41,6 +41,7 @@ O foco do H2G2 deixou de ser planejar a rota (não é um "Waze de Marte") e pass
 | `terrain_here` | "Can I climb here?" | inclinação no mapa, chance pelo histórico, medição do rover ≤ 100 m, inércia térmica | inclinação, histórico, sem histórico, risco previsto |
 | `science` | "What is this rock?" | alvo, mineralogia/química, CRISM; "Science details ›" abre a ficha inteira | — |
 | `distress` | "I fell" | posição, inclinação, base | procedimento fixo (regex `DISTRESS` do agente) |
+| `replan` | "There is a rock ahead" | posição marcada, obstáculo evitado (círculo assumido do relato), base, estação | fixo **REPLAN** (caution): o problema relatado; as **opções** são as rotas novas do `/api/replan` (A*), com distância e tempo |
 | `other` | qualquer outra | inclinação + base | todos os alertas do ponto |
 
 ## Front
@@ -54,7 +55,6 @@ O foco do H2G2 deixou de ser planejar a rota (não é um "Waze de Marte") e pass
 
 ## Fora desta entrega
 
-- Cartão de **obstáculo** (evento, não pergunta): depende do contrato do replan, que está em outro escopo.
 - Classificação de intenção pelo modelo.
 - Gráficos no cartão, histórico de várias trocas, monitoramento proativo.
 
@@ -68,7 +68,7 @@ O foco do H2G2 deixou de ser planejar a rota (não é um "Waze de Marte") e pass
 
 - **Inércia térmica:** aparece só como valor, com leitura qualitativa. Não há no repositório (docs nem commits) nenhum corte numérico de classe nem a referência além do nome "Fergason et al. 2006". Sem citação verificada, não existe a regra cruzada "encosta + material solto".
 - **O2 do traje:** o backend não recebe nível nem capacidade; o bloco de recursos lista "Suit oxygen level" como sem dado.
-- **Cartão de obstáculo:** depende do contrato do replan (formato das opções, tempo, inclinação máxima, O2), que está em outro escopo.
+- **Replan:** o obstáculo é colocado 25 m à frente com raio de 20 m (regra do `replan.py`), não medido. Com o astronauta na base, "low oxygen" não gera opção e cai no modelo.
 - **Procedimento de emergência:** escrito pela equipe, sem checklist de EVA da NASA como fonte.
 - **Condições REMS/RAD:** a referência (sol 4650) está defasada, então o veredito de ambiente tende a CAUTION.
 - Tocar numa opção de rota só funciona com uma rota aberta.

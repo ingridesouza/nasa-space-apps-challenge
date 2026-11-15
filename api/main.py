@@ -499,8 +499,9 @@ def ask(q: Question, request: Request):
             tool_sources.append("replanning: A* over the HiRISE DTM + H2G2 suggestion rule")
             # rule-based answer, like distress: e2b ignored the options ("I have no information about
             # rocks") or called plan_route on its own, and the normal route wiped the options off the screen
-            return {"answer": f"{res['problem_text']} {res['suggestion']['reason']} The options are on the map; you decide.",
-                    "sources": tool_sources, "alerts": point["alerts"], "actions": actions, "replanning": True}
+            answer = f"{res['problem_text']} {res['suggestion']['reason']} The options are on the map; you decide."
+            return {"answer": answer, "sources": tool_sources, "alerts": point["alerts"], "actions": actions, "replanning": True,
+                    "card": {**answer_card.replan(res, pos, BASE_LAT_LON), "answer": res["suggestion"]["reason"]}}
         except HTTPException as e:
             ctx["searches"] = [f"PROBLEM REPORTED, but no option with a path: {e.detail}"]
 
