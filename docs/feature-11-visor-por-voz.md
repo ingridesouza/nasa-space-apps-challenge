@@ -61,7 +61,6 @@ Clique no mapa vira **mira**: o centro do mapa. "Alfa, ler", "Charlie, destino a
 | Religar o microfone | Com o mãos-livres desligado ninguém ouve o pedido: religa segurando espaço ou clicando em "voz" |
 | Arrastar o panorama, slider de opacidade | Cobertos por girar e opacidade com valor |
 | Campo de texto do assistente | É a entrada alternativa à voz, não um alvo dela |
-| Links de fonte na ficha (`card.js`, `target=_blank`) | Abrem URL externa: violam a regra offline. Pendência anterior ao F11 |
 
 ## Pendente
 

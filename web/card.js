@@ -14,8 +14,7 @@
   };
 
   function fonte(l) {
-    const nome = esc(l.fonte_arquivo || "fonte");
-    return l.fonte_url ? `<a href="${esc(l.fonte_url)}" target="_blank" rel="noopener">${nome}</a>` : nome;
+    return esc(l.fonte_arquivo || "fonte"); // só o nome do arquivo: link externo não funciona offline
   }
 
   function linha(l) {
