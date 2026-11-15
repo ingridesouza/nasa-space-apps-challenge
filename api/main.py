@@ -47,7 +47,7 @@ from vector_queries import all_photos, all_science_targets, nearby_photos, neare
 import science_card
 import panorama
 from voice import (CONFIRM_MODEL, MODEL as WHISPER_MODEL, RATE_HZ, _model as _whisper_model, asks_nearest_target, asks_path,
-                   interpret, mentioned_destination, transcribe)
+                   MIN_LOGPROB, MIN_LOGPROB_CONFIRM, interpret, mentioned_destination, transcribe)
 
 # Mission reference sol -- real cached data (it is not "today",
 # it is the same sol used in the REMS/RAD tests, see NEXT-STEPS.md).
@@ -617,7 +617,10 @@ async def voice(request: Request, activated: bool = False, confirming: bool = Fa
             if trigger["activated"] and trigger["intent"] == "none":  # only "Hey Marvin": listen now, without the big one (~6 s)
                 return {**quick, **trigger, "intent": "listen", "speech": None}
         model = CONFIRM_MODEL if confirming else WHISPER_MODEL
-        heard = await run_in_threadpool(transcribe, audio, model)  # heavy CPU: outside the API loop
+        # the "Confirm?" answer is matched against YES/NO, which are English: transcribe it in English even with
+        # H2G2_LANGUAGE=pt (in Portuguese, "Yes" came back empty and every route was cancelled)
+        heard = await run_in_threadpool(transcribe, audio, model, "en" if confirming else None,  # heavy CPU: outside the API loop
+                                        MIN_LOGPROB_CONFIRM if confirming else MIN_LOGPROB)
     except (ImportError, OSError, ValueError, RuntimeError) as e:
         raise HTTPException(status_code=503, detail=f"voice unavailable (local Whisper model: run make build): {e}")
     if heard["text"] is None:
