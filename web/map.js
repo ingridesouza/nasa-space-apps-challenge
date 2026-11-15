@@ -6,7 +6,7 @@ import { CONTINUOUS_SCALE, LAYER_MAXZOOM, SLOPE_COLOR_HEX, TOGGLEABLE_LAYERS } f
 /** Center of the boxwork campaign (sol ~4500-4684, MSL_waypoints.json) --
  * camera fallback only; the real bbox of each layer comes from /layers. */
 const INITIAL_CENTER = [137.384, -4.801]
-const INITIAL_ZOOM = 15 // starts at HiRISE level
+const INITIAL_ZOOM = 14 // wider view than HiRISE full-res
 
 const ROUTE_ID = 'h2g2-route-line'
 const ROUTE_ALT_ID = 'h2g2-route-alt' // the other variants: dashed, under the active one
@@ -217,7 +217,7 @@ export function center(p, route = null) {
   if (coords.length) {
     const lons = coords.map((c) => c[0]), lats = coords.map((c) => c[1])
     map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: 24, duration: 0, maxZoom: 18 })
-  } else if (p) map.jumpTo({ center: [p.lon, p.lat], zoom: Math.max(map.getZoom(), 16) })
+  } else if (p) map.jumpTo({ center: [p.lon, p.lat], zoom: mode === 'viewer' ? 14 : 16 })
 }
 
 /** F11 voice: relative zoom (whole levels). */
