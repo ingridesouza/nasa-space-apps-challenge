@@ -1,6 +1,6 @@
 # Feature 06 · Previsão local do clima (offline)
 
-Status: **implementada** em 14/11/2026 · `api/previsao.py`, `GET /api/previsao?sol=&duracao_min=`, painel de condições, painel da rota, contexto do agente (F08). Cobre os três pedidos da F06 no `H2G2_NasaSpaceApps_DETON8.pdf`.
+Status: **implementada** em 14/11/2026 · `api/forecast.py`, `GET /api/previsao?sol=&duracao_min=`, painel de condições, painel da rota, contexto do agente (F08). Cobre os três pedidos da F06 no `H2G2_NasaSpaceApps_DETON8.pdf`.
 
 ## O que faz
 
@@ -114,3 +114,29 @@ Valor real: mostra que o DTM de órbita (~5,9 m/px) suaviza as cristas e subesti
 **Como apresentar:** `confianca: "estimado"` (já é o padrão). Citar como "frequência histórica de subestimação do DTM" e mostrar `n` junto do percentual. Nunca como "previsão de perigo" nem como garantia de segurança.
 
 **Pendências (não feitas):** renomear rótulo/tooltip da camada; mostrar `n` e IC no card; validação cruzada deixando trechos inteiros da trilha de fora; conferir numericamente as duas funções de inclinação.
+
+## Temperatura do chão fora da trilha: testada e descartada (14/11/2026)
+
+Ideia: estimar a temperatura do chão em qualquer ponto do recorte com o REMS da trilha + insolação do relevo + inércia térmica do THEMIS. Antes de implementar, teste nas 238 paradas da campanha com temperatura do chão ao meio-dia (sóis 3951–4843), validação cruzada em 10 blocos contíguos de sóis:
+
+| Modelo | RMSE |
+|---|---|
+| Só a média | 19,3 °C |
+| Estação (harmônicos de Ls) | 6,9 °C |
+| Estação + insolação na inclinação do terreno | 6,9 °C |
+| Estação + inércia térmica | 7,0 °C |
+
+A correlação do resíduo da estação com a insolação inclinada é −0,03, e com a inércia térmica, +0,02. O relevo e a inércia não explicam nada além da estação. Por isso o mapa de temperatura do chão **não foi implementado**: seria desenhar a estação com cara de geografia.
+
+**Por que o teste não consegue validar** (e nem refutar a física):
+- O rover para em terreno plano (inclinação mediana de 8° no DTM de 2 m). A insolação muda pouco de uma parada para outra (desvio de 24 W/m²), contra um ruído de ~7 °C.
+- A posição é a do fim do sol. As leituras de meio-dia podem ser de antes do trajeto do dia.
+- O GTS vê o chão ao lado do rover, não o pixel do DTM onde ele parou.
+- Os valores de chão chegam a 40,9 °C, alto para Gale: o filtro do GTS precisa de revisão (ver `solo_valido` em `cache_climatology.py`).
+
+O que ficou no mapa é só a parte geométrica, confiável: **sol direto e sombra por hora** (`api/insolation.py`).
+
+**Atualização (15/11/2026):** o teste acima usou `BRIGHTNESS_TEMP_B` do GTS. Ao meio-dia, nos sóis 4035 e 4700, o canal A dá 0,3 e 6,5 °C (plausível), o B dá 34,7 e 39,2 °C e o C dá 38,2 e 48,5 °C. O B parece ser o canal errado (não verifiquei na documentação do REMS). Consequências:
+- a opção "Temperatura do chão" saiu da camada atmosférica;
+- o teste de viabilidade precisa ser refeito com o canal A (a conclusão pode se manter, a estação domina, mas não está provada);
+- a previsão do chão da F06 (`solo_meio_dia_c` em `cache_climatology.py`, `CAMPOS_RELEVANTES` em `pds_rems.py`) usa o mesmo canal e precisa da mesma revisão.
