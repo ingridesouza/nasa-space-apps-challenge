@@ -52,6 +52,10 @@ export async function execute(cmd) {
     r = `${b.name}: failed (${e.message})`
   }
   focus = b.id
+  if (r && typeof r === 'object') { // {ok, text}: a successful result that carries text to show (no speech)
+    if (r.ok) flash(b)
+    return { ok: r.ok, text: r.text }
+  }
   const ok = r === undefined || r === true
   if (ok) flash(b)
   return { ok, text: ok ? `${b.spoken[0]} · ${b.name}: ${a.desc}` : (typeof r === 'string' ? r : `${b.name}: nothing to ${cmd.action} right now`) }
