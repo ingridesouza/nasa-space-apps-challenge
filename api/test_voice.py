@@ -56,6 +56,9 @@ EAST = DESTINATIONS + [{"name": "Boxwork east contact", "lat": 0, "lon": 0}]
 r = interpret("Marvin, what is the fast router?", EAST)
 assert not (r["destination"] and r["destination"]["name"] == "Boxwork east contact"), r
 assert interpret("Marvin, route to Altadina", EAST)["destination"]["name"].startswith("Altadena")  # real misspelling still works
+# "open" is 0.75 from "nope": "Atlas, open" is a block command, not a "no"
+assert interpret("Marvin, Atlas, open", DESTINATIONS)["intent"] != "no"
+assert interpret("Marvin, Orion, open", DESTINATIONS)["intent"] != "no"
 # what Whisper small really heard as the "Confirm?" answer (one person's recordings): still yes / no
 ok("one, yes.", "yes", require_activation=False)
 ok("no concept", "no", require_activation=False)
