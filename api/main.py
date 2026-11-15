@@ -266,6 +266,7 @@ def get_route(
     dest_lon: float,
     stop_lat: list[float] = Query(default=[]),
     stop_lon: list[float] = Query(default=[]),
+    o2_disponivel_l: float | None = None,
 ):
     """Feature 02 -- A* real sobre o DTM, duas variantes (mais_segura/
     mais_rapida). Ver route_planning.py pro desvio consciente do AI4Mars
@@ -275,7 +276,14 @@ def get_route(
     caminhada -- None se o sol não estiver cacheado, nunca 0 fingido.
 
     stop_lat/stop_lon (mesmo tamanho, mesma ordem): paradas intermediárias
-    entre origem e destino -- gap "paradas intermediárias"."""
+    entre origem e destino -- gap "paradas intermediárias".
+
+    o2_disponivel_l (Fase 3, opcional): litros de O2 disponíveis no
+    início da caminhada -- em litros, não porcentagem, pra não duplicar
+    a capacidade do traje aqui (ver docstring de
+    route_planning._perfil_margem_de_volta). Sem ele, margem_minima sai
+    null em cada rota; o resto do perfil de volta (ponto_nao_retorno,
+    pior_trecho_emergencia, volta_minutos_max) não depende disso."""
     if len(stop_lat) != len(stop_lon):
         raise HTTPException(status_code=422, detail="stop_lat e stop_lon precisam ter o mesmo tamanho")
     paradas = list(zip(stop_lat, stop_lon))
@@ -285,7 +293,9 @@ def get_route(
 
     conn = get_connection()
     try:
-        resultado = plan_route(conn, origin_lat, origin_lon, dest_lat, dest_lon, dose_rad_ugy_por_hora, paradas)
+        resultado = plan_route(
+            conn, origin_lat, origin_lon, dest_lat, dest_lon, dose_rad_ugy_por_hora, paradas, o2_disponivel_l
+        )
     except ForaDoGridError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except SemCaminhoError as e:

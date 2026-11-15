@@ -393,7 +393,17 @@ def _custo_ate_base_cacheado(local_tile_path: str) -> dict[tuple[int, int], dict
     }
 
 
-def _monta_rota(tipo: str, caminho_rc, elevacao, slope_deg, transform, pixel_size_m, dose_rad_ugy_por_hora) -> dict:
+def _monta_rota(
+    tipo: str,
+    caminho_rc,
+    elevacao,
+    slope_deg,
+    transform,
+    pixel_size_m,
+    dose_rad_ugy_por_hora,
+    mapa_custo_base: dict | None = None,
+    o2_disponivel_l: float | None = None,
+) -> dict:
     pontos = [_rc_to_latlon(transform, r, c) for r, c in caminho_rc]
 
     distancia_m = 0.0
@@ -402,6 +412,13 @@ def _monta_rota(tipo: str, caminho_rc, elevacao, slope_deg, transform, pixel_siz
     tempo_s = 0.0
     o2_otimista_l = 0.0
     o2_pessimista_l = 0.0
+
+    # Fase 3: acumulado PESSIMISTA por nó do caminho (não só o total da
+    # rota) -- é o que _perfil_margem_de_volta usa pra saber "quanto já
+    # gastei até aqui" em cada ponto. O nó de origem começa em zero.
+    tempo_acumulado_pessimista_s = [0.0]
+    o2_acumulado_pessimista_l = [0.0]
+
     for i in range(1, len(caminho_rc)):
         r1, c1 = caminho_rc[i - 1]
         r2, c2 = caminho_rc[i]
@@ -443,6 +460,9 @@ def _monta_rota(tipo: str, caminho_rc, elevacao, slope_deg, transform, pixel_siz
         o2_otimista_l += taxa_o2_otimista * tempo_min_otimista_trecho
         o2_pessimista_l += taxa_o2_pessimista * tempo_min_pessimista_trecho
 
+        tempo_acumulado_pessimista_s.append(tempo_acumulado_pessimista_s[-1] + tempo_min_pessimista_trecho * 60.0)
+        o2_acumulado_pessimista_l.append(o2_acumulado_pessimista_l[-1] + taxa_o2_pessimista * tempo_min_pessimista_trecho)
+
         perfil.append({
             "distancia_acumulada_m": round(distancia_m, 1),
             "elevacao_m": float(elevacao[r2, c2]),
@@ -465,6 +485,11 @@ def _monta_rota(tipo: str, caminho_rc, elevacao, slope_deg, transform, pixel_siz
     # api/main.py REFERENCE_SOL -- pra não fingir "zero radiação".
     dose_rad_ugy = round(dose_rad_ugy_por_hora * (tempo_min / 60.0), 2) if dose_rad_ugy_por_hora is not None else None
 
+    margem_minima, ponto_nao_retorno, pior_trecho_emergencia, volta_minutos_max = _perfil_margem_de_volta(
+        caminho_rc, pontos, perfil, tempo_acumulado_pessimista_s, o2_acumulado_pessimista_l,
+        mapa_custo_base, o2_disponivel_l,
+    )
+
     return {
         "tipo": tipo,
         "pontos": [[lat, lon] for lat, lon in pontos],
@@ -478,7 +503,112 @@ def _monta_rota(tipo: str, caminho_rc, elevacao, slope_deg, transform, pixel_siz
         "dose_rad_estimada_ugy": dose_rad_ugy,
         "perfil_elevacao": perfil,
         "trechos_risco": trechos_risco,
+        "margem_minima": margem_minima,
+        "ponto_nao_retorno": ponto_nao_retorno,
+        "pior_trecho_emergencia": pior_trecho_emergencia,
+        "volta_minutos_max": volta_minutos_max,
     }
+
+
+def _perfil_margem_de_volta(
+    caminho_rc, pontos, perfil, tempo_acumulado_pessimista_s, o2_acumulado_pessimista_l,
+    mapa_custo_base: dict | None, o2_disponivel_l: float | None,
+):
+    """Fase 3 (F02+F08) -- margem de O2 e ponto de não retorno, ponto a
+    ponto ao longo da rota, usando o mapa de custo de volta da Fase 2
+    (`custo_ate_base`) e os acumulados PESSIMISTAS da Fase 1. Pior caso
+    em tudo, igual ao resto do arquivo (CLAUDE.md: sem dado, sem número
+    -- nunca inventa um valor otimista aqui).
+
+    Campos e critérios definidos por mim agora pra desbloquear o Hugo
+    (F08) -- a confirmar/ajustar com ele na conversa da seção 8.0 do
+    doc de arquitetura, não é contrato fechado:
+
+    - `ponto_nao_retorno` usa só TEMPO, nunca O2: é o primeiro ponto da
+      rota (varrendo da origem) onde o tempo que falta pra chegar no
+      destino já é menor que o tempo de voltar pra base dali. Funciona
+      com ou sem `o2_disponivel_l` informado (plano original: "o ponto
+      de não retorno em tempo continua valendo" mesmo sem O2).
+    - `pior_trecho_emergencia` é o ponto da rota com a PIOR volta. Um
+      ponto sem volta calculável (fora do mapa da Fase 2 -- ver
+      `custo_ate_base`) é tratado como PIOR que qualquer volta finita,
+      nunca ignorado em silêncio -- é literalmente o caso mais perigoso
+      que existe (não dá pra voltar daquele ponto de jeito nenhum).
+    - `volta_minutos_max` e `margem_minima` só consideram pontos COM
+      volta calculável -- um ponto sem volta já apareceu em
+      `pior_trecho_emergencia`, não precisa duplicar o aviso aqui.
+    - Parâmetro de entrada é `o2_disponivel_l` (litros), não
+      `o2_disponivel_pct` como o plano original sugeria -- decisão
+      minha: a capacidade do traje (`CAPACIDADE_O2_L_PADRAO`) hoje só
+      existe no front (`web/ui/rota.js`) e não tem fonte oficial (ver
+      PROXIMOS-PASSOS.md); duplicar essa constante aqui no backend
+      arriscaria os dois lados divergirem. Quem converte % -> litros é
+      quem já tem a capacidade (front/voz), e manda o litro pronto.
+
+    `mapa_custo_base is None` (Fase 2 não calculada/não passada) é
+    diferente de "mapa calculado e este ponto não está nele": no
+    primeiro caso simplesmente não temos dado nenhum sobre volta, e os
+    quatro campos saem `None` -- nunca tratamos "sem mapa" como "todo
+    ponto é inalcançável" (isso inventaria um dado que não existe)."""
+    if mapa_custo_base is None:
+        return None, None, None, None
+
+    tempo_total_pessimista_s = tempo_acumulado_pessimista_s[-1]
+    voltas = [mapa_custo_base.get(rc) for rc in caminho_rc]  # entrada (dict) ou None, por ponto do caminho
+
+    ponto_nao_retorno = None
+    for i, entrada in enumerate(voltas):
+        if entrada is None:
+            continue
+        tempo_restante_s = tempo_total_pessimista_s - tempo_acumulado_pessimista_s[i]
+        if tempo_restante_s < entrada["tempo_volta_s"]:
+            ponto_nao_retorno = {
+                "lat": pontos[i][0],
+                "lon": pontos[i][1],
+                "distancia_m": perfil[i]["distancia_acumulada_m"],
+            }
+            break
+
+    pior_i, pior_e_inalcancavel, pior_tempo_volta_s = None, False, -1.0
+    for i, entrada in enumerate(voltas):
+        if entrada is None:
+            if not pior_e_inalcancavel:
+                pior_i, pior_e_inalcancavel = i, True
+            continue
+        if not pior_e_inalcancavel and entrada["tempo_volta_s"] > pior_tempo_volta_s:
+            pior_i, pior_tempo_volta_s = i, entrada["tempo_volta_s"]
+
+    pior_trecho_emergencia = None
+    if pior_i is not None:
+        entrada = voltas[pior_i]
+        pior_trecho_emergencia = {
+            "lat": pontos[pior_i][0],
+            "lon": pontos[pior_i][1],
+            "distancia_m": perfil[pior_i]["distancia_acumulada_m"],
+            "tempo_volta_min": round(entrada["tempo_volta_s"] / 60.0, 1) if entrada else None,
+            "o2_volta_l": entrada["o2_volta_l"] if entrada else None,
+        }
+
+    tempos_volta_validos = [e["tempo_volta_s"] for e in voltas if e is not None]
+    volta_minutos_max = round(max(tempos_volta_validos) / 60.0, 1) if tempos_volta_validos else None
+
+    margem_minima = None
+    if o2_disponivel_l is not None:
+        pior_margem_l, pior_distancia_m = None, None
+        for i, entrada in enumerate(voltas):
+            if entrada is None:
+                continue
+            margem_l = o2_disponivel_l - (o2_acumulado_pessimista_l[i] + entrada["o2_volta_l"])
+            if pior_margem_l is None or margem_l < pior_margem_l:
+                pior_margem_l, pior_distancia_m = margem_l, perfil[i]["distancia_acumulada_m"]
+        if pior_margem_l is not None:
+            margem_minima = {
+                "litros": round(pior_margem_l, 2),
+                "pct": round(pior_margem_l / o2_disponivel_l * 100.0, 1) if o2_disponivel_l else None,
+                "distancia_m": pior_distancia_m,
+            }
+
+    return margem_minima, ponto_nao_retorno, pior_trecho_emergencia, volta_minutos_max
 
 
 def _melhor_alvo_cientifico(origin_lat, origin_lon, dest_lat, dest_lon, alvos: list[dict]) -> dict | None:
@@ -511,7 +641,14 @@ def _astar_encadeado(elevacao, slope_deg, transform, pixel_size_m, pontos_rc: li
 
 
 def plan_route(
-    conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_lon, dose_rad_ugy_por_hora=None, paradas=None
+    conn: sqlite3.Connection,
+    origin_lat,
+    origin_lon,
+    dest_lat,
+    dest_lon,
+    dose_rad_ugy_por_hora=None,
+    paradas=None,
+    o2_disponivel_l: float | None = None,
 ) -> dict:
     """paradas: lista opcional de (lat, lon) -- pontos que a rota precisa
     visitar em ordem, entre a origem e o destino (gap "paradas
@@ -538,10 +675,19 @@ def plan_route(
     pontos_rc = [_latlon_to_rc(transform, lat, lon) for lat, lon in todos_pontos]
     origem_rc, destino_rc = pontos_rc[0], pontos_rc[-1]
 
+    # Fase 2: mapa de custo de volta, calculado uma vez (cacheado) e
+    # reaproveitado pelas três variantes de rota abaixo -- é o que
+    # alimenta margem_minima/ponto_nao_retorno/pior_trecho_emergencia
+    # (Fase 3) em cada uma.
+    mapa_custo_base = custo_ate_base(conn)
+
     rotas = []
     for tipo in ("mais_segura", "mais_rapida"):
         caminho = _astar_encadeado(elevacao, slope_deg, transform, pixel_size_m, pontos_rc, tipo)
-        rotas.append(_monta_rota(tipo, caminho, elevacao, slope_deg, transform, pixel_size_m, dose_rad_ugy_por_hora))
+        rotas.append(_monta_rota(
+            tipo, caminho, elevacao, slope_deg, transform, pixel_size_m, dose_rad_ugy_por_hora,
+            mapa_custo_base, o2_disponivel_l,
+        ))
 
     # "mais_ciencia": passa pelo alvo científico real mais próximo do
     # caminho, só se o desvio for razoável (ver MAIS_CIENCIA_DESVIO_MAX_M)
@@ -557,7 +703,8 @@ def plan_route(
                     elevacao, slope_deg, transform, pixel_size_m, [origem_rc, alvo_rc, destino_rc], "mais_segura"
                 )
                 rota_ciencia = _monta_rota(
-                    "mais_ciencia", caminho_completo, elevacao, slope_deg, transform, pixel_size_m, dose_rad_ugy_por_hora
+                    "mais_ciencia", caminho_completo, elevacao, slope_deg, transform, pixel_size_m, dose_rad_ugy_por_hora,
+                    mapa_custo_base, o2_disponivel_l,
                 )
                 rota_ciencia["alvo_cientifico"] = {
                     "nome": alvo["nome"],
