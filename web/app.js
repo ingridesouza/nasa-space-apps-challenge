@@ -39,9 +39,11 @@ let awaitingPosition = false // "📍 I am here": the next click becomes the ast
 // ---------------- Place (position or destination): status, panorama, photos, answer card ----------------
 let placeSeq = 0
 let last = null // {pano} of the current place, to redraw the status
+let answersShown = 0 // a question asked while a place loads must not be overwritten by that place's science card
 
 async function loadPlace(place) {
   const mine = ++placeSeq
+  const answersAtStart = answersShown
   state.place = place
   loading()
   answerCard.showPlace('loading')
@@ -54,7 +56,7 @@ async function loadPlace(place) {
   map.setPanorama(pano?.found ? pano : null)
   if (pano) showPano(pano)
   else clearPano()
-  answerCard.showPlace(science ?? 'error')
+  if (answersShown === answersAtStart) answerCard.showPlace(science ?? 'error')
   if (photos) showPhotos(photos)
   else $('c-photos').hidden = true
 }
@@ -575,7 +577,7 @@ function showReplanning(res, origin) {
 }
 
 const assistant = initAssistant($('assistant'), () => state.place ?? state.position, routeForAgent, openRouteTo, showReplanning,
-  () => state.position, (item) => answerCard.showAnswer(item))
+  () => state.position, (item) => { answersShown++; answerCard.showAnswer(item) })
 
 // ---------------- F08: voice ("Hey guide, route to …" or a spoken question) ----------------
 // the route always starts at the current position (tracker); voice only chooses the destination
