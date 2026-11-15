@@ -26,11 +26,12 @@ from atmosphere import track_geojson
 from insolation import at_point as insolation_at_point, sun_at_hour
 import answer_card
 from agent import (DISTRESS, AgentUnavailable, ask as ask_agent, build_context, context_as_text, context_sources,
-                   distress_answer, group_alerts, strip_repeated_danger)
+                   distress_answer, group_alerts, strip_repeated_danger, suggestion_as_text)
 from alerts import BASE_LAT_LON, point_alerts, route_alerts, sol_time_and_alerts, stops_in_bbox
 import commands
 from conditions import get_cached_conditions
 from db import get_connection
+from geo import haversine_m
 from mosaics import build_hillshade_png, build_mosaic_png
 from nomenclature import get_cached_nomenclature
 from thermal import inertia_at_point
@@ -38,13 +39,15 @@ from forecast import delete_measurement, predicted_status, record_measurement, s
 from raster_sampling import sample_all_rasters
 from route_forecast import forecast_route
 from route_planning import NoPathError, OutOfGridError, plan_route
+from replan import classify, options as replan_options
 from route_suggestions import suggest
 from mars_time import local_time, now, sol_msl
 from tile_server import render_tile
 from vector_queries import all_photos, all_science_targets, nearby_photos, nearest_science_target
 import science_card
 import panorama
-from voice import CONFIRM_MODEL, MODEL as WHISPER_MODEL, RATE_HZ, _model as _whisper_model, interpret, transcribe
+from voice import (CONFIRM_MODEL, MODEL as WHISPER_MODEL, RATE_HZ, _model as _whisper_model, asks_nearest_target, asks_path,
+                   interpret, mentioned_destination, transcribe)
 
 # Mission reference sol -- real cached data (it is not "today",
 # it is the same sol used in the REMS/RAD tests, see NEXT-STEPS.md).
@@ -326,8 +329,16 @@ def get_route(
         raise HTTPException(status_code=422, detail=str(e))
     finally:
         conn.close()
+    enrich_routes(result["routes"])
+    # feature 02 + 08: addition -- suggested order with the why; no route leaves the list
+    result["suggestion"] = suggest(result["routes"])
+    return result
+
+
+def enrich_routes(routes: list[dict]) -> None:
+    """Predicted chance per segment (F06) and agent alerts per point (F08), on each route."""
     # feature 06: each segment gets the predicted chance and the status that considers it
-    for route in result["routes"]:
+    for route in routes:
         for t in route["risk_segments"]:
             risk = slope_risk(t["slope_deg"])
             t["chance_pct"] = risk["chance_pct"] if risk else None
@@ -340,7 +351,7 @@ def get_route(
     # distance_m (from the start, not from the destination) comes from the same
     # elevation_profile as the chart -- it is the "in which segment" that was missing:
     # without it, the alert applied to the whole route, not to a point on it.
-    for route in result["routes"]:
+    for route in routes:
         alerts = route_alerts([tuple(p) for p in route["points"]])
         profile = route["elevation_profile"]
         for alert in alerts:
@@ -348,9 +359,38 @@ def get_route(
         alerts.sort(key=lambda a: a["distance_m"])
         route["alerts"] = alerts
 
-    # feature 02 + 08: addition -- suggested order with the why; no route leaves the list
-    result["suggestion"] = suggest(result["routes"])
-    return result
+
+@app.get("/api/replan")
+def get_replan(lat: float, lon: float, problem: str = Query(min_length=1, max_length=500),
+               dest_lat: float | None = None, dest_lon: float | None = None, current_type: str = "safest"):
+    """F02 + F08: problem reported in the middle of the walk -> new options from the marked
+    point (lat/lon), in the same format as /api/route. See replan.py."""
+    problem_kind = classify(problem) or "other"
+    destination = (dest_lat, dest_lon) if dest_lat is not None and dest_lon is not None else None
+    current_route = None
+    if destination:
+        try:
+            current = get_route(lat, lon, *destination, [], [])
+            current_route = next((r["points"] for r in current["routes"] if r["type"] == current_type), current["routes"][0]["points"])
+        except HTTPException:
+            pass  # without the current route the obstacle has no "ahead": options come without a detour
+    rad_data = get_cached_conditions(REFERENCE_SOL)
+    dose = rad_data["rad"]["mean_dose_ugy_per_hour"] if rad_data else None
+    conn = get_connection()
+    try:
+        def plan(target, kind, avoid):
+            try:
+                return plan_route(conn, lat, lon, *target, dose, [], kinds=(kind,), avoid=avoid)["routes"][0]
+            except (OutOfGridError, NoPathError) as e:
+                raise HTTPException(status_code=422, detail=str(e))
+        res = replan_options(problem_kind, (lat, lon), destination, BASE_LAT_LON, current_route, plan)
+    finally:
+        conn.close()
+    if not res["routes"]:
+        raise HTTPException(status_code=422, detail="No option with a path: " + "; ".join(res["errors"]))
+    enrich_routes(res["routes"])
+    return {"problem": problem_kind, "problem_text": res["text"], "obstacle": res["obstacle"],
+            "routes": res["routes"], "suggestion": suggest(res["routes"]), "warnings": res["errors"]}
 
 
 @app.get("/api/route-forecast")
@@ -358,6 +398,8 @@ def get_route_forecast(origin_lat: float, origin_lon: float, dest_lat: float, de
                        type: str = "safest", sol: int | None = None):
     """Agent tool: predictive analysis of the route (terrain from Curiosity
     history, climate and window on the EVA sol, forecast dose). See route_forecast.py."""
+    if type not in ("safest", "fastest", "most_science"):  # smoothest (replanning option)
+        type = "safest"  # shortcut: forecast from the safest, without the detour; pass kinds/avoid if they diverge a lot
     result = get_route(origin_lat, origin_lon, dest_lat, dest_lon, [], [])
     route = next((r for r in result["routes"] if r["type"] == type), None)
     if route is None:
@@ -382,6 +424,9 @@ class Question(BaseModel):
     # with no chosen point, the assistant answers about the base (same as api/alerts.py)
     lat: float = Field(BASE_LAT_LON[0], ge=-90, le=90)
     lon: float = Field(BASE_LAT_LON[1], ge=-180, le=360)
+    # where the astronaut is ("I am here"); with an open route, lat/lon is the destination. Without it: /api/position
+    pos_lat: float | None = Field(None, ge=-90, le=90)
+    pos_lon: float | None = Field(None, ge=-180, le=360)
     sol: int = REFERENCE_SOL
 
 
@@ -411,6 +456,7 @@ def ask(q: Question, request: Request):
                if intent == "science" else None)
     card = answer_card.build(q.question, point, conditions, ctx.get("route_forecast"), science, BASE_LAT_LON, intent)
     actions, tool_alerts, tool_sources = [], [], []
+    pos = (q.pos_lat, q.pos_lon) if q.pos_lat is not None and q.pos_lon is not None else tuple(get_position()[k] for k in ("lat", "lon"))
 
     def run_tool(name: str, args: dict) -> str:
         """Agent tools (tool calling). The argument comes from the model: validate before using."""
@@ -426,24 +472,53 @@ def ask(q: Question, request: Request):
                                  for t in targets) or "no target registered"
             if name == "query_point":
                 lat, lon = float(args["lat"]), float(args["lon"])
+                tool_sources.append("queried point (HiRISE DTM)")
                 return context_as_text(build_context(get_point(lat, lon, request), None))
             if name == "plan_route":
                 lat, lon = float(args["dest_lat"]), float(args["dest_lon"])
-                pos = get_position()  # the route starts at the astronaut, as in the front, not at the clicked point
-                r = get_route(pos["lat"], pos["lon"], lat, lon, [], [])
+                r = get_route(*pos, lat, lon, [], [])  # the route starts at the astronaut, as in the front, not at the clicked point
                 sg = r["suggestion"]
                 suggested = next(x for x in r["routes"] if x["type"] == sg["suggested"])
                 tool_alerts.extend(suggested["alerts"])
                 actions.append({"type": "open_route", "lat": lat, "lon": lon})
                 tool_sources.append("routes: A* over the HiRISE DTM + H2G2 suggestion rule")
-                return "\n".join([f"SYSTEM SUGGESTION: {sg['reason']}", *(f"- route {x['type']}: {x['label']} ({x['why']})" for x in sg["summary"]),
-                                  *(f"- route {x['type']}: {round(x['distance_m'])} m, ~{round(x['estimated_time_min'])} min" for x in r["routes"]),
-                                  *([sg["dust_warning"]] if sg["dust_warning"] else [])])
+                return "\n".join([*suggestion_as_text(sg),
+                                  *(f"- variant {x['type']}: {round(x['distance_m'])} m, ~{round(x['estimated_time_min'])} min" for x in r["routes"])])
             return f"unknown tool: {name}"
         except (KeyError, TypeError, ValueError) as e:
             return f"invalid argument for {name}: {e}"
         except HTTPException as e:  # outside the map / no path: the model says there is none
             return f"no result: {e.detail}"
+
+    problem = classify(q.question)
+    if problem and (q.route or problem in ("dust", "oxygen")):  # with no open route, only going back makes sense
+        try:
+            res = get_replan(*pos, q.question, *((q.route.dest_lat, q.route.dest_lon) if q.route else (None, None)),
+                             current_type=q.route.type if q.route else "safest")
+            actions.append({"type": "replan", "origin": {"lat": pos[0], "lon": pos[1]}, "result": res})
+            tool_sources.append("replanning: A* over the HiRISE DTM + H2G2 suggestion rule")
+            # rule-based answer, like distress: e2b ignored the options ("I have no information about
+            # rocks") or called plan_route on its own, and the normal route wiped the options off the screen
+            return {"answer": f"{res['problem_text']} {res['suggestion']['reason']} The options are on the map; you decide.",
+                    "sources": tool_sources, "alerts": point["alerts"], "actions": actions, "replanning": True}
+        except HTTPException as e:
+            ctx["searches"] = [f"PROBLEM REPORTED, but no option with a path: {e.detail}"]
+
+    conn = get_connection()
+    try:
+        targets = all_science_targets(conn)
+    finally:
+        conn.close()
+    target = mentioned_destination(q.question, targets)
+    if not target and targets and asks_nearest_target(q.question):
+        target = min(targets, key=lambda t: haversine_m(*pos, t["lat"], t["lon"]))
+    if target and not problem:  # by rule: with the name in the phrase, the small model still picked another target or route
+        ctx["searches"] = [f"NAMED TARGET: {target['name']}: lat {target['lat']}, lon {target['lon']}; "
+                           f"{target['curiosity_measurement'] or 'no measurement recorded'}"]
+        tool_sources.append("science targets (F04)")
+        if asks_path(q.question):
+            ctx["searches"].append(run_tool("plan_route", {"dest_lat": target["lat"], "dest_lon": target["lon"]}))
+            ctx.pop("route_forecast", None)  # the open route is another one: mixing both confused the model
 
     try:
         answer = ask_agent(q.question, ctx, run_tool)

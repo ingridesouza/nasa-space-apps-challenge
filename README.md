@@ -33,8 +33,9 @@ make build   # once, with internet: dependencies + real data in data/local/
 make run     # API and map at http://localhost:8000
 ```
 
-Local agent (`/api/ask`): install [Ollama](https://ollama.com) once. `make build`
-downloads the `gemma3:4b` model (3.3 GB) into `data/local/ollama/`, and `make run` starts
+Local agent (`/api/ask`): install a recent [Ollama](https://ollama.com) once (Gemma 4 does not load on 0.12.x;
+without `sudo`, extract the official release into `~/.local/ollama`, which the Makefile uses first). `make build`
+downloads the `gemma4:e2b` model (4.6 GB) into `data/local/ollama/`, and `make run` starts
 Ollama reading from that folder. The model stays out of git (it exceeds GitHub's limit). Moving the package to another machine
 still does not work just by copying `data/local/` (see item 5 of `docs/raio-x-implementacao.md`).
 
