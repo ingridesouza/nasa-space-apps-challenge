@@ -94,10 +94,21 @@ function o2Html(r) {
   </div>`
 }
 
+/** Fase 3 (route_planning.py): a partir deste ponto da rota, seguir até o
+ * destino já custa menos tempo que voltar pra base -- marcado no mapa
+ * (map.js) e explicado aqui, pra não depender só do ícone. */
+function naoRetornoHtml(r) {
+  const p = r.ponto_nao_retorno
+  if (!p) return ''
+  return `<div class="rota-sec"><p class="rotulo mono aviso" role="alert">
+    ⚠ Ponto de não retorno a ${num(p.distancia_m)} m: depois daqui, seguir até o destino é mais rápido que voltar pra base.</p></div>`
+}
+
 function detalheRota(r, topo = '') {
   const alvo = r.alvo_cientifico
   return `${o2Html(r)}
     ${topo}
+    ${naoRetornoHtml(r)}
     ${alvo ? `<div class="rota-sec"><span class="fl-sec">Passa perto de</span>
       <button type="button" class="alvo-btn" data-acao="alvo">◇ ${esc(alvo.nome)} <span class="mono">abrir ficha ›</span></button></div>` : ''}`
 }

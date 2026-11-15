@@ -67,7 +67,7 @@ function buildStyle(metas) {
 let map = null
 let carregado = false
 let modo = 'visor' // 'visor' (círculo) | 'explorar' | 'rota'
-let marcadorClique, marcadorOrigem, marcadorDestino, marcadorPano
+let marcadorClique, marcadorOrigem, marcadorDestino, marcadorPano, marcadorNaoRetorno
 
 function marcador(classe, filho, opcoes = {}) {
   const el = document.createElement('div')
@@ -82,6 +82,15 @@ const BANDEIRA = `<svg viewBox="0 0 24 28" width="24" height="28" aria-hidden="t
   <path d="M3 27V2" stroke="#0a0a0b" stroke-width="3.5" stroke-linecap="round"/>
   <path d="M3 27V2" stroke="#e2e2e6" stroke-width="1.6" stroke-linecap="round"/>
   <path d="M4 2.5h16l-4 5 4 5H4z" fill="#E8643F" stroke="#0a0a0b" stroke-width="1.2" stroke-linejoin="round"/>
+</svg>`
+
+// F02 + F08 (Fase 3, route_planning.py): ponto_nao_retorno -- a partir
+// dali, seguir custa menos (em tempo) que voltar pra base. Mesma cor
+// de "perigo" (SLOPE_COLOR_HEX.perigo/--mars2) do resto do mapa.
+const ALERTA_NAO_RETORNO = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+  <path d="M12 2.5 1.5 21.5h21z" fill="#E8643F" stroke="#0a0a0b" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M12 9v6" stroke="#0a0a0b" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="12" cy="18" r="1.3" fill="#0a0a0b"/>
 </svg>`
 
 const vazio = () => ({ type: 'FeatureCollection', features: [] })
@@ -136,6 +145,8 @@ export function criarMapa(container, metas, { onClick, onLoad, onFechar }) {
   marcadorOrigem.getElement().title = 'Posição atual (início do trajeto)'
   marcadorDestino = marcador('h2g2-flag', BANDEIRA, { anchor: 'bottom-left', offset: [-3, 1] })
   marcadorDestino.getElement().title = 'Destino'
+  marcadorNaoRetorno = marcador('h2g2-no-return-marker', ALERTA_NAO_RETORNO, { anchor: 'bottom' })
+  marcadorNaoRetorno.getElement().title = 'Ponto de não retorno: a partir daqui, seguir custa menos (em tempo) que voltar pra base'
 
   map.on('click', (e) => {
     // pin de foto consome o clique (não abre briefing nem marca rota por baixo)
@@ -226,4 +237,9 @@ export function setRota(rota) {
       geometry: { type: 'LineString', coordinates: [[t.de[1], t.de[0]], [t.para[1], t.para[0]]] },
     })),
   })
+  // F02 + F08 (Fase 4, sugestao_rotas.py): rota em "perigo" fica tracejada --
+  // mesmo traçado, só o estilo avisa antes de olhar o card. [1,0] = sem
+  // traço (linha sólida, já que line-dasharray não some sozinho).
+  map.setPaintProperty(ROUTE_ID, 'line-dasharray', rota?.sugestao?.rotulo === 'perigo' ? [2, 1.5] : [1, 0])
+  posicionar(marcadorNaoRetorno, rota?.ponto_nao_retorno)
 }

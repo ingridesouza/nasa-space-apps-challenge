@@ -146,6 +146,8 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .h2g2-flag svg{display:block}
 .h2g2-pano-marker{width:9px;height:9px;border-radius:50%;background:var(--b400);border:1px solid rgba(10,10,11,.5);opacity:.75}
 .h2g2-route-marker--escala{width:12px;height:12px;background:var(--b200)}
+.h2g2-no-return-marker{width:20px;height:20px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
+.h2g2-no-return-marker svg{display:block}
 
 /* destino por coordenadas: mesmo formulário do visor antigo, no lugar do minimapa */
 .coords{position:absolute;left:20px;bottom:20px;z-index:12;width:240px;padding:14px;display:flex;flex-direction:column;gap:10px}
