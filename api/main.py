@@ -30,6 +30,7 @@ from nomenclature import get_cached_nomenclature
 from previsao import apagar_medicao, previsao_do_sol, registrar_medicao, risco_inclinacao, status_previsto
 from raster_sampling import sample_all_rasters
 from route_planning import ForaDoGridError, SemCaminhoError, plan_route
+from sugestao_rotas import sugerir
 from tempo_marte import sol_msl
 from tile_server import render_tile
 from vector_queries import all_photos, nearby_photos, nearest_science_target, todos_alvos_cientificos
@@ -323,6 +324,12 @@ def get_route(
             alerta["distancia_m"] = perfil[alerta.pop("indice_ponto")]["distancia_acumulada_m"]
         alertas.sort(key=lambda a: a["distancia_m"])
         rota["alertas"] = alertas
+
+    # Fase 4 (F02+F08): rótulo ✅/⚠️/⛔ e prós/contras por rota, mais a
+    # ordem sugerida -- roda por último porque usa alertas/margem_minima
+    # calculados acima. Nenhuma rota é removida/escondida daqui: sugerir()
+    # só acrescenta rotulo/pros_contras em cada item de resultado["rotas"].
+    resultado["sugestao"] = sugerir(resultado["rotas"])
 
     return resultado
 
