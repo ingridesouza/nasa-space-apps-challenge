@@ -238,11 +238,12 @@ class MarsTrekWMTSAdapter(LayerAdapter):
                     .replace("{TileCol}", str(col))
                 )
                 local_path = os.path.join(out_dir, f"{tile_matrix}_{row}_{col}.png")
-                resp = requests.get(url, timeout=30)
-                if resp.status_code != 200:
-                    continue  # tile fora da cobertura do produto; normal nas bordas
-                with open(local_path, "wb") as f:
-                    f.write(resp.content)
+                if not os.path.exists(local_path):  # reaproveita tile já baixado
+                    resp = requests.get(url, timeout=30)
+                    if resp.status_code != 200:
+                        continue  # tile fora da cobertura do produto; normal nas bordas
+                    with open(local_path, "wb") as f:
+                        f.write(resp.content)
                 results.append(
                     TileResult(row=row, col=col, tile_matrix=tile_matrix, local_path=local_path, bbox=cobertura_real)
                 )
