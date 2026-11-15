@@ -1,25 +1,25 @@
-"""A* real sobre a grade do DTM, para a feature 02 (rota inteligente +
-indicadores de risco). Ver docs/H2G2_Proposta_Projeto_Planejamento.md,
-seção "02", item 2.
+"""Real A* over the DTM grid, for feature 02 (smart route +
+risk indicators). See docs/H2G2_Proposta_Projeto_Planejamento.md,
+section "02", item 2.
 
-Desvio consciente da spec original: ela pede AI4Mars para custo de
-areia/rugosidade por pixel, mas a auditoria da feature 01 confirmou que
-o AI4Mars não cobre a época/região do boxwork (dataset para em ~sol
-2579, campanha do boxwork é sol 4564+). Custo aqui usa só inclinação
-real (DTM); o risco de areia nas depressões é um aviso textual fixo
-(ver AVISO_AREIA), não um fator numérico -- decisão tomada com o
-usuário, não gerar dado por pixel que não existe.
+Deliberate deviation from the original spec: it asks for AI4Mars for
+per-pixel sand/roughness cost, but the feature 01 audit confirmed that
+AI4Mars does not cover the boxwork period/region (dataset stops at ~sol
+2579, the boxwork campaign is sol 4564+). The cost here uses only real
+slope (DTM); the sand risk in the hollows is a fixed text warning
+(see SAND_WARNING), not a numeric factor -- a decision made with the
+user, do not generate per-pixel data that does not exist.
 
-Grade de custo é o DTM de verdade (512x512px, ~5.88m/px -- não é 1m
-apesar do nome da camada), carregado inteiro uma vez e cacheado em
-memória: amostragem ponto-a-ponto (raster_sampling.py) não serve pra
-A*, que precisa do array completo como grafo.
+The cost grid is the real DTM (512x512px, ~5.88m/px -- it is not 1m
+despite the layer name), loaded whole once and cached in
+memory: point-by-point sampling (raster_sampling.py) does not work for
+A*, which needs the full array as a graph.
 
-Radiação (RAD, PDS) entra como dose acumulada real na duração da
-caminhada (ver `_monta_rota`), não como custo espacial: é uma leitura
-por sol do instrumento no rover, não varia por pixel no nosso dado,
-então não influencia qual caminho o A* escolhe -- só o quanto essa
-caminhada específica expõe o astronauta, de verdade."""
+Radiation (RAD, PDS) enters as a real accumulated dose over the
+walk duration (see `_build_route`), not as a spatial cost: it is a per-sol
+reading of the instrument on the rover, it does not vary per pixel in our data,
+so it does not influence which path the A* chooses -- only how much this
+specific walk exposes the astronaut, for real."""
 
 import functools
 import heapq
@@ -29,148 +29,146 @@ import sqlite3
 import numpy as np
 import rasterio
 
-from alertas import BASE_LAT_LON
+from alerts import BASE_LAT_LON
 from geo import MARS_METERS_PER_DEGREE, haversine_m
-from vector_queries import todos_alvos_cientificos
+from vector_queries import all_science_targets
 
-# Mesmos limites da feature 01 (raster_sampling.py) -- um único "limite
-# Artemis" em todo o sistema, não dois valores que podem divergir.
-LIMITE_SLOPE_ATENCAO_DEG = 15.0
-LIMITE_SLOPE_PERIGO_DEG = 20.0
+# Same limits as feature 01 (raster_sampling.py) -- a single "Artemis
+# limit" across the whole system, not two values that may diverge.
+SLOPE_CAUTION_LIMIT_DEG = 15.0
+SLOPE_DANGER_LIMIT_DEG = 20.0
 
-#: peso extra aplicado à faixa "atenção" (15-20°) na variante "mais
-#: segura" -- penaliza mais forte que na variante "mais rápida", que só
-#: evita o que é realmente impassável (>=20°).
-PESO_ATENCAO = {"mais_segura": 6.0, "mais_rapida": 1.8}
+#: extra weight applied to the "caution" band (15-20°) in the "safest"
+#: variant -- penalizes harder than in the "fastest" variant, which only
+#: avoids what is truly impassable (>=20°).
+CAUTION_WEIGHT = {"safest": 6.0, "fastest": 1.8, "smoothest": 30.0}  # smoothest: replanning "it is steep"
 
-#: desvio máximo (em metros) que vale a pena pra passar por um alvo
-#: científico -- bbox inteiro tem ~5.6km de lado, então 600m é um
-#: desvio real mas não absurdo. Se nenhum dos alvos cabe nisso, a
-#: variante "mais_ciencia" nem aparece na resposta (nunca força passar
-#: por algo longe demais só pra "ter ciência").
-MAIS_CIENCIA_DESVIO_MAX_M = 600.0
+#: maximum detour (in meters) worth making to pass by a science
+#: target -- the whole bbox is ~5.6km on a side, so 600m is a
+#: real but not absurd detour. If none of the targets fit within it, the
+#: "most_science" variant does not even appear in the response (never forces
+#: passing by something too far just to "have science").
+MOST_SCIENCE_MAX_DETOUR_M = 600.0
 
-#: aviso fixo, citando a fonte real (não é cálculo por pixel -- ver
-#: docstring do módulo). Texto é pra exibição direta ao usuário final,
-#: por isso não cita caminho de arquivo interno do repositório --
-#: isso vai só no comentário do código, não no texto do aviso.
-AVISO_AREIA = (
-    "Risco de areia fofa nas depressões entre as cristas do boxwork, "
-    "relatado pelos operadores do Curiosity (rodas do rover patinaram "
-    "nessas áreas). Sem dado de textura por pixel pra essa região "
-    "(AI4Mars não cobre a época da campanha) -- trate como aviso "
-    "qualitativo do terreno, não como um custo já calculado na rota."
+#: fixed warning, citing the real source (not a per-pixel computation -- see
+#: module docstring). The text is for direct display to the end user,
+#: so it does not cite an internal repository file path --
+#: that goes only in the code comment, not in the warning text.
+SAND_WARNING = (
+    "Risk of soft sand in the hollows between the boxwork ridges, "
+    "reported by the Curiosity operators (the rover's wheels slipped "
+    "in these areas). No per-pixel texture data for this region "
+    "(AI4Mars does not cover the campaign period) -- treat it as a "
+    "qualitative terrain warning, not as a cost already computed in the route."
 )
 
-# Modelo de O2/tempo: estimativa simples e declarada como tal (a própria
-# spec diz "na demo, o nível do traje é simulado", não há telemetria
-# real de traje). Velocidade base em terreno plano ~0.8 m/s é a faixa
-# citada em estudos de EVA lunar/Apollo pra caminhada cautelosa com
-# traje pressurizado; cai conforme a inclinação sobe.
-# VELOCIDADE_BASE_M_S: segue sem fonte real confirmada pra caminhada em
-# gravidade marciana (ver levantamento em PROXIMOS-PASSOS.md, seção
-# "Feature 02 (rota)") -- mantido o valor anterior até existir
-# referência melhor.
-VELOCIDADE_BASE_M_S = 0.8
+# O2/time model: a simple estimate declared as such (the spec itself
+# says "in the demo, the suit level is simulated", there is no real
+# suit telemetry). Base speed on flat terrain ~0.8 m/s is the range
+# cited in lunar/Apollo EVA studies for cautious walking with a
+# pressurized suit; it drops as the slope rises.
+# BASE_SPEED_M_S: still without a confirmed real source for walking in
+# Martian gravity (see the survey in NEXT-STEPS.md, section
+# "Feature 02 (route)") -- previous value kept until a better
+# reference exists.
+BASE_SPEED_M_S = 0.8
 
-# TAXA_O2_L_POR_MIN: taxa metabólica média assumida pra traje de EVA de
-# Marte é 350 W (1194 BTU/hr), NASA, "Mars Exploration Portable Life
+# O2_RATE_L_PER_MIN: average metabolic rate assumed for a Mars EVA suit
+# is 350 W (1194 BTU/hr), NASA, "Mars Exploration Portable Life
 # Support System Schematic Study: Architecture Down-Selection"
-# (ICES-2026-158, NTRS 20260002884) -- valor fixo usado pros estudos de
-# esquemático do PLSS em EVAs de 2 a 8h (não é um número "pra 8h",
-# é usado pra qualquer duração nessa faixa). Convertido pra L/min de O2
-# pela equivalência calórica padrão do O2 (~5 kcal/L = ~20,92 kJ/L):
+# (ICES-2026-158, NTRS 20260002884) -- fixed value used in the PLSS
+# schematic studies for 2 to 8 h EVAs (not a number "for 8 h"; it is
+# used for any duration in that range). Converted to L/min of O2 by the
+# standard caloric equivalent of O2 (~5 kcal/L = ~20.92 kJ/L):
 #   350 W * 60 s/min / 20920 J/L = ~1.00 L/min
-# Substitui o valor antigo (0.84), que só tinha um comentário vago
-# ("EVA Apollo") sem fonte verificável.
-TAXA_O2_L_POR_MIN = 1.00
+# Replaces the old value (0.84), which only had a vague comment
+# ("Apollo EVA") with no verifiable source.
+O2_RATE_L_PER_MIN = 1.00
 
-# Faixa otimista-pessimista do consumo de O2 por trecho (Fase 1, F02+F08).
-# A velocidade cai com a inclinação do jeito que já era (ver
-# VELOCIDADE_BASE_M_S acima): otimista não reduz, pessimista usa a
-# mesma queda que o módulo já tinha antes dessa fase. O quanto o
-# CONSUMO de O2 por minuto cresce com a inclinação, porém, não é mais
-# um fator arbitrário -- vem da equação de Pandolf (Pandolf, Givoni &
-# Goldman, 1977), na forma que a NASA/JSC usa hoje pra estimar custo
-# metabólico de caminhada em EVA, inclusive pra Marte:
+# Optimistic-pessimistic range of O2 consumption per segment (Phase 1, F02+F08).
+# Speed drops with slope as before (see BASE_SPEED_M_S above): optimistic
+# does not reduce it, pessimistic uses the same drop the module already
+# had. How much the O2 CONSUMPTION per minute grows with slope, however,
+# is no longer an arbitrary factor -- it comes from the Pandolf equation
+# (Pandolf, Givoni & Goldman, 1977), in the form NASA/JSC uses today to
+# estimate the metabolic cost of EVA walking, including for Mars:
 #   Kim, K.J., Hoffmann, B., Estep, P., Marshall-Goebel, K., Buckland, D.
 #   "Improving Metabolic Workload Estimation Accuracy for Planning and
-#   Analyzing Exploration Traverses". IEEE EMBC 2024. Financiado pelo
-#   NASA Mars Campaign Office. Equação (2) do artigo:
+#   Analyzing Exploration Traverses". IEEE EMBC 2024. Funded by the
+#   NASA Mars Campaign Office. Equation (2) of the paper:
 #     MP = 1.5*W + 2.0*(W+L)*(L/W)^2 + eta*(W+L)*(1.5*V^2 + 0.35*V*G)
-#   W = massa corporal (kg), L = carga externa/traje (kg), V = velocidade
-#   (m/s), G = inclinação em % (100*tan do ângulo do trecho), eta =
-#   coeficiente de terreno (adimensional).
-# Ver PANDOLF_* logo abaixo pra fonte de cada constante usada na equação.
-FATOR_VELOCIDADE_OTIMISTA = 0.0   # otimista: velocidade não cai com a inclinação
-FATOR_VELOCIDADE_PESSIMISTA = 0.6  # pessimista: mesma queda de VELOCIDADE_BASE_M_S de antes
+#   W = body mass (kg), L = external load/suit (kg), V = speed (m/s),
+#   G = grade in % (100*tan of the segment angle), eta = terrain
+#   coefficient (dimensionless).
+# See PANDOLF_* right below for the source of each constant.
+OPTIMISTIC_SPEED_FACTOR = 0.0   # optimistic: speed does not drop with slope
+PESSIMISTIC_SPEED_FACTOR = 0.6  # pessimistic: same drop as BASE_SPEED_M_S before
 
-# W (massa corporal, 82 kg = 180 lbm) e L (massa do traje+PLSS, 104 kg
-# = 230 lbm, meta inicial de orçamento de massa pra traje de Marte):
-# NASA, "Mars Suit Mass Considerations" (NTRS 20260003038, ICES 2026).
-# eta=1.0 (asfalto/esteira): Soule & Goldman (1972), valor-base da
-# tabela de terreno usada com a equação de Pandolf -- não variamos eta
-# por pixel, mesma decisão já tomada nesse módulo pra textura do solo
-# (ver AVISO_AREIA: risco de areia é aviso qualitativo, não fator
-# numérico, por falta de dado de textura por pixel pra essa região).
-PANDOLF_MASSA_CORPO_KG = 82.0
-PANDOLF_MASSA_TRAJE_KG = 104.0
-PANDOLF_COEF_TERRENO = 1.0
-PANDOLF_COEF_GRADE = 0.35
+# W (body mass, 82 kg = 180 lbm) and L (suit+PLSS mass, 104 kg = 230 lbm,
+# initial mass budget target for a Mars suit): NASA, "Mars Suit Mass
+# Considerations" (NTRS 20260003038, ICES 2026).
+# eta=1.0 (asphalt/treadmill): Soule & Goldman (1972), base value of the
+# terrain table used with the Pandolf equation -- eta does not vary per
+# pixel, the same decision this module already made for soil texture
+# (see SAND_WARNING: sand risk is a qualitative warning, not a numeric
+# factor, for lack of per-pixel texture data for this region).
+PANDOLF_BODY_MASS_KG = 82.0
+PANDOLF_SUIT_MASS_KG = 104.0
+PANDOLF_TERRAIN_COEF = 1.0
+PANDOLF_GRADE_COEF = 0.35
 
 
-def _metabolismo_pandolf_w(velocidade_m_s: float, grade_pct: float) -> float:
-    """Taxa metabólica (watts) pela equação de Pandolf -- ver comentário
-    de FATOR_VELOCIDADE_PESSIMISTA acima pra fonte da equação e das
-    constantes PANDOLF_*.
+def _pandolf_metabolic_w(speed_m_s: float, grade_pct: float) -> float:
+    """Metabolic rate (watts) by the Pandolf equation -- see the comment of
+    PESSIMISTIC_SPEED_FACTOR above for the source of the equation and of
+    the PANDOLF_* constants.
 
-    Limitação conhecida e aceita: a equação não impõe teto de esforço
-    sustentável (VO2 máx). Isso faz o lado "otimista" (velocidade sem
-    redução) poder sair, numa rota real de terreno misto, ABAIXO do
-    antigo `o2_estimado_l` -- não porque suba menos oxigênio por
-    inclinação, mas porque o tempo total de exposição cai mais do que
-    a taxa sobe. É um resultado aceito do modelo, não um bug: o
-    "pessimista" (usado em toda decisão de segurança) continua
-    crescente com a inclinação em qualquer terreno. Corrigir isso
-    exigiria um limite de VO2 máx sustentado -- não impomos um valor
-    sem fonte; ver docs/fontes-de-dados.md."""
-    w, l = PANDOLF_MASSA_CORPO_KG, PANDOLF_MASSA_TRAJE_KG
+    Known and accepted limitation: the equation imposes no ceiling of
+    sustainable effort (VO2 max). So the "optimistic" side (speed not
+    reduced) can come out, on a real mixed-terrain route, BELOW the old
+    `estimated_o2_l` -- not because slope costs less oxygen, but because
+    the total exposure time drops more than the rate rises. It is an
+    accepted result of the model, not a bug: the "pessimistic" side (used
+    in every safety decision) keeps growing with slope on any terrain.
+    Fixing it would need a sustained VO2 max limit -- we do not impose a
+    value without a source; see docs/fontes-de-dados.md."""
+    w, l = PANDOLF_BODY_MASS_KG, PANDOLF_SUIT_MASS_KG
     return (
         1.5 * w
         + 2.0 * (w + l) * (l / w) ** 2
-        + PANDOLF_COEF_TERRENO
+        + PANDOLF_TERRAIN_COEF
         * (w + l)
-        * (1.5 * velocidade_m_s**2 + PANDOLF_COEF_GRADE * velocidade_m_s * grade_pct)
+        * (1.5 * speed_m_s**2 + PANDOLF_GRADE_COEF * speed_m_s * grade_pct)
     )
 
 
-# Normaliza a equação de Pandolf pelo caso-base (terreno plano, velocidade
-# base) pra converter em RAZÃO sobre TAXA_O2_L_POR_MIN -- assim a chave
-# antiga o2_estimado_l (que usa só TAXA_O2_L_POR_MIN) não muda, e a razão
-# dá exatamente 1.0 em terreno plano nos dois casos (otimista e
-# pessimista têm a mesma velocidade quando a inclinação é zero).
-_METABOLISMO_BASE_W = _metabolismo_pandolf_w(VELOCIDADE_BASE_M_S, 0.0)
+# Normalizes the Pandolf equation by the base case (flat terrain, base
+# speed) to turn it into a RATIO over O2_RATE_L_PER_MIN -- so the old key
+# estimated_o2_l (which uses only O2_RATE_L_PER_MIN) does not change, and the
+# ratio is exactly 1.0 on flat terrain in both cases (optimistic and
+# pessimistic have the same speed when the slope is zero).
+_BASE_METABOLIC_W = _pandolf_metabolic_w(BASE_SPEED_M_S, 0.0)
 
 
-class SemCaminhoError(Exception):
+class NoPathError(Exception):
     pass
 
 
-class ForaDoGridError(Exception):
+class OutOfGridError(Exception):
     pass
 
 
 @functools.lru_cache(maxsize=1)
 def _load_dtm(local_tile_path: str):
-    """Carrega o DTM inteiro uma vez (array + transform), cacheado em
-    memória -- diferente de raster_sampling.sample_point, que abre o
-    arquivo a cada chamada (ok pra ponto único, ruim pra grid inteiro)."""
+    """Loads the whole DTM once (array + transform), cached in
+    memory -- unlike raster_sampling.sample_point, which opens the
+    file on each call (ok for a single point, bad for the whole grid)."""
     with rasterio.open(local_tile_path) as dataset:
-        elevacao = dataset.read(1).astype(np.float64)
+        elevation = dataset.read(1).astype(np.float64)
         transform = dataset.transform
         bounds = dataset.bounds
         nodata = dataset.nodata
-    return elevacao, transform, bounds, nodata
+    return elevation, transform, bounds, nodata
 
 
 def _dtm_path(conn: sqlite3.Connection) -> str:
@@ -178,16 +176,16 @@ def _dtm_path(conn: sqlite3.Connection) -> str:
         "SELECT local_tile_path FROM raster_registry WHERE layer_name = 'dtm_hirise_1m'"
     ).fetchone()
     if row is None:
-        raise RuntimeError("Camada dtm_hirise_1m não registrada em raster_registry")
+        raise RuntimeError("Layer dtm_hirise_1m not registered in raster_registry")
     return row["local_tile_path"]
 
 
-def _slope_grid_deg(elevacao: np.ndarray, pixel_size_m: float) -> np.ndarray:
-    """Inclinação por pixel pra grade inteira (np.gradient vetorizado) --
-    mesma física da janela 3x3 usada em raster_sampling.sample_point,
-    só que calculada de uma vez pra todos os pixels em vez de ponto a
-    ponto."""
-    dz_dy, dz_dx = np.gradient(elevacao, pixel_size_m)
+def _slope_grid_deg(elevation: np.ndarray, pixel_size_m: float) -> np.ndarray:
+    """Per-pixel slope for the whole grid (vectorized np.gradient) --
+    same physics as the 3x3 window used in raster_sampling.sample_point,
+    just computed at once for all pixels instead of point by
+    point."""
+    dz_dy, dz_dx = np.gradient(elevation, pixel_size_m)
     slope_rad = np.arctan(np.hypot(dz_dx, dz_dy))
     return np.degrees(slope_rad)
 
@@ -202,519 +200,501 @@ def _rc_to_latlon(transform, row: int, col: int) -> tuple[float, float]:
     return lat, lon
 
 
-_VIZINHOS_8 = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+_NEIGHBORS_8 = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
 
-#: raio de tolerância (em pixels) pra "encostar" o clique no pixel
-#: caminhável mais próximo -- um só pixel de inclinação ruidosa (ex.
-#: borda de uma crista do boxwork) não deveria travar um clique que
-#: visualmente parece estar em terreno razoável. ~3 pixels * 5.88m/px
-#: ~= 17m de tolerância, pequeno o bastante pra não mudar o sentido do
-#: clique do usuário.
-RAIO_SNAP_PX = 3
+#: tolerance radius (in pixels) to "snap" the click to the nearest
+#: walkable pixel -- a single noisy-slope pixel (e.g. the
+#: edge of a boxwork ridge) should not block a click that
+#: visually seems to be on reasonable terrain. ~3 pixels * 5.88m/px
+#: ~= 17m of tolerance, small enough not to change the meaning of the
+#: user's click.
+SNAP_RADIUS_PX = 3
 
 
-def _snap_para_passavel(r, c, n_rows, n_cols, passavel):
-    """Procura em espiral o pixel caminhável mais próximo de (r, c)
-    dentro de RAIO_SNAP_PX. Devolve None se não achar nenhum."""
-    if passavel(r, c):
+def _snap_to_passable(r, c, n_rows, n_cols, passable):
+    """Searches in a spiral for the walkable pixel nearest to (r, c)
+    within SNAP_RADIUS_PX. Returns None if none is found."""
+    if passable(r, c):
         return r, c
-    for raio in range(1, RAIO_SNAP_PX + 1):
-        candidatos = []
-        for dr in range(-raio, raio + 1):
-            for dc in range(-raio, raio + 1):
-                if max(abs(dr), abs(dc)) != raio:
+    for radius in range(1, SNAP_RADIUS_PX + 1):
+        candidates = []
+        for dr in range(-radius, radius + 1):
+            for dc in range(-radius, radius + 1):
+                if max(abs(dr), abs(dc)) != radius:
                     continue
                 rr, cc = r + dr, c + dc
-                if 0 <= rr < n_rows and 0 <= cc < n_cols and passavel(rr, cc):
-                    candidatos.append((rr, cc))
-        if candidatos:
-            return min(candidatos, key=lambda p: math.hypot(p[0] - r, p[1] - c))
+                if 0 <= rr < n_rows and 0 <= cc < n_cols and passable(rr, cc):
+                    candidates.append((rr, cc))
+        if candidates:
+            return min(candidates, key=lambda p: math.hypot(p[0] - r, p[1] - c))
     return None
 
 
-def _astar(elevacao, slope_deg, transform, pixel_size_m, origem_rc, destino_rc, tipo: str):
-    n_rows, n_cols = elevacao.shape
-    peso_atencao = PESO_ATENCAO[tipo]
+def _astar(elevation, slope_deg, transform, pixel_size_m, origin_rc, dest_rc, kind: str):
+    n_rows, n_cols = elevation.shape
+    caution_weight = CAUTION_WEIGHT[kind]
 
-    def passavel(r, c):
-        return 0 <= r < n_rows and 0 <= c < n_cols and slope_deg[r, c] < LIMITE_SLOPE_PERIGO_DEG
+    def passable(r, c):
+        return 0 <= r < n_rows and 0 <= c < n_cols and slope_deg[r, c] < SLOPE_DANGER_LIMIT_DEG
 
-    def custo_aresta(r1, c1, r2, c2):
+    def edge_cost(r1, c1, r2, c2):
         dist = pixel_size_m * math.hypot(r2 - r1, c2 - c1)
         s = max(slope_deg[r1, c1], slope_deg[r2, c2])
-        if s >= LIMITE_SLOPE_ATENCAO_DEG:
-            return dist * peso_atencao
+        if s >= SLOPE_CAUTION_LIMIT_DEG:
+            return dist * caution_weight
         return dist
 
-    def heuristica(r, c):
-        dr, dc = destino_rc[0] - r, destino_rc[1] - c
+    def heuristic(r, c):
+        dr, dc = dest_rc[0] - r, dest_rc[1] - c
         return pixel_size_m * math.hypot(dr, dc)
 
-    origem_ok = _snap_para_passavel(*origem_rc, n_rows, n_cols, passavel)
-    destino_ok = _snap_para_passavel(*destino_rc, n_rows, n_cols, passavel)
-    if origem_ok is None and destino_ok is None:
-        raise ForaDoGridError("Origem e destino caem em terreno acima do limite de 20° (mesmo no pixel mais próximo caminhável)")
-    if origem_ok is None:
-        raise ForaDoGridError("Origem cai em terreno acima do limite de 20° -- clique num ponto um pouco diferente")
-    if destino_ok is None:
-        raise ForaDoGridError("Destino cai em terreno acima do limite de 20° -- clique num ponto um pouco diferente")
-    origem_rc, destino_rc = origem_ok, destino_ok
+    origin_ok = _snap_to_passable(*origin_rc, n_rows, n_cols, passable)
+    dest_ok = _snap_to_passable(*dest_rc, n_rows, n_cols, passable)
+    if origin_ok is None and dest_ok is None:
+        raise OutOfGridError("Origin and destination fall on terrain above the 20° limit (even at the nearest walkable pixel)")
+    if origin_ok is None:
+        raise OutOfGridError("Origin falls on terrain above the 20° limit -- click a slightly different point")
+    if dest_ok is None:
+        raise OutOfGridError("Destination falls on terrain above the 20° limit -- click a slightly different point")
+    origin_rc, dest_rc = origin_ok, dest_ok
 
-    aberto = [(heuristica(*origem_rc), origem_rc)]
-    veio_de: dict = {}
-    g_score = {origem_rc: 0.0}
-    visitado = set()
+    open_set = [(heuristic(*origin_rc), origin_rc)]
+    came_from: dict = {}
+    g_score = {origin_rc: 0.0}
+    visited = set()
 
-    while aberto:
-        _, atual = heapq.heappop(aberto)
-        if atual in visitado:
+    while open_set:
+        _, current = heapq.heappop(open_set)
+        if current in visited:
             continue
-        if atual == destino_rc:
-            caminho = [atual]
-            while atual in veio_de:
-                atual = veio_de[atual]
-                caminho.append(atual)
-            caminho.reverse()
-            return caminho
-        visitado.add(atual)
+        if current == dest_rc:
+            path = [current]
+            while current in came_from:
+                current = came_from[current]
+                path.append(current)
+            path.reverse()
+            return path
+        visited.add(current)
 
-        for dr, dc in _VIZINHOS_8:
-            viz = (atual[0] + dr, atual[1] + dc)
-            if viz in visitado or not passavel(*viz):
+        for dr, dc in _NEIGHBORS_8:
+            nb = (current[0] + dr, current[1] + dc)
+            if nb in visited or not passable(*nb):
                 continue
-            novo_g = g_score[atual] + custo_aresta(atual[0], atual[1], viz[0], viz[1])
-            if novo_g < g_score.get(viz, math.inf):
-                g_score[viz] = novo_g
-                veio_de[viz] = atual
-                heapq.heappush(aberto, (novo_g + heuristica(*viz), viz))
+            new_g = g_score[current] + edge_cost(current[0], current[1], nb[0], nb[1])
+            if new_g < g_score.get(nb, math.inf):
+                g_score[nb] = new_g
+                came_from[nb] = current
+                heapq.heappush(open_set, (new_g + heuristic(*nb), nb))
 
-    raise SemCaminhoError("Nenhum caminho possível sem cruzar inclinação >= 20°")
+    raise NoPathError("No possible path without crossing a slope >= 20°")
 
 
-def custo_ate_base(conn: sqlite3.Connection) -> dict[tuple[int, int], dict]:
-    """Mapa de custo de volta (Fase 2, F02+F08): Dijkstra a partir da
-    BASE_LAT_LON (api/alertas.py), no mesmo grid e com as mesmas regras
-    de passabilidade do A* (`_astar` acima) -- inclinação >= 20° continua
-    impassável. O custo usado pra escolher o caminho (e pra ordenar a
-    fila do Dijkstra) é o mesmo "custo de risco" da variante "mais_segura"
-    (distância penalizada em trechos de atenção, ver PESO_ATENCAO) --
-    decisão nossa: uma volta de emergência deve ser calculada pelo
-    caminho mais cauteloso, não o mais rápido.
+def cost_to_base(conn: sqlite3.Connection) -> dict[tuple[int, int], dict]:
+    """Return-cost map (Phase 2, F02+F08): Dijkstra from BASE_LAT_LON
+    (api/alerts.py), on the same grid and with the same passability rule
+    as A* (`_astar` above) -- slope >= 20° stays impassable. The cost used
+    to pick the path (and to order the Dijkstra queue) is the same "risk
+    cost" as the "safest" variant (distance penalized on caution segments,
+    see CAUTION_WEIGHT) -- our decision: an emergency return should be
+    computed along the most cautious path, not the fastest one.
 
-    Devolve um dict {(r, c): {"tempo_volta_s", "o2_volta_l"}} só com os
-    pixels que TÊM caminho até a base -- um pixel sem entrada no dict é
-    "sem volta calculável daqui" (nunca um infinito disfarçado de
-    número). tempo_volta_s e o2_volta_l são acumulados trecho a trecho
-    ao longo do mesmo caminho que o Dijkstra encontrou, com a velocidade
-    e a taxa de O2 PESSIMISTAS (mesmas fórmulas da Fase 1 -- ver
-    FATOR_VELOCIDADE_PESSIMISTA e _metabolismo_pandolf_w) -- é sempre o
-    pior caso que entra numa decisão de segurança.
+    Returns a dict {(r, c): {"return_time_s", "return_o2_l"}} only for the
+    pixels that HAVE a path to base -- a pixel with no entry in the dict
+    means "no computable return from here" (never a disguised infinity).
+    return_time_s and return_o2_l are accumulated segment by segment along
+    the same path Dijkstra found, with the PESSIMISTIC speed and O2 rate
+    (same formulas as Phase 1 -- see PESSIMISTIC_SPEED_FACTOR and
+    _pandolf_metabolic_w) -- it is always the worst case that feeds a
+    safety decision.
 
-    Calculado uma vez e cacheado (ver _custo_ate_base_cacheado) porque o
-    DTM e a base não mudam durante a vida do processo: medido no grid
-    real de Gale (512x512px) em 2026-11-14, ~4,2s pra cobrir ~188 mil
-    pixels alcançáveis dos 262 mil do grid -- aceitável por ser pago uma
-    vez só (primeira chamada), nunca por request. Não recortamos o grid
-    ao raio de 2km da regra `volta_base` (api/alertas.py) porque a
-    maior parte do grid real já cai dentro desse raio -- cortar não
-    reduziria o trabalho o bastante pra valer a complexidade."""
-    return _custo_ate_base_cacheado(_dtm_path(conn))
+    Computed once and cached (see _cost_to_base_cached) because the DTM
+    and the base do not change during the process lifetime."""
+    return _cost_to_base_cached(_dtm_path(conn))
 
 
 @functools.lru_cache(maxsize=1)
-def _custo_ate_base_cacheado(local_tile_path: str) -> dict[tuple[int, int], dict]:
-    elevacao, transform, bounds, nodata = _load_dtm(local_tile_path)
+def _cost_to_base_cached(local_tile_path: str) -> dict[tuple[int, int], dict]:
+    elevation, transform, bounds, nodata = _load_dtm(local_tile_path)
     pixel_size_deg = abs(transform.a)
     pixel_size_m = pixel_size_deg * MARS_METERS_PER_DEGREE
-    slope_deg = _slope_grid_deg(elevacao, pixel_size_m)
-    n_rows, n_cols = elevacao.shape
-    peso_atencao = PESO_ATENCAO["mais_segura"]
+    slope_deg = _slope_grid_deg(elevation, pixel_size_m)
+    n_rows, n_cols = elevation.shape
+    caution_weight = CAUTION_WEIGHT["safest"]
 
-    def passavel(r, c):
-        return 0 <= r < n_rows and 0 <= c < n_cols and slope_deg[r, c] < LIMITE_SLOPE_PERIGO_DEG
+    def passable(r, c):
+        return 0 <= r < n_rows and 0 <= c < n_cols and slope_deg[r, c] < SLOPE_DANGER_LIMIT_DEG
 
-    def custo_risco_aresta(r1, c1, r2, c2, dist_real_m, s):
-        if s >= LIMITE_SLOPE_ATENCAO_DEG:
-            return dist_real_m * peso_atencao
+    def risk_edge_cost(dist_real_m, s):
+        if s >= SLOPE_CAUTION_LIMIT_DEG:
+            return dist_real_m * caution_weight
         return dist_real_m
 
     base_rc = _latlon_to_rc(transform, *BASE_LAT_LON)
-    if not passavel(*base_rc):
-        base_rc = _snap_para_passavel(*base_rc, n_rows, n_cols, passavel)
+    if not passable(*base_rc):
+        base_rc = _snap_to_passable(*base_rc, n_rows, n_cols, passable)
     if base_rc is None:
         return {}
 
-    custo_risco: dict = {base_rc: 0.0}
-    tempo_volta_s: dict = {base_rc: 0.0}
-    o2_volta_l: dict = {base_rc: 0.0}
-    visitado = set()
-    fila = [(0.0, base_rc)]
+    risk_cost: dict = {base_rc: 0.0}
+    return_time_s: dict = {base_rc: 0.0}
+    return_o2_l: dict = {base_rc: 0.0}
+    visited = set()
+    queue = [(0.0, base_rc)]
 
-    while fila:
-        custo_atual, atual = heapq.heappop(fila)
-        if atual in visitado:
+    while queue:
+        current_cost, current = heapq.heappop(queue)
+        if current in visited:
             continue
-        visitado.add(atual)
+        visited.add(current)
 
-        for dr, dc in _VIZINHOS_8:
-            viz = (atual[0] + dr, atual[1] + dc)
-            if viz in visitado or not passavel(*viz):
+        for dr, dc in _NEIGHBORS_8:
+            nb = (current[0] + dr, current[1] + dc)
+            if nb in visited or not passable(*nb):
                 continue
 
-            r1, c1 = atual
-            r2, c2 = viz
+            r1, c1 = current
+            r2, c2 = nb
             dist_real_m = pixel_size_m * math.hypot(r2 - r1, c2 - c1)
             s = max(slope_deg[r1, c1], slope_deg[r2, c2])
-            novo_custo = custo_atual + custo_risco_aresta(r1, c1, r2, c2, dist_real_m, s)
+            new_cost = current_cost + risk_edge_cost(dist_real_m, s)
 
-            if novo_custo < custo_risco.get(viz, math.inf):
-                # Mesma fórmula pessimista da Fase 1 (_monta_rota),
-                # aplicada a este trecho -- acumulada só quando o
-                # Dijkstra confirma que ESTE é o melhor caminho até viz,
-                # então tempo/O2 sempre seguem o mesmo caminho do custo.
-                velocidade_pessimista = VELOCIDADE_BASE_M_S * max(
-                    1 - (s / LIMITE_SLOPE_PERIGO_DEG) * FATOR_VELOCIDADE_PESSIMISTA, 0.25
+            if new_cost < risk_cost.get(nb, math.inf):
+                # Same pessimistic formula as Phase 1 (_build_route),
+                # applied to this segment -- only accumulated when Dijkstra
+                # confirms this is the best path to nb, so time/O2 always
+                # follow the same path as the cost.
+                speed_pessimistic = BASE_SPEED_M_S * max(
+                    1 - (s / SLOPE_DANGER_LIMIT_DEG) * PESSIMISTIC_SPEED_FACTOR, 0.25
                 )
-                tempo_trecho_s = dist_real_m / velocidade_pessimista
+                segment_time_s = dist_real_m / speed_pessimistic
                 grade_pct = 100.0 * math.tan(math.radians(s))
-                taxa_o2_pessimista = TAXA_O2_L_POR_MIN * (
-                    _metabolismo_pandolf_w(velocidade_pessimista, grade_pct) / _METABOLISMO_BASE_W
+                o2_rate_pessimistic = O2_RATE_L_PER_MIN * (
+                    _pandolf_metabolic_w(speed_pessimistic, grade_pct) / _BASE_METABOLIC_W
                 )
-                o2_trecho_l = taxa_o2_pessimista * (tempo_trecho_s / 60.0)
+                segment_o2_l = o2_rate_pessimistic * (segment_time_s / 60.0)
 
-                custo_risco[viz] = novo_custo
-                tempo_volta_s[viz] = tempo_volta_s[atual] + tempo_trecho_s
-                o2_volta_l[viz] = o2_volta_l[atual] + o2_trecho_l
-                heapq.heappush(fila, (novo_custo, viz))
+                risk_cost[nb] = new_cost
+                return_time_s[nb] = return_time_s[current] + segment_time_s
+                return_o2_l[nb] = return_o2_l[current] + segment_o2_l
+                heapq.heappush(queue, (new_cost, nb))
 
     return {
-        rc: {"tempo_volta_s": round(tempo_volta_s[rc], 1), "o2_volta_l": round(o2_volta_l[rc], 2)}
-        for rc in custo_risco
+        rc: {"return_time_s": round(return_time_s[rc], 1), "return_o2_l": round(return_o2_l[rc], 2)}
+        for rc in risk_cost
     }
 
 
-def _monta_rota(
-    tipo: str,
-    caminho_rc,
-    elevacao,
+def _build_route(
+    kind: str,
+    path_rc,
+    elevation,
     slope_deg,
     transform,
     pixel_size_m,
-    dose_rad_ugy_por_hora,
-    mapa_custo_base: dict | None = None,
-    o2_disponivel_l: float | None = None,
+    rad_dose_ugy_per_hour,
+    cost_to_base_map: dict | None = None,
+    available_o2_l: float | None = None,
 ) -> dict:
-    pontos = [_rc_to_latlon(transform, r, c) for r, c in caminho_rc]
+    points = [_rc_to_latlon(transform, r, c) for r, c in path_rc]
 
-    distancia_m = 0.0
-    perfil = [{"distancia_acumulada_m": 0.0, "elevacao_m": float(elevacao[caminho_rc[0]])}]
-    trechos_risco = []
-    tempo_s = 0.0
-    o2_otimista_l = 0.0
-    o2_pessimista_l = 0.0
+    distance_m = 0.0
+    profile = [{"cumulative_distance_m": 0.0, "elevation_m": float(elevation[path_rc[0]])}]
+    risk_segments = []
+    time_s = 0.0
+    o2_optimistic_l = 0.0
+    o2_pessimistic_l = 0.0
 
-    # Fase 3: acumulado PESSIMISTA por nó do caminho (não só o total da
-    # rota) -- é o que _perfil_margem_de_volta usa pra saber "quanto já
-    # gastei até aqui" em cada ponto. O nó de origem começa em zero.
-    tempo_acumulado_pessimista_s = [0.0]
-    o2_acumulado_pessimista_l = [0.0]
+    # Phase 3: PESSIMISTIC cumulative per node of the path (not just the
+    # route total) -- this is what _return_margin_profile uses to know
+    # "how much have I already spent by here" at each point. The origin
+    # node starts at zero.
+    cumulative_time_pessimistic_s = [0.0]
+    cumulative_o2_pessimistic_l = [0.0]
 
-    for i in range(1, len(caminho_rc)):
-        r1, c1 = caminho_rc[i - 1]
-        r2, c2 = caminho_rc[i]
+    for i in range(1, len(path_rc)):
+        r1, c1 = path_rc[i - 1]
+        r2, c2 = path_rc[i]
         d = pixel_size_m * math.hypot(r2 - r1, c2 - c1)
-        distancia_m += d
+        distance_m += d
 
         s = max(slope_deg[r1, c1], slope_deg[r2, c2])
-        if s >= LIMITE_SLOPE_PERIGO_DEG:
-            status = "perigo"
-        elif s >= LIMITE_SLOPE_ATENCAO_DEG:
-            status = "atencao"
+        if s >= SLOPE_DANGER_LIMIT_DEG:
+            status = "danger"
+        elif s >= SLOPE_CAUTION_LIMIT_DEG:
+            status = "caution"
         else:
-            status = "seguro"
+            status = "safe"
 
-        # velocidade decresce com a inclinação -- modelo simples e
-        # declarado (ver VELOCIDADE_BASE_M_S acima), não sensor real.
-        velocidade = VELOCIDADE_BASE_M_S * max(1 - (s / LIMITE_SLOPE_PERIGO_DEG) * 0.6, 0.25)
-        tempo_s += d / velocidade
+        # speed decreases with slope -- a simple and
+        # declared model (see BASE_SPEED_M_S above), not a real sensor.
+        speed = BASE_SPEED_M_S * max(1 - (s / SLOPE_DANGER_LIMIT_DEG) * 0.6, 0.25)
+        time_s += d / speed
 
-        # Faixa otimista-pessimista do trecho (Fase 1): mesma forma da
-        # velocidade/tempo acima, com os fatores declarados no topo do
-        # arquivo -- ver FATOR_VELOCIDADE_*.
-        velocidade_otimista = VELOCIDADE_BASE_M_S * max(1 - (s / LIMITE_SLOPE_PERIGO_DEG) * FATOR_VELOCIDADE_OTIMISTA, 0.25)
-        velocidade_pessimista = VELOCIDADE_BASE_M_S * max(1 - (s / LIMITE_SLOPE_PERIGO_DEG) * FATOR_VELOCIDADE_PESSIMISTA, 0.25)
-        tempo_min_otimista_trecho = (d / velocidade_otimista) / 60.0
-        tempo_min_pessimista_trecho = (d / velocidade_pessimista) / 60.0
+        # Optimistic-pessimistic range of the segment (Phase 1): same form as
+        # the speed/time above, with the factors declared at the top of
+        # the file -- see *_SPEED_FACTOR.
+        speed_optimistic = BASE_SPEED_M_S * max(1 - (s / SLOPE_DANGER_LIMIT_DEG) * OPTIMISTIC_SPEED_FACTOR, 0.25)
+        speed_pessimistic = BASE_SPEED_M_S * max(1 - (s / SLOPE_DANGER_LIMIT_DEG) * PESSIMISTIC_SPEED_FACTOR, 0.25)
+        segment_min_optimistic = (d / speed_optimistic) / 60.0
+        segment_min_pessimistic = (d / speed_pessimistic) / 60.0
 
-        # Razão da equação de Pandolf (ver _metabolismo_pandolf_w acima)
-        # entre o trecho real (com a inclinação e a velocidade de cada
-        # caso) e o caso-base plano -- é isso que faz a taxa de O2 subir
-        # com a inclinação, com fonte declarada.
+        # Pandolf ratio (see _pandolf_metabolic_w above) between the real
+        # segment (with the slope and speed of each case) and the flat base
+        # case -- this is what makes the O2 rate rise with slope, with a
+        # declared source.
         grade_pct = 100.0 * math.tan(math.radians(s))
-        taxa_o2_otimista = TAXA_O2_L_POR_MIN * (
-            _metabolismo_pandolf_w(velocidade_otimista, grade_pct) / _METABOLISMO_BASE_W
-        )
-        taxa_o2_pessimista = TAXA_O2_L_POR_MIN * (
-            _metabolismo_pandolf_w(velocidade_pessimista, grade_pct) / _METABOLISMO_BASE_W
-        )
-        o2_otimista_l += taxa_o2_otimista * tempo_min_otimista_trecho
-        o2_pessimista_l += taxa_o2_pessimista * tempo_min_pessimista_trecho
+        o2_rate_optimistic = O2_RATE_L_PER_MIN * (_pandolf_metabolic_w(speed_optimistic, grade_pct) / _BASE_METABOLIC_W)
+        o2_rate_pessimistic = O2_RATE_L_PER_MIN * (_pandolf_metabolic_w(speed_pessimistic, grade_pct) / _BASE_METABOLIC_W)
+        o2_optimistic_l += o2_rate_optimistic * segment_min_optimistic
+        o2_pessimistic_l += o2_rate_pessimistic * segment_min_pessimistic
 
-        tempo_acumulado_pessimista_s.append(tempo_acumulado_pessimista_s[-1] + tempo_min_pessimista_trecho * 60.0)
-        o2_acumulado_pessimista_l.append(o2_acumulado_pessimista_l[-1] + taxa_o2_pessimista * tempo_min_pessimista_trecho)
+        cumulative_time_pessimistic_s.append(cumulative_time_pessimistic_s[-1] + segment_min_pessimistic * 60.0)
+        cumulative_o2_pessimistic_l.append(cumulative_o2_pessimistic_l[-1] + o2_rate_pessimistic * segment_min_pessimistic)
 
-        perfil.append({
-            "distancia_acumulada_m": round(distancia_m, 1),
-            "elevacao_m": float(elevacao[r2, c2]),
+        profile.append({
+            "cumulative_distance_m": round(distance_m, 1),
+            "elevation_m": float(elevation[r2, c2]),
         })
-        trechos_risco.append({
-            "de": [pontos[i - 1][0], pontos[i - 1][1]],
-            "para": [pontos[i][0], pontos[i][1]],
+        risk_segments.append({
+            "from": [points[i - 1][0], points[i - 1][1]],
+            "to": [points[i][0], points[i][1]],
             "slope_status": status,
             "slope_deg": round(float(s), 2),
         })
 
-    tempo_min = tempo_s / 60.0
-    o2_l = TAXA_O2_L_POR_MIN * tempo_min
+    time_min = time_s / 60.0
+    o2_l = O2_RATE_L_PER_MIN * time_min
 
-    # Radiação (RAD) real por sol -- não varia por posição no nosso
-    # dado (é uma leitura do instrumento no rover, não um raster
-    # espacial), então não muda QUAL caminho o A* escolhe, mas é uma
-    # dose real acumulada de verdade pelo tempo que a caminhada leva.
-    # None (não 0) quando o sol de referência não está cacheado -- ver
-    # api/main.py REFERENCE_SOL -- pra não fingir "zero radiação".
-    dose_rad_ugy = round(dose_rad_ugy_por_hora * (tempo_min / 60.0), 2) if dose_rad_ugy_por_hora is not None else None
+    # Real per-sol radiation (RAD) -- it does not vary by position in our
+    # data (it is a reading of the instrument on the rover, not a spatial
+    # raster), so it does not change WHICH path the A* chooses, but it is a
+    # real dose really accumulated over the time the walk takes.
+    # None (not 0) when the reference sol is not cached -- see
+    # api/main.py REFERENCE_SOL -- so as not to fake "zero radiation".
+    rad_dose_ugy = round(rad_dose_ugy_per_hour * (time_min / 60.0), 2) if rad_dose_ugy_per_hour is not None else None
 
-    margem_minima, ponto_nao_retorno, pior_trecho_emergencia, volta_minutos_max = _perfil_margem_de_volta(
-        caminho_rc, pontos, perfil, tempo_acumulado_pessimista_s, o2_acumulado_pessimista_l,
-        mapa_custo_base, o2_disponivel_l,
+    min_margin, no_return_point, worst_emergency_segment, max_return_minutes = _return_margin_profile(
+        path_rc, points, profile, cumulative_time_pessimistic_s, cumulative_o2_pessimistic_l,
+        cost_to_base_map, available_o2_l,
     )
 
     return {
-        "tipo": tipo,
-        "pontos": [[lat, lon] for lat, lon in pontos],
-        "distancia_m": round(distancia_m, 1),
-        "tempo_estimado_min": round(tempo_min, 1),
-        "o2_estimado_l": round(o2_l, 2),
-        "o2_estimado_l_faixa": {
-            "otimista": round(o2_otimista_l, 2),
-            "pessimista": round(o2_pessimista_l, 2),
+        "type": kind,
+        "points": [[lat, lon] for lat, lon in points],
+        "distance_m": round(distance_m, 1),
+        "estimated_time_min": round(time_min, 1),
+        "estimated_o2_l": round(o2_l, 2),
+        "estimated_o2_l_range": {
+            "optimistic": round(o2_optimistic_l, 2),
+            "pessimistic": round(o2_pessimistic_l, 2),
         },
-        "dose_rad_estimada_ugy": dose_rad_ugy,
-        "perfil_elevacao": perfil,
-        "trechos_risco": trechos_risco,
-        "margem_minima": margem_minima,
-        "ponto_nao_retorno": ponto_nao_retorno,
-        "pior_trecho_emergencia": pior_trecho_emergencia,
-        "volta_minutos_max": volta_minutos_max,
+        "estimated_rad_dose_ugy": rad_dose_ugy,
+        "elevation_profile": profile,
+        "risk_segments": risk_segments,
+        "min_margin": min_margin,
+        "no_return_point": no_return_point,
+        "worst_emergency_segment": worst_emergency_segment,
+        "max_return_minutes": max_return_minutes,
     }
 
 
-def _perfil_margem_de_volta(
-    caminho_rc, pontos, perfil, tempo_acumulado_pessimista_s, o2_acumulado_pessimista_l,
-    mapa_custo_base: dict | None, o2_disponivel_l: float | None,
+def _return_margin_profile(
+    path_rc, points, profile, cumulative_time_pessimistic_s, cumulative_o2_pessimistic_l,
+    cost_to_base_map: dict | None, available_o2_l: float | None,
 ):
-    """Fase 3 (F02+F08) -- margem de O2 e ponto de não retorno, ponto a
-    ponto ao longo da rota, usando o mapa de custo de volta da Fase 2
-    (`custo_ate_base`) e os acumulados PESSIMISTAS da Fase 1. Pior caso
-    em tudo, igual ao resto do arquivo (CLAUDE.md: sem dado, sem número
-    -- nunca inventa um valor otimista aqui).
+    """Phase 3 (F02+F08) -- O2 margin and no-return point, point by point
+    along the route, using the Phase 2 return-cost map (`cost_to_base`)
+    and the PESSIMISTIC cumulatives from Phase 1. Worst case throughout,
+    like the rest of this file (CLAUDE.md: no data, no number -- never
+    makes up an optimistic value here).
 
-    Campos e critérios definidos por mim agora pra desbloquear o Hugo
-    (F08) -- a confirmar/ajustar com ele na conversa da seção 8.0 do
-    doc de arquitetura, não é contrato fechado:
+    Fields and criteria defined to unblock the rest of the team -- confirm/
+    adjust later once route_suggestions.py/agent.py actually consume them;
+    not a closed contract:
 
-    - `ponto_nao_retorno` usa só TEMPO, nunca O2: é o primeiro ponto da
-      rota (varrendo da origem) onde o tempo que falta pra chegar no
-      destino já é menor que o tempo de voltar pra base dali. Funciona
-      com ou sem `o2_disponivel_l` informado (plano original: "o ponto
-      de não retorno em tempo continua valendo" mesmo sem O2).
-    - `pior_trecho_emergencia` é o ponto da rota com a PIOR volta. Um
-      ponto sem volta calculável (fora do mapa da Fase 2 -- ver
-      `custo_ate_base`) é tratado como PIOR que qualquer volta finita,
-      nunca ignorado em silêncio -- é literalmente o caso mais perigoso
-      que existe (não dá pra voltar daquele ponto de jeito nenhum).
-    - `volta_minutos_max` e `margem_minima` só consideram pontos COM
-      volta calculável -- um ponto sem volta já apareceu em
-      `pior_trecho_emergencia`, não precisa duplicar o aviso aqui.
-    - Parâmetro de entrada é `o2_disponivel_l` (litros), não
-      `o2_disponivel_pct` como o plano original sugeria -- decisão
-      minha: a capacidade do traje (`CAPACIDADE_O2_L_PADRAO`) hoje só
-      existe no front (`web/ui/rota.js`) e não tem fonte oficial (ver
-      PROXIMOS-PASSOS.md); duplicar essa constante aqui no backend
-      arriscaria os dois lados divergirem. Quem converte % -> litros é
-      quem já tem a capacidade (front/voz), e manda o litro pronto.
+    - `no_return_point` uses only TIME, never O2: it is the first point of
+      the route (scanning from the origin) where the time left to reach
+      the destination is already less than the time to return to base from
+      there. Works with or without `available_o2_l`.
+    - `worst_emergency_segment` is the point of the route with the WORST
+      return. A point with no computable return (outside the Phase 2 map
+      -- see `cost_to_base`) is treated as WORSE than any finite return,
+      never ignored in silence -- it is literally the most dangerous case
+      there is (there is no way back from that point at all).
+    - `max_return_minutes` and `min_margin` only consider points WITH a
+      computable return -- a point with no return already showed up in
+      `worst_emergency_segment`, no need to duplicate the warning here.
 
-    `mapa_custo_base is None` (Fase 2 não calculada/não passada) é
-    diferente de "mapa calculado e este ponto não está nele": no
-    primeiro caso simplesmente não temos dado nenhum sobre volta, e os
-    quatro campos saem `None` -- nunca tratamos "sem mapa" como "todo
-    ponto é inalcançável" (isso inventaria um dado que não existe)."""
-    if mapa_custo_base is None:
+    `cost_to_base_map is None` (Phase 2 not computed/not passed) is
+    different from "map computed and this point is not in it": in the
+    first case we simply have no data at all about the return, and all
+    four fields come out `None` -- "no map" is never treated as "every
+    point is unreachable" (that would make up data that does not exist)."""
+    if cost_to_base_map is None:
         return None, None, None, None
 
-    tempo_total_pessimista_s = tempo_acumulado_pessimista_s[-1]
-    voltas = [mapa_custo_base.get(rc) for rc in caminho_rc]  # entrada (dict) ou None, por ponto do caminho
+    total_time_pessimistic_s = cumulative_time_pessimistic_s[-1]
+    returns = [cost_to_base_map.get(rc) for rc in path_rc]  # entry (dict) or None, per point of the path
 
-    ponto_nao_retorno = None
-    for i, entrada in enumerate(voltas):
-        if entrada is None:
+    no_return_point = None
+    for i, entry in enumerate(returns):
+        if entry is None:
             continue
-        tempo_restante_s = tempo_total_pessimista_s - tempo_acumulado_pessimista_s[i]
-        if tempo_restante_s < entrada["tempo_volta_s"]:
-            ponto_nao_retorno = {
-                "lat": pontos[i][0],
-                "lon": pontos[i][1],
-                "distancia_m": perfil[i]["distancia_acumulada_m"],
+        time_left_s = total_time_pessimistic_s - cumulative_time_pessimistic_s[i]
+        if time_left_s < entry["return_time_s"]:
+            no_return_point = {
+                "lat": points[i][0],
+                "lon": points[i][1],
+                "distance_m": profile[i]["cumulative_distance_m"],
             }
             break
 
-    pior_i, pior_e_inalcancavel, pior_tempo_volta_s = None, False, -1.0
-    for i, entrada in enumerate(voltas):
-        if entrada is None:
-            if not pior_e_inalcancavel:
-                pior_i, pior_e_inalcancavel = i, True
+    worst_i, worst_is_unreachable, worst_return_time_s = None, False, -1.0
+    for i, entry in enumerate(returns):
+        if entry is None:
+            if not worst_is_unreachable:
+                worst_i, worst_is_unreachable = i, True
             continue
-        if not pior_e_inalcancavel and entrada["tempo_volta_s"] > pior_tempo_volta_s:
-            pior_i, pior_tempo_volta_s = i, entrada["tempo_volta_s"]
+        if not worst_is_unreachable and entry["return_time_s"] > worst_return_time_s:
+            worst_i, worst_return_time_s = i, entry["return_time_s"]
 
-    pior_trecho_emergencia = None
-    if pior_i is not None:
-        entrada = voltas[pior_i]
-        pior_trecho_emergencia = {
-            "lat": pontos[pior_i][0],
-            "lon": pontos[pior_i][1],
-            "distancia_m": perfil[pior_i]["distancia_acumulada_m"],
-            "tempo_volta_min": round(entrada["tempo_volta_s"] / 60.0, 1) if entrada else None,
-            "o2_volta_l": entrada["o2_volta_l"] if entrada else None,
+    worst_emergency_segment = None
+    if worst_i is not None:
+        entry = returns[worst_i]
+        worst_emergency_segment = {
+            "lat": points[worst_i][0],
+            "lon": points[worst_i][1],
+            "distance_m": profile[worst_i]["cumulative_distance_m"],
+            "return_minutes": round(entry["return_time_s"] / 60.0, 1) if entry else None,
+            "return_o2_l": entry["return_o2_l"] if entry else None,
         }
 
-    tempos_volta_validos = [e["tempo_volta_s"] for e in voltas if e is not None]
-    volta_minutos_max = round(max(tempos_volta_validos) / 60.0, 1) if tempos_volta_validos else None
+    valid_return_times = [e["return_time_s"] for e in returns if e is not None]
+    max_return_minutes = round(max(valid_return_times) / 60.0, 1) if valid_return_times else None
 
-    margem_minima = None
-    if o2_disponivel_l is not None:
-        pior_margem_l, pior_distancia_m = None, None
-        for i, entrada in enumerate(voltas):
-            if entrada is None:
+    min_margin = None
+    if available_o2_l is not None:
+        worst_margin_l, worst_distance_m = None, None
+        for i, entry in enumerate(returns):
+            if entry is None:
                 continue
-            margem_l = o2_disponivel_l - (o2_acumulado_pessimista_l[i] + entrada["o2_volta_l"])
-            if pior_margem_l is None or margem_l < pior_margem_l:
-                pior_margem_l, pior_distancia_m = margem_l, perfil[i]["distancia_acumulada_m"]
-        if pior_margem_l is not None:
-            margem_minima = {
-                "litros": round(pior_margem_l, 2),
-                "pct": round(pior_margem_l / o2_disponivel_l * 100.0, 1) if o2_disponivel_l else None,
-                "distancia_m": pior_distancia_m,
+            margin_l = available_o2_l - (cumulative_o2_pessimistic_l[i] + entry["return_o2_l"])
+            if worst_margin_l is None or margin_l < worst_margin_l:
+                worst_margin_l, worst_distance_m = margin_l, profile[i]["cumulative_distance_m"]
+        if worst_margin_l is not None:
+            min_margin = {
+                "liters": round(worst_margin_l, 2),
+                "pct": round(worst_margin_l / available_o2_l * 100.0, 1) if available_o2_l else None,
+                "distance_m": worst_distance_m,
             }
 
-    return margem_minima, ponto_nao_retorno, pior_trecho_emergencia, volta_minutos_max
+    return min_margin, no_return_point, worst_emergency_segment, max_return_minutes
 
 
-def _melhor_alvo_cientifico(origin_lat, origin_lon, dest_lat, dest_lon, alvos: list[dict]) -> dict | None:
-    """Alvo científico com menor desvio real (em metros) em relação à
-    linha reta origem-destino, entre os que cabem em
-    MAIS_CIENCIA_DESVIO_MAX_M. None se nenhum coube -- nunca força
-    passar por um alvo longe demais só pra existir uma 3a opção."""
-    direta = haversine_m(origin_lat, origin_lon, dest_lat, dest_lon)
-    melhor, menor_desvio = None, None
-    for alvo in alvos:
-        via_alvo = haversine_m(origin_lat, origin_lon, alvo["lat"], alvo["lon"]) + haversine_m(
-            alvo["lat"], alvo["lon"], dest_lat, dest_lon
+def _best_science_target(origin_lat, origin_lon, dest_lat, dest_lon, targets: list[dict]) -> dict | None:
+    """Science target with the smallest real detour (in meters) relative to the
+    straight origin-destination line, among those that fit within
+    MOST_SCIENCE_MAX_DETOUR_M. None if none fits -- never forces
+    passing by a target too far just so a 3rd option exists."""
+    direct = haversine_m(origin_lat, origin_lon, dest_lat, dest_lon)
+    best, smallest_detour = None, None
+    for target in targets:
+        via_target = haversine_m(origin_lat, origin_lon, target["lat"], target["lon"]) + haversine_m(
+            target["lat"], target["lon"], dest_lat, dest_lon
         )
-        desvio = via_alvo - direta
-        if desvio <= MAIS_CIENCIA_DESVIO_MAX_M and (menor_desvio is None or desvio < menor_desvio):
-            melhor, menor_desvio = alvo, desvio
-    return melhor
+        detour = via_target - direct
+        if detour <= MOST_SCIENCE_MAX_DETOUR_M and (smallest_detour is None or detour < smallest_detour):
+            best, smallest_detour = target, detour
+    return best
 
 
-def _astar_encadeado(elevacao, slope_deg, transform, pixel_size_m, pontos_rc: list, tipo: str) -> list:
-    """Encadeia A* por uma sequência de pontos (origem, paradas..., destino),
-    uma chamada por perna, concatenando sem duplicar o pixel de junção
-    entre pernas consecutivas. Generaliza o que "mais_ciencia" já fazia
-    com 2 pernas (origem->alvo->destino) pra N pernas (paradas manuais)."""
-    caminho = _astar(elevacao, slope_deg, transform, pixel_size_m, pontos_rc[0], pontos_rc[1], tipo)
-    for i in range(1, len(pontos_rc) - 1):
-        perna = _astar(elevacao, slope_deg, transform, pixel_size_m, pontos_rc[i], pontos_rc[i + 1], tipo)
-        caminho += perna[1:]
-    return caminho
+def _chained_astar(elevation, slope_deg, transform, pixel_size_m, points_rc: list, kind: str) -> list:
+    """Chains A* through a sequence of points (origin, stops..., destination),
+    one call per leg, concatenating without duplicating the junction pixel
+    between consecutive legs. Generalizes what "most_science" already did
+    with 2 legs (origin->target->destination) to N legs (manual stops)."""
+    path = _astar(elevation, slope_deg, transform, pixel_size_m, points_rc[0], points_rc[1], kind)
+    for i in range(1, len(points_rc) - 1):
+        leg = _astar(elevation, slope_deg, transform, pixel_size_m, points_rc[i], points_rc[i + 1], kind)
+        path += leg[1:]
+    return path
 
 
 def plan_route(
-    conn: sqlite3.Connection,
-    origin_lat,
-    origin_lon,
-    dest_lat,
-    dest_lon,
-    dose_rad_ugy_por_hora=None,
-    paradas=None,
-    o2_disponivel_l: float | None = None,
+    conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_lon, rad_dose_ugy_per_hour=None, stops=None,
+    kinds=("safest", "fastest"), avoid=None, available_o2_l: float | None = None,
 ) -> dict:
-    """paradas: lista opcional de (lat, lon) -- pontos que a rota precisa
-    visitar em ordem, entre a origem e o destino (gap "paradas
-    intermediárias"). Com paradas, a variante "mais_ciencia" não entra:
-    ela já é uma forma automática de visitar um ponto no meio do
-    caminho, e duas lógicas de "ponto no meio" ao mesmo tempo só
-    confundiriam qual rota passa por onde -- se o astronauta já está
-    escolhendo os pontos manualmente, isso substitui a sugestão automática."""
+    """stops: optional list of (lat, lon) -- points the route must
+    visit in order, between the origin and the destination ("intermediate
+    stops" gap). With stops, the "most_science" variant is left out:
+    it is already an automatic way to visit a point in the middle of the
+    path, and two "point in the middle" logics at the same time would only
+    confuse which route goes where -- if the astronaut is already
+    choosing the points manually, that replaces the automatic suggestion."""
     path = _dtm_path(conn)
-    elevacao, transform, bounds, nodata = _load_dtm(path)
+    elevation, transform, bounds, nodata = _load_dtm(path)
 
     pixel_size_deg = abs(transform.a)
     pixel_size_m = pixel_size_deg * MARS_METERS_PER_DEGREE
-    slope_deg = _slope_grid_deg(elevacao, pixel_size_m)
+    slope_deg = _slope_grid_deg(elevation, pixel_size_m)
+    # avoid: [(lat, lon, radius_m)] -- a reported obstacle (replan.py) becomes impassable terrain
+    for lat, lon, radius_m in avoid or []:
+        r0, c0 = _latlon_to_rc(transform, lat, lon)
+        radius_px = math.ceil(radius_m / pixel_size_m)
+        rows, cols = np.ogrid[:slope_deg.shape[0], :slope_deg.shape[1]]
+        slope_deg = slope_deg.copy()
+        slope_deg[(rows - r0) ** 2 + (cols - c0) ** 2 <= radius_px ** 2] = 90.0
 
-    def dentro_bbox(lat, lon):
+    def inside_bbox(lat, lon):
         return bounds.left <= lon <= bounds.right and bounds.bottom <= lat <= bounds.top
 
-    paradas = paradas or []
-    todos_pontos = [(origin_lat, origin_lon), *paradas, (dest_lat, dest_lon)]
-    if not all(dentro_bbox(lat, lon) for lat, lon in todos_pontos):
-        raise ForaDoGridError("Origem, parada ou destino fora da área com dado DTM baixado")
+    stops = stops or []
+    all_points = [(origin_lat, origin_lon), *stops, (dest_lat, dest_lon)]
+    if not all(inside_bbox(lat, lon) for lat, lon in all_points):
+        raise OutOfGridError("Origin, stop or destination outside the area with downloaded DTM data")
 
-    pontos_rc = [_latlon_to_rc(transform, lat, lon) for lat, lon in todos_pontos]
-    origem_rc, destino_rc = pontos_rc[0], pontos_rc[-1]
+    points_rc = [_latlon_to_rc(transform, lat, lon) for lat, lon in all_points]
+    origin_rc, dest_rc = points_rc[0], points_rc[-1]
 
-    # Fase 2: mapa de custo de volta, calculado uma vez (cacheado) e
-    # reaproveitado pelas três variantes de rota abaixo -- é o que
-    # alimenta margem_minima/ponto_nao_retorno/pior_trecho_emergencia
-    # (Fase 3) em cada uma.
-    mapa_custo_base = custo_ate_base(conn)
+    # Phase 2: return-cost map, computed once (cached) and reused by every
+    # route variant below -- this is what feeds min_margin/no_return_point/
+    # worst_emergency_segment (Phase 3) on each of them.
+    cost_map = cost_to_base(conn)
 
-    rotas = []
-    for tipo in ("mais_segura", "mais_rapida"):
-        caminho = _astar_encadeado(elevacao, slope_deg, transform, pixel_size_m, pontos_rc, tipo)
-        rotas.append(_monta_rota(
-            tipo, caminho, elevacao, slope_deg, transform, pixel_size_m, dose_rad_ugy_por_hora,
-            mapa_custo_base, o2_disponivel_l,
+    routes = []
+    for kind in kinds:
+        route_path = _chained_astar(elevation, slope_deg, transform, pixel_size_m, points_rc, kind)
+        routes.append(_build_route(
+            kind, route_path, elevation, slope_deg, transform, pixel_size_m, rad_dose_ugy_per_hour,
+            cost_map, available_o2_l,
         ))
 
-    # "mais_ciencia": passa pelo alvo científico real mais próximo do
-    # caminho, só se o desvio for razoável (ver MAIS_CIENCIA_DESVIO_MAX_M)
-    # -- com poucos alvos cadastrados (feature 4), nem sempre vai existir
-    # um perto o bastante, e aí essa variante simplesmente não aparece
-    # (melhor que forçar um desvio absurdo só pra "ter ciência").
-    if not paradas:
-        alvo = _melhor_alvo_cientifico(origin_lat, origin_lon, dest_lat, dest_lon, todos_alvos_cientificos(conn))
-        if alvo is not None:
-            alvo_rc = _latlon_to_rc(transform, alvo["lat"], alvo["lon"])
+    # "most_science": passes by the real science target nearest to the
+    # path, only if the detour is reasonable (see MOST_SCIENCE_MAX_DETOUR_M)
+    # -- with few registered targets (feature 4), there will not always be
+    # one close enough, and then this variant simply does not appear
+    # (better than forcing an absurd detour just to "have science").
+    if not stops and not avoid and kinds == ("safest", "fastest"):  # replanning offers no science detour
+        target = _best_science_target(origin_lat, origin_lon, dest_lat, dest_lon, all_science_targets(conn))
+        if target is not None:
+            target_rc = _latlon_to_rc(transform, target["lat"], target["lon"])
             try:
-                caminho_completo = _astar_encadeado(
-                    elevacao, slope_deg, transform, pixel_size_m, [origem_rc, alvo_rc, destino_rc], "mais_segura"
+                full_path = _chained_astar(
+                    elevation, slope_deg, transform, pixel_size_m, [origin_rc, target_rc, dest_rc], "safest"
                 )
-                rota_ciencia = _monta_rota(
-                    "mais_ciencia", caminho_completo, elevacao, slope_deg, transform, pixel_size_m, dose_rad_ugy_por_hora,
-                    mapa_custo_base, o2_disponivel_l,
+                science_route = _build_route(
+                    "most_science", full_path, elevation, slope_deg, transform, pixel_size_m, rad_dose_ugy_per_hour,
+                    cost_map, available_o2_l,
                 )
-                rota_ciencia["alvo_cientifico"] = {
-                    "nome": alvo["nome"],
-                    "lat": alvo["lat"],
-                    "lon": alvo["lon"],
-                    "medicao_curiosity": alvo["medicao_curiosity"],
-                    "fonte_url": alvo["fonte_url"],
+                science_route["science_target"] = {
+                    "name": target["name"],
+                    "lat": target["lat"],
+                    "lon": target["lon"],
+                    "curiosity_measurement": target["curiosity_measurement"],
+                    "source_url": target["source_url"],
                 }
-                rotas.append(rota_ciencia)
-            except (SemCaminhoError, ForaDoGridError):
-                pass  # alvo existe mas não tem caminho caminhável até ele -- sem essa variante, sem quebrar as outras duas
+                routes.append(science_route)
+            except (NoPathError, OutOfGridError):
+                pass  # the target exists but has no walkable path to it -- no such variant, without breaking the other two
 
-    return {"rotas": rotas, "avisos": [AVISO_AREIA]}
+    return {"routes": routes, "warnings": [SAND_WARNING]}

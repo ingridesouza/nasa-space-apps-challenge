@@ -1,4 +1,4 @@
-"""Conexão com o banco local SQLite da feature 01."""
+"""Connection to the local SQLite database of feature 01."""
 
 import os
 import sqlite3

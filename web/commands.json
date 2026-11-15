@@ -1,0 +1,864 @@
+{
+ "version": 1,
+ "note": "Single catalog of the viewer blocks and the actions voice can trigger. Read by the front (web/ui/commands.js) and by the API (api/commands.py). 'spoken' = star name, which Whisper transcribes well (a bare letter does not: bee/dee/ee/pee/tee sound the same); the agent's name is Marvin (api/voice.py: ACTIVATION). New action: add it here and register the handler in web/app.js.",
+ "blocks": [
+  {
+   "id": "m-A",
+   "spoken": [
+    "atlas"
+   ],
+   "name": "Map",
+   "selector": "#map-box",
+   "synonyms": [
+    "map"
+   ],
+   "actions": {
+    "expand": {
+     "desc": "opens the map full screen",
+     "spoken": [
+      "expand",
+      "open",
+      "maximize",
+      "full screen",
+      "explore"
+     ]
+    },
+    "collapse": {
+     "desc": "returns the map to the circle",
+     "spoken": [
+      "collapse",
+      "close",
+      "minimize",
+      "hide"
+     ]
+    },
+    "zoom_in": {
+     "desc": "zoom in",
+     "spoken": [
+      "zoom in",
+      "more zoom",
+      "increase zoom",
+      "closer",
+      "magnify",
+      "get closer"
+     ],
+     "args": {
+      "levels": {
+       "type": "integer",
+       "min": 1,
+       "max": 4,
+       "default": 1
+      }
+     }
+    },
+    "zoom_out": {
+     "desc": "zoom out",
+     "spoken": [
+      "zoom out",
+      "less zoom",
+      "decrease zoom",
+      "reduce zoom",
+      "farther",
+      "get farther"
+     ],
+     "args": {
+      "levels": {
+       "type": "integer",
+       "min": 1,
+       "max": 4,
+       "default": 1
+      }
+     }
+    },
+    "move": {
+     "desc": "pans the map to one side",
+     "spoken": [
+      "move",
+      "pan",
+      "shift",
+      "scroll"
+     ],
+     "args": {
+      "direction": {
+       "type": "enum",
+       "values": {
+        "north": [
+         "north",
+         "up"
+        ],
+        "south": [
+         "south",
+         "down"
+        ],
+        "east": [
+         "east",
+         "right"
+        ],
+        "west": [
+         "west",
+         "left"
+        ]
+       }
+      }
+     }
+    },
+    "center": {
+     "desc": "centers on the current position or on the route",
+     "spoken": [
+      "center",
+      "recenter",
+      "where am i",
+      "my position"
+     ]
+    },
+    "read": {
+     "desc": "reads lat, lon and elevation at the map center (the crosshair)",
+     "spoken": [
+      "read",
+      "reading",
+      "read center",
+      "elevation",
+      "altitude"
+     ]
+    }
+   }
+  },
+  {
+   "id": "m-B",
+   "spoken": [
+    "vega"
+   ],
+   "name": "Layers",
+   "selector": "#layers-panel",
+   "synonyms": [
+    "layers",
+    "layer"
+   ],
+   "actions": {
+    "show": {
+     "desc": "shows a layer",
+     "spoken": [
+      "show",
+      "turn on",
+      "enable",
+      "activate",
+      "display"
+     ],
+     "args": {
+      "layer": {
+       "type": "enum",
+       "values": {
+        "relief_hillshade": [
+         "relief",
+         "hillshade",
+         "shade"
+        ],
+        "themis_ti": [
+         "inertia",
+         "thermal",
+         "themis"
+        ],
+        "predicted_risk": [
+         "risk",
+         "slope"
+        ]
+       }
+      }
+     }
+    },
+    "hide": {
+     "desc": "hides a layer",
+     "spoken": [
+      "hide",
+      "turn off",
+      "disable",
+      "deactivate",
+      "remove"
+     ],
+     "args": {
+      "layer": {
+       "type": "enum",
+       "values": {
+        "relief_hillshade": [
+         "relief",
+         "hillshade",
+         "shade"
+        ],
+        "themis_ti": [
+         "inertia",
+         "thermal",
+         "themis"
+        ],
+        "predicted_risk": [
+         "risk",
+         "slope"
+        ]
+       }
+      }
+     }
+    },
+    "opacity": {
+     "desc": "adjusts the opacity of a layer (0 to 100 %)",
+     "spoken": [
+      "opacity",
+      "transparency"
+     ],
+     "args": {
+      "layer": {
+       "type": "enum",
+       "values": {
+        "relief_hillshade": [
+         "relief",
+         "hillshade",
+         "shade"
+        ],
+        "themis_ti": [
+         "inertia",
+         "thermal",
+         "themis"
+        ],
+        "predicted_risk": [
+         "risk",
+         "slope"
+        ]
+       }
+      },
+      "value": {
+       "type": "integer",
+       "min": 0,
+       "max": 100
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "m-C",
+   "spoken": [
+    "polaris"
+   ],
+   "name": "Route",
+   "selector": "#c-route",
+   "synonyms": [
+    "route",
+    "path"
+   ],
+   "actions": {
+    "plan": {
+     "desc": "opens the map to choose the destination",
+     "spoken": [
+      "plan",
+      "new route",
+      "edit"
+     ]
+    },
+    "type": {
+     "desc": "chooses the route type",
+     "spoken": [
+      "safest",
+      "fastest",
+      "most science",
+      "safe",
+      "fast",
+      "science"
+     ],
+     "args": {
+      "type": {
+       "type": "enum",
+       "values": {
+        "safest": [
+         "safest",
+         "safe"
+        ],
+        "fastest": [
+         "fastest",
+         "fast"
+        ],
+        "most_science": [
+         "science"
+        ]
+       }
+      }
+     }
+    },
+    "sol": {
+     "desc": "changes the sol of the EVA window",
+     "spoken": [
+      "next sol",
+      "previous sol",
+      "tomorrow",
+      "yesterday"
+     ],
+     "args": {
+      "delta": {
+       "type": "enum",
+       "values": {
+        "1": [
+         "next",
+         "tomorrow"
+        ],
+        "-1": [
+         "previous",
+         "yesterday"
+        ]
+       }
+      }
+     }
+    },
+    "target": {
+     "desc": "opens the card of the science target on the way",
+     "spoken": [
+      "target",
+      "open target",
+      "target card"
+     ]
+    },
+    "next": {
+     "desc": "next card page",
+     "spoken": [
+      "next",
+      "forward",
+      "advance",
+      "skip"
+     ]
+    },
+    "previous": {
+     "desc": "previous card page",
+     "spoken": [
+      "previous",
+      "back",
+      "go back",
+      "return"
+     ]
+    },
+    "collapse": {
+     "desc": "collapses the card",
+     "spoken": [
+      "collapse",
+      "hide",
+      "minimize"
+     ]
+    },
+    "expand": {
+     "desc": "shows the collapsed card",
+     "spoken": [
+      "expand",
+      "show",
+      "open"
+     ]
+    },
+    "cancel": {
+     "desc": "deletes the route",
+     "spoken": [
+      "cancel",
+      "delete",
+      "discard"
+     ],
+     "confirm": true
+    },
+    "destination_center": {
+     "desc": "sets the destination at the map center (the crosshair)",
+     "spoken": [
+      "destination here",
+      "destination at center",
+      "mark destination",
+      "destination at crosshair"
+     ],
+     "confirm": true
+    },
+    "stop": {
+     "desc": "adds a stop at the map center (the crosshair)",
+     "spoken": [
+      "stop",
+      "add stop",
+      "waypoint"
+     ]
+    },
+    "remove_stop": {
+     "desc": "removes stop N",
+     "spoken": [
+      "remove stop",
+      "delete stop",
+      "clear stop"
+     ],
+     "args": {
+      "n": {
+       "type": "integer",
+       "min": 1,
+       "max": 10
+      }
+     }
+    },
+    "go_sol": {
+     "desc": "changes the EVA window to sol N",
+     "spoken": [
+      "sol"
+     ],
+     "args": {
+      "sol": {
+       "type": "integer",
+       "min": 1,
+       "max": 20000
+      }
+     }
+    },
+    "o2": {
+     "desc": "adjusts the suit O₂ capacity (liters)",
+     "spoken": [
+      "oxygen",
+      "o2",
+      "capacity",
+      "suit"
+     ],
+     "args": {
+      "liters": {
+       "type": "integer",
+       "min": 1,
+       "max": 5000
+      }
+     }
+    },
+    "measurement": {
+     "desc": "records the habitat measurement (sol, minimum, maximum, pressure and, if said, dose), in that order",
+     "spoken": [
+      "measurement",
+      "record measurement",
+      "save measurement"
+     ],
+     "args": {
+      "sol": {
+       "type": "number",
+       "min": 1,
+       "max": 20000
+      },
+      "minimum": {
+       "type": "number",
+       "min": -150,
+       "max": 50
+      },
+      "maximum": {
+       "type": "number",
+       "min": -150,
+       "max": 50
+      },
+      "pressure": {
+       "type": "number",
+       "min": 0,
+       "max": 2000
+      },
+      "dose": {
+       "type": "number",
+       "min": 0,
+       "max": 10000,
+       "optional": true
+      }
+     },
+     "confirm": true
+    },
+    "delete_measurement": {
+     "desc": "deletes the habitat measurement of the displayed sol",
+     "spoken": [
+      "delete measurement",
+      "remove measurement",
+      "clear measurement"
+     ],
+     "confirm": true
+    }
+   }
+  },
+  {
+   "id": "m-D",
+   "spoken": [
+    "orion"
+   ],
+   "name": "Panorama",
+   "selector": "#c-pano",
+   "synonyms": [
+    "panorama",
+    "pano",
+    "360"
+   ],
+   "actions": {
+    "expand": {
+     "desc": "opens the panorama in the viewer",
+     "spoken": [
+      "expand",
+      "open",
+      "full screen",
+      "viewer"
+     ]
+    },
+    "collapse": {
+     "desc": "takes the panorama out of the viewer",
+     "spoken": [
+      "collapse",
+      "close",
+      "exit"
+     ]
+    },
+    "rotate": {
+     "desc": "rotates the view",
+     "spoken": [
+      "rotate",
+      "look",
+      "spin"
+     ],
+     "args": {
+      "direction": {
+       "type": "enum",
+       "values": {
+        "left": [
+         "left"
+        ],
+        "right": [
+         "right"
+        ],
+        "up": [
+         "up"
+        ],
+        "down": [
+         "down"
+        ]
+       }
+      },
+      "degrees": {
+       "type": "integer",
+       "min": 5,
+       "max": 180,
+       "default": 45
+      }
+     }
+    },
+    "zoom_in": {
+     "desc": "zoom in",
+     "spoken": [
+      "zoom in",
+      "more zoom",
+      "increase zoom"
+     ]
+    },
+    "zoom_out": {
+     "desc": "zoom out",
+     "spoken": [
+      "zoom out",
+      "less zoom",
+      "decrease zoom"
+     ]
+    },
+    "center": {
+     "desc": "turns the view toward the point",
+     "spoken": [
+      "center",
+      "recenter",
+      "direction of the point",
+      "look at point"
+     ]
+    }
+   }
+  },
+  {
+   "id": "m-E",
+   "spoken": [
+    "rigel"
+   ],
+   "name": "Photos",
+   "selector": "#c-photos",
+   "synonyms": [
+    "photos",
+    "photo",
+    "images",
+    "image"
+   ],
+   "actions": {
+    "open": {
+     "desc": "opens photo N of the page in the viewer",
+     "spoken": [
+      "open",
+      "view",
+      "show"
+     ],
+     "args": {
+      "n": {
+       "type": "integer",
+       "min": 1,
+       "max": 3,
+       "default": 1
+      }
+     }
+    },
+    "next": {
+     "desc": "next photos page",
+     "spoken": [
+      "next",
+      "forward",
+      "advance",
+      "skip"
+     ]
+    },
+    "previous": {
+     "desc": "previous photos page",
+     "spoken": [
+      "previous",
+      "back",
+      "go back",
+      "return"
+     ]
+    },
+    "collapse": {
+     "desc": "collapses the images bar",
+     "spoken": [
+      "collapse",
+      "hide",
+      "minimize",
+      "close"
+     ]
+    },
+    "expand": {
+     "desc": "shows the collapsed images bar",
+     "spoken": [
+      "expand"
+     ]
+    }
+   }
+  },
+  {
+   "id": "m-F",
+   "spoken": [
+    "altair"
+   ],
+   "name": "Science card",
+   "selector": "#c-science",
+   "synonyms": [
+    "science",
+    "card",
+    "scientific"
+   ],
+   "actions": {
+    "open": {
+     "desc": "opens the card",
+     "spoken": [
+      "open",
+      "expand",
+      "show",
+      "read"
+     ]
+    },
+    "close": {
+     "desc": "closes the card",
+     "spoken": [
+      "close",
+      "collapse",
+      "hide"
+     ]
+    },
+    "next": {
+     "desc": "next card page",
+     "spoken": [
+      "next",
+      "forward",
+      "advance",
+      "skip"
+     ]
+    },
+    "previous": {
+     "desc": "previous card page",
+     "spoken": [
+      "previous",
+      "back",
+      "go back",
+      "return"
+     ]
+    }
+   }
+  },
+  {
+   "id": "m-G",
+   "spoken": [
+    "draco"
+   ],
+   "name": "Assistant",
+   "selector": "#assistant",
+   "synonyms": [
+    "assistant",
+    "conversation",
+    "answers",
+    "history"
+   ],
+   "actions": {
+    "open": {
+     "desc": "opens the questions panel",
+     "spoken": [
+      "open",
+      "show"
+     ]
+    },
+    "close": {
+     "desc": "closes the questions panel",
+     "spoken": [
+      "close",
+      "hide",
+      "exit"
+     ]
+    },
+    "next": {
+     "desc": "next answer (older)",
+     "spoken": [
+      "next",
+      "forward",
+      "advance",
+      "skip"
+     ]
+    },
+    "previous": {
+     "desc": "previous answer (newer)",
+     "spoken": [
+      "previous",
+      "back",
+      "go back",
+      "return"
+     ]
+    },
+    "listen": {
+     "desc": "reads the answer of the current page aloud",
+     "spoken": [
+      "listen",
+      "repeat",
+      "read",
+      "say again"
+     ]
+    }
+   }
+  },
+  {
+   "id": "m-H",
+   "spoken": [
+    "castor"
+   ],
+   "name": "Viewer",
+   "selector": "#viewer",
+   "synonyms": [
+    "viewer",
+    "screen"
+   ],
+   "actions": {
+    "close": {
+     "desc": "takes the photo or panorama out of the viewer",
+     "spoken": [
+      "close",
+      "clear",
+      "exit",
+      "back"
+     ]
+    }
+   }
+  },
+  {
+   "id": "m-I",
+   "spoken": [
+    "pollux"
+   ],
+   "name": "Destination by coordinates",
+   "selector": "#coords",
+   "synonyms": [
+    "coordinates",
+    "coordinate",
+    "destination"
+   ],
+   "actions": {
+    "set": {
+     "desc": "sets the destination by latitude and longitude (°E)",
+     "spoken": [
+      "set",
+      "destination",
+      "latitude",
+      "coordinates"
+     ],
+     "args": {
+      "lat": {
+       "type": "number",
+       "min": -90,
+       "max": 90
+      },
+      "lon": {
+       "type": "number",
+       "min": -180,
+       "max": 360
+      }
+     },
+     "confirm": true
+    }
+   }
+  },
+  {
+   "id": "m-J",
+   "spoken": [
+    "antares"
+   ],
+   "name": "Status",
+   "selector": "#c-status",
+   "synonyms": [
+    "status",
+    "warning",
+    "error"
+   ],
+   "actions": {
+    "read": {
+     "desc": "reads the warning aloud",
+     "spoken": [
+      "read",
+      "listen",
+      "repeat",
+      "read warning"
+     ]
+    }
+   }
+  },
+  {
+   "id": "sys",
+   "spoken": [
+    "system"
+   ],
+   "name": "System",
+   "selector": null,
+   "synonyms": [],
+   "actions": {
+    "back": {
+     "desc": "closes what is on top (same as Esc)",
+     "spoken": [
+      "esc",
+      "escape",
+      "close all",
+      "exit all"
+     ]
+    },
+    "silence": {
+     "desc": "stops speaking",
+     "spoken": [
+      "silence",
+      "quiet",
+      "stop talking",
+      "shut up",
+      "enough"
+     ]
+    },
+    "microphone": {
+     "desc": "turns off the hands-free microphone (turn it back on: hold space or click the voice pill)",
+     "spoken": [
+      "turn off microphone",
+      "mute",
+      "mute microphone"
+     ]
+    },
+    "help": {
+     "desc": "says the open blocks and what can be asked",
+     "spoken": [
+      "help",
+      "commands",
+      "which commands",
+      "blocks"
+     ]
+    }
+   }
+  }
+ ]
+}

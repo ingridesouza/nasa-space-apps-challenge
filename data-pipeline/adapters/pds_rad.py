@@ -1,34 +1,34 @@
-"""Adaptador para dados RAD (radiação) do PDS-PPI (UCLA) -- item 8 da
-tabela da feature 01.
+"""Adapter for RAD (radiation) data from the PDS-PPI (UCLA) -- item 8 of
+the feature 01 table.
 
-Formato real (não documentado publicamente de forma clara, confirmado
-em 2026-11-11 contra o RAD_RDR_SIS.HTM e o arquivo real do sol 4650):
-um único arquivo .TXT por sol, com **1306 seções** no formato
-`[NOME_DA_SECAO: NN]` seguidas de linhas de corpo livre. A maioria
-(COUNTERS, HISTOGRAMS, PHA, LET...) é dado de engenharia/ciência fina,
-fora de escopo deste adaptador -- aqui extraímos só o que a feature 05
-(painel de condições) precisa: a dose total por observação.
+Real format (not clearly documented publicly, confirmed
+on 2026-11-11 against RAD_RDR_SIS.HTM and the real sol 4650 file):
+a single .TXT file per sol, with **1306 sections** in the format
+`[SECTION_NAME: NN]` followed by free-form body lines. Most of them
+(COUNTERS, HISTOGRAMS, PHA, LET...) are fine engineering/science data,
+out of scope for this adapter -- here we extract only what feature 05
+(conditions panel) needs: the total dose per observation.
 
-Como juntar as peças:
-  - `[OBSERVATION: NN]` existe para toda observação do sol (NN =
-    00, 01, 02, 03...) e tem `START_OBS_MARS`/`START_OBS_UTC` (hora de
-    início, LMST e UTC) e `OBS_DURATION` (segundos).
-  - `[DOSIMETRY_TOTAL_DOSE_E: NN]` só existe nos índices PARES (nem
-    toda observação baixa telemetria de dosimetria completa) e traz um
-    único valor numérico: a dose do detector E, em microGy/hora
-    (confirmado no RAD_RDR_SIS.HTM, seção 4.2.1.6 -- unidade registrada
-    como "microGray/hour" apesar da nota não ser 100% explícita sobre
-    se é taxa ou dose acumulada da janela).
-  - O "join" entre as duas seções é pelo mesmo índice NN.
+How to put the pieces together:
+  - `[OBSERVATION: NN]` exists for every observation of the sol (NN =
+    00, 01, 02, 03...) and has `START_OBS_MARS`/`START_OBS_UTC` (start
+    time, LMST and UTC) and `OBS_DURATION` (seconds).
+  - `[DOSIMETRY_TOTAL_DOSE_E: NN]` only exists at EVEN indices (not
+    every observation downlinks full dosimetry telemetry) and carries a
+    single numeric value: the dose of detector E, in microGy/hour
+    (confirmed in RAD_RDR_SIS.HTM, section 4.2.1.6 -- unit recorded
+    as "microGray/hour" although the note is not 100% explicit about
+    whether it is a rate or the dose accumulated over the window).
+  - The "join" between the two sections is by the same index NN.
 
-Validado contra o sol 4650: dose ~6.6 µGy/h -> ~158 µGy/dia, mesma
-ordem de grandeza da dose diária conhecida na superfície de Marte
-(~200-250 µGy/dia).
+Validated against sol 4650: dose ~6.6 µGy/h -> ~158 µGy/day, same
+order of magnitude as the known daily dose on the surface of Mars
+(~200-250 µGy/day).
 
-Estrutura do diretório (mesma convenção de buckets do REMS, host
-diferente):
+Directory structure (same bucket convention as REMS, different
+host):
   https://pds-ppi.igpp.ucla.edu/data/MSL-M-RAD-3-RDR-V1.0/DATA/
-    SOL_<lo>_<hi>/RAD_RDR_<ano>_<doy>_<hh>_<mm>_<sol>_V00.TXT
+    SOL_<lo>_<hi>/RAD_RDR_<year>_<doy>_<hh>_<mm>_<sol>_V00.TXT
 """
 
 import re
@@ -41,7 +41,7 @@ SECTION_HEADER_RE = re.compile(r"^\[([A-Z_0-9]+): (\d+)\]$")
 
 
 class PDSRadAdapter:
-    categoria = "radiacao"
+    category = "radiation"
 
     def _find_bucket(self, sol: int) -> str:
         r = requests.get(f"{BASE_URL}/", timeout=20)
@@ -51,7 +51,7 @@ class PDSRadAdapter:
             lo, hi = (int(v) for v in f.replace("SOL_", "").split("_"))
             if lo <= sol <= hi:
                 return f
-        raise ValueError(f"Nenhum bucket encontrado para o sol {sol}")
+        raise ValueError(f"No bucket found for sol {sol}")
 
     def _find_filename(self, sol: int, bucket: str) -> str:
         url = f"{BASE_URL}/{bucket}/"
@@ -59,12 +59,12 @@ class PDSRadAdapter:
         r.raise_for_status()
         m = re.search(rf'href="(RAD_RDR_[^"]*_{sol}_V\d+\.TXT)"', r.text)
         if not m:
-            raise ValueError(f"Arquivo RAD_RDR do sol {sol} não encontrado em {url}")
+            raise ValueError(f"RAD_RDR file for sol {sol} not found at {url}")
         return m.group(1)
 
     @staticmethod
     def _split_sections(text: str) -> dict[tuple[str, int], list[str]]:
-        """Quebra o arquivo inteiro em {(nome_secao, indice): [linhas_do_corpo]}."""
+        """Splits the whole file into {(section_name, index): [body_lines]}."""
         lines = text.splitlines()
         sections: dict[tuple[str, int], list[str]] = {}
         current_key = None
@@ -87,12 +87,12 @@ class PDSRadAdapter:
 
     @staticmethod
     def _parse_observation_body(body: list[str]) -> dict:
-        texto = "\n".join(body)
-        campos = dict(re.findall(r'^(\w+)="?([^"\n]*)"?$', texto, re.M))
+        text = "\n".join(body)
+        fields = dict(re.findall(r'^(\w+)="?([^"\n]*)"?$', text, re.M))
         return {
-            "start_obs_mars": campos.get("START_OBS_MARS", "").strip('"'),
-            "start_obs_utc": campos.get("START_OBS_UTC", "").strip('"'),
-            "obs_duration_s": float(campos["OBS_DURATION"]) if "OBS_DURATION" in campos else None,
+            "start_obs_mars": fields.get("START_OBS_MARS", "").strip('"'),
+            "start_obs_utc": fields.get("START_OBS_UTC", "").strip('"'),
+            "obs_duration_s": float(fields["OBS_DURATION"]) if "OBS_DURATION" in fields else None,
         }
 
     @staticmethod
@@ -114,28 +114,28 @@ class PDSRadAdapter:
         resp.encoding = "latin-1"
         sections = self._split_sections(resp.text)
 
-        observacoes = {
+        observations = {
             idx: self._parse_observation_body(body)
-            for (nome, idx), body in sections.items()
-            if nome == "OBSERVATION"
+            for (name, idx), body in sections.items()
+            if name == "OBSERVATION"
         }
         doses_e = {
             idx: self._parse_dose_body(body)
-            for (nome, idx), body in sections.items()
-            if nome == "DOSIMETRY_TOTAL_DOSE_E"
+            for (name, idx), body in sections.items()
+            if name == "DOSIMETRY_TOTAL_DOSE_E"
         }
 
-        leituras = []
+        readings = []
         for idx in sorted(doses_e):
-            obs = observacoes.get(idx, {})
-            leituras.append(
+            obs = observations.get(idx, {})
+            readings.append(
                 {
-                    "indice": idx,
+                    "index": idx,
                     "lmst": obs.get("start_obs_mars"),
                     "utc": obs.get("start_obs_utc"),
-                    "duracao_s": obs.get("obs_duration_s"),
-                    "dose_e_ugy_por_hora": doses_e[idx],
+                    "duration_s": obs.get("obs_duration_s"),
+                    "dose_e_ugy_per_hour": doses_e[idx],
                 }
             )
 
-        return {"sol": sol, "product_filename": filename, "leituras": leituras}
+        return {"sol": sol, "product_filename": filename, "readings": readings}

@@ -1,15 +1,15 @@
-"""F04 · fonte pública: alvos da M8 + medições do PDS (APXS, ChemCam, CheMin) + CRISM.
+"""F04 · public source: M8 targets + PDS measurements (APXS, ChemCam, CheMin) + CRISM.
 
-Posição do alvo (tarefa 3):
-- `exata`: o nome do alvo aparece num alvo do ChemCam no PDS; vale a parada desse registro.
-- `por_sol`: o nome não aparece; vale a parada que o PDS registra no sol de referência
-  (ou no sol mais próximo dentro da faixa da M8).
+Target position (task 3):
+- `exact`: the target name appears in a ChemCam target in the PDS; the stop of that record applies.
+- `by_sol`: the name does not appear; the stop the PDS records on the reference sol applies
+  (or on the closest sol within the M8 range).
 
-Medições (tarefa 4): o alvo recebe o que foi medido na mesma parada, dentro da faixa
-de sols da M8. Cada linha leva o nome do alvo no PDS, o sol e o arquivo de origem.
-Frases por regra fixa (os 3 maiores valores + destaques), nunca texto livre.
+Measurements (task 4): the target gets what was measured at the same stop, within the M8
+sol range. Each row carries the target name in the PDS, the sol and the source file.
+Sentences by a fixed rule (the 3 largest values + highlights), never free text.
 
-Os arquivos baixados ficam em `dados/pds/` para o ETL rodar sem internet.
+Downloaded files stay in `data/pds/` so the ETL runs without internet.
 """
 
 from __future__ import annotations
@@ -31,22 +31,22 @@ MOC_FILES = ("moc_4489_4612.csv", "moc_4613_4709.csv", "moc_4710_4843.csv")
 MOC_OXIDES = ("SiO2", "TiO2", "Al2O3", "FeOT", "MgO", "CaO", "Na2O", "K2O", "MnO")
 MOC_NAME = re.compile(r"F(\d{3})(\d{4})CCAM", re.I)
 MAST_CREDIT = "NASA/JPL-Caltech/MSSS"
-MAX_POR_INSTRUMENTO = {"APXS": 3, "ChemCam": 4, "CheMin": 2}
+MAX_PER_INSTRUMENT = {"APXS": 3, "ChemCam": 4, "CheMin": 2}
 
-MINERAIS_PT = {
-    "plagioclase": "plagioclásio", "pyroxene": "piroxênio", "anhydrite": "anidrita",
-    "bassanite": "bassanita", "gypsum": "gipsita", "hematite": "hematita",
-    "goethite": "goethita", "magnetite": "magnetita", "siderite": "siderita",
-    "quartz": "quartzo", "jarosite": "jarosita", "olivine": "olivina",
-    "sanidine": "sanidina", "akaganeite": "akaganeíta", "calcite": "calcita",
-    "dolomite": "dolomita", "smectite": "esmectita", "phyllosilicate": "filossilicato",
-    "starkeyite": "starkeyíta", "kieserite": "kieserita", "halite": "halita",
-    "opal-ct": "opala-CT", "cristobalite": "cristobalita", "tridymite": "tridimita",
+MINERAL_NAMES = {
+    "plagioclase": "plagioclase", "pyroxene": "pyroxene", "anhydrite": "anhydrite",
+    "bassanite": "bassanite", "gypsum": "gypsum", "hematite": "hematite",
+    "goethite": "goethite", "magnetite": "magnetite", "siderite": "siderite",
+    "quartz": "quartz", "jarosite": "jarosite", "olivine": "olivine",
+    "sanidine": "sanidine", "akaganeite": "akaganeite", "calcite": "calcite",
+    "dolomite": "dolomite", "smectite": "smectite", "phyllosilicate": "phyllosilicate",
+    "starkeyite": "starkeyite", "kieserite": "kieserite", "halite": "halite",
+    "opal-ct": "opal-CT", "cristobalite": "cristobalite", "tridymite": "tridymite",
 }
-SULFATOS = {"anhydrite", "bassanite", "gypsum", "jarosite", "starkeyite", "kieserite"}
-CARBONATOS = {"siderite", "calcite", "dolomite"}
-ARGILAS = {"smectite", "phyllosilicate"}
-OXIDOS_FE = {"hematite", "goethite", "magnetite", "akaganeite"}
+SULFATES = {"anhydrite", "bassanite", "gypsum", "jarosite", "starkeyite", "kieserite"}
+CARBONATES = {"siderite", "calcite", "dolomite"}
+CLAYS = {"smectite", "phyllosilicate"}
+FE_OXIDES = {"hematite", "goethite", "magnetite", "akaganeite"}
 
 
 def _norm(s: str) -> str:
@@ -55,12 +55,16 @@ def _norm(s: str) -> str:
 
 
 def _pct(v: float) -> str:
-    return f"{v:.1f}".replace(".", ",") + "%"
+    return f"{v:.1f}%"
 
 
-def _kind(tipo: str) -> str:
-    t = tipo.lower()
-    return next((k for k in ("furo", "crista", "hollow", "contato") if k in t), "feição")
+# the "type" column of m8_targets.csv is curated text: substring -> kind
+_KIND = (("drill", "drill_hole"), ("ridge", "ridge"), ("hollow", "hollow"), ("contact", "contact"))
+
+
+def _kind(type_text: str) -> str:
+    t = type_text.lower()
+    return next((v for k, v in _KIND if k in t), "feature")
 
 
 def _download(url: str, dest: Path, offline: bool) -> Path | None:
@@ -77,12 +81,12 @@ def _download(url: str, dest: Path, offline: bool) -> Path | None:
 
 
 # --------------------------------------------------------------------------- #
-# Leitura dos arquivos do PDS
+# Reading the PDS files
 # --------------------------------------------------------------------------- #
 
 
 def read_apxs(path: Path) -> dict[str, tuple[float, float]]:
-    """RWP do APXS: óxido -> (% em peso, incerteza)."""
+    """APXS RWP: oxide -> (weight %, uncertainty)."""
     out = {}
     with path.open(encoding="utf-8", errors="replace") as f:
         for cols in csv.reader(f):
@@ -96,7 +100,7 @@ def read_apxs(path: Path) -> dict[str, tuple[float, float]]:
 
 
 def read_chemin(path: Path) -> list[tuple[str, float, float]]:
-    """MIN do CheMin: (mineral, %, erro), em ordem decrescente."""
+    """CheMin MIN: (mineral, %, error), in decreasing order."""
     out = []
     with path.open(encoding="utf-8", errors="replace") as f:
         for r in csv.DictReader(f):
@@ -108,7 +112,7 @@ def read_chemin(path: Path) -> list[tuple[str, float, float]]:
 
 
 def read_moc(paths: list[Path]) -> dict[tuple[int, int, str], list[dict[str, float]]]:
-    """Tabela MOC do ChemCam: (site, drive, alvo) -> lista de pontos {óxido: %}."""
+    """ChemCam MOC table: (site, drive, target) -> list of points {oxide: %}."""
     out: dict[tuple[int, int, str], list[dict[str, float]]] = defaultdict(list)
     for p in paths:
         with p.open(encoding="utf-8", errors="replace") as f:
@@ -127,47 +131,47 @@ def read_moc(paths: list[Path]) -> dict[tuple[int, int, str], list[dict[str, flo
 
 
 # --------------------------------------------------------------------------- #
-# Frases por regra fixa
+# Fixed-rule sentences
 # --------------------------------------------------------------------------- #
 
 
 def summary_apxs(ox: dict[str, tuple[float, float]]) -> str:
-    oxidos = {k: v for k, v in ox.items() if k not in ("Ni", "Zn", "Br", "Cl")}
-    top = sorted(oxidos.items(), key=lambda kv: -kv[1][0])[:3]
-    txt = "Óxidos principais: " + " · ".join(f"{k} {_pct(v[0])}" for k, v in top) + "."
+    oxides = {k: v for k, v in ox.items() if k not in ("Ni", "Zn", "Br", "Cl")}
+    top = sorted(oxides.items(), key=lambda kv: -kv[1][0])[:3]
+    txt = "Major oxides: " + " · ".join(f"{k} {_pct(v[0])}" for k, v in top) + "."
     so3, cao = ox.get("SO3", (0, 0))[0], ox.get("CaO", (0, 0))[0]
     if so3 >= 8 and cao >= 8:
-        txt += f" Cálcio e enxofre altos juntos (CaO {_pct(cao)}, SO3 {_pct(so3)}), compatível com sulfato de cálcio."
+        txt += f" High calcium and sulfur together (CaO {_pct(cao)}, SO3 {_pct(so3)}), consistent with calcium sulfate."
     elif so3 >= 8:
-        txt += f" Enxofre elevado (SO3 {_pct(so3)}), compatível com sulfatos."
+        txt += f" Elevated sulfur (SO3 {_pct(so3)}), consistent with sulfates."
     return txt
 
 
-def summary_chemcam(nome_pds: str, pts: list[dict[str, float]]) -> tuple[str, dict]:
-    media = {ox: round(sum(p[ox] for p in pts) / len(pts), 2) for ox in MOC_OXIDES}
-    top = sorted(media.items(), key=lambda kv: -kv[1])[:3]
-    txt = (f"Média de {len(pts)} ponto(s) de laser no alvo {nome_pds}: "
+def summary_chemcam(pds_name: str, pts: list[dict[str, float]]) -> tuple[str, dict]:
+    mean = {ox: round(sum(p[ox] for p in pts) / len(pts), 2) for ox in MOC_OXIDES}
+    top = sorted(mean.items(), key=lambda kv: -kv[1])[:3]
+    txt = (f"Mean of {len(pts)} laser point(s) on target {pds_name}: "
            + " · ".join(f"{k} {_pct(v)}" for k, v in top) + ".")
-    if media["CaO"] >= 8:
-        txt += f" Cálcio alto (CaO {_pct(media['CaO'])})."
-    return txt, media
+    if mean["CaO"] >= 8:
+        txt += f" High calcium (CaO {_pct(mean['CaO'])})."
+    return txt, mean
 
 
 def summary_chemin(mins: list[tuple[str, float, float]]) -> str:
-    def pt(n):
-        return MINERAIS_PT.get(n.lower(), n)
+    def nm(n):
+        return MINERAL_NAMES.get(n.lower(), n)
 
-    txt = ("Fração cristalina: " + " · ".join(f"{pt(n)} {_pct(v)}" for n, v, _ in mins[:3]) + ".")
-    for nome, grupo in (("Sulfatos", SULFATOS), ("Carbonatos", CARBONATOS), ("Argilas", ARGILAS),
-                        ("Óxidos de ferro", OXIDOS_FE)):
-        achados = [f"{pt(n)} {_pct(v)}" for n, v, _ in mins if n.lower() in grupo]
-        if achados:
-            txt += f" {nome}: {', '.join(achados)}."
+    txt = ("Crystalline fraction: " + " · ".join(f"{nm(n)} {_pct(v)}" for n, v, _ in mins[:3]) + ".")
+    for name, group in (("Sulfates", SULFATES), ("Carbonates", CARBONATES), ("Clays", CLAYS),
+                        ("Iron oxides", FE_OXIDES)):
+        found = [f"{nm(n)} {_pct(v)}" for n, v, _ in mins if n.lower() in group]
+        if found:
+            txt += f" {name}: {', '.join(found)}."
     return txt
 
 
 # --------------------------------------------------------------------------- #
-# Fonte
+# Source
 # --------------------------------------------------------------------------- #
 
 
@@ -183,7 +187,7 @@ class PublicScience:
             return list(csv.DictReader(f))
 
     def _mastcam(self, url: str) -> str:
-        """Baixa a foto uma vez para dados/mastcam/; o card só usa o arquivo local."""
+        """Downloads the photo once into data/mastcam/; the card only uses the local file."""
         if not url:
             return ""
         dest = self.mastcam_dir / url.rsplit("/", 1)[-1]
@@ -194,39 +198,39 @@ class PublicScience:
 
     def list_targets(self, stops):
         by_rmc = {p.rmc: p for p in stops}
-        idx = [r for r in self._rows(self.index_csv) if r["instrumento"] != "ChemCam RMI"]
+        idx = [r for r in self._rows(self.index_csv) if r["instrument"] != "ChemCam RMI"]
         self._picked = []
         out = []
         for r in self._rows(self.targets_csv):
-            a, b = (int(x) for x in r["faixa_sols"].split("-"))
+            a, b = (int(x) for x in r["sol_range"].split("-"))
             ref = int(r["sol_ref"])
-            faixa = [x for x in idx if a <= int(x["sol"]) <= b]
-            chave = _norm(r["alvo"]).split("_")[0]
-            nomes = [x for x in faixa if x["alvo"] and len(chave) >= 4 and chave in _norm(x["alvo"])]
-            if nomes:
-                rmc = Counter(f"{x['site']}_{x['drive']}" for x in nomes).most_common(1)[0][0]
-                qual = "exata"
-            elif faixa:
-                x = min(faixa, key=lambda x: (abs(int(x["sol"]) - ref), int(x["sol"])))
-                rmc, qual = f"{x['site']}_{x['drive']}", "por_sol"
+            in_range = [x for x in idx if a <= int(x["sol"]) <= b]
+            key = _norm(r["target"]).split("_")[0]
+            names = [x for x in in_range if x["target"] and len(key) >= 4 and key in _norm(x["target"])]
+            if names:
+                rmc = Counter(f"{x['site']}_{x['drive']}" for x in names).most_common(1)[0][0]
+                quality = "exact"
+            elif in_range:
+                x = min(in_range, key=lambda x: (abs(int(x["sol"]) - ref), int(x["sol"])))
+                rmc, quality = f"{x['site']}_{x['drive']}", "by_sol"
             else:
                 continue
             p = by_rmc.get(rmc)
             if p is None:
                 continue
-            blog = (r["posts_blog"] or "").split(" | ")[0]
+            blog = (r["blog_posts"] or "").split(" | ")[0]
             t = Target(
-                id=f"t{int(r['id']):02d}", name=r["alvo"], kind=_kind(r["tipo"]), sol=ref,
-                site=p.site, drive=p.drive, lat=p.lat, lon=p.lon, pos_quality=qual,
-                why_it_matters=(r.get("por_que_importa") or "").strip(),
-                safety_note=(r.get("nota_seguranca") or "").strip(),
-                blog_url=(r.get("fonte_frases") or "").strip() or blog,
+                id=f"t{int(r['id']):02d}", name=r["target"], kind=_kind(r["type"]), sol=ref,
+                site=p.site, drive=p.drive, lat=p.lat, lon=p.lon, pos_quality=quality,
+                why_it_matters=(r.get("why_it_matters") or "").strip(),
+                safety_note=(r.get("safety_note") or "").strip(),
+                blog_url=(r.get("phrases_source") or "").strip() or blog,
                 mastcam_path=self._mastcam(r.get("mastcam_link", "")),
                 mastcam_credit=MAST_CREDIT if r.get("mastcam_link") else "",
-                what_was_done=(r.get("o_que_foi_feito") or "").strip(),
+                what_was_done=(r.get("what_was_done") or "").strip(),
                 what_was_done_url=blog,
             )
-            self._picked.append((t, {"a": a, "b": b}, {_norm(x["alvo"]) for x in nomes}))
+            self._picked.append((t, {"a": a, "b": b}, {_norm(x["target"]) for x in names}))
             out.append(t)
         return out
 
@@ -235,81 +239,81 @@ class PublicScience:
         moc = read_moc([p for p in (_download(MOC_URL + f, self.pds_dir / "chemcam" / f, self.offline)
                                     for f in MOC_FILES) if p])
         out: list[Measurement] = []
-        for t, faixa, nomes in self._picked:
+        for t, sol_range, names in self._picked:
             ref = t.sol
             here = [x for x in idx if int(x["site"]) == t.site and int(x["drive"]) == t.drive
-                    and faixa["a"] <= int(x["sol"]) <= faixa["b"] and sol_min <= int(x["sol"]) <= sol_max]
-            here.sort(key=lambda x: (abs(int(x["sol"]) - ref), x["arquivo"]))
-            out += self._apxs(t, [x for x in here if x["instrumento"] == "APXS"])
-            out += self._chemin(t, [x for x in here if x["instrumento"] == "CheMin"])
-            out += self._chemcam(t, [x for x in here if x["instrumento"] == "ChemCam LIBS"], moc, nomes)
+                    and sol_range["a"] <= int(x["sol"]) <= sol_range["b"] and sol_min <= int(x["sol"]) <= sol_max]
+            here.sort(key=lambda x: (abs(int(x["sol"]) - ref), x["file"]))
+            out += self._apxs(t, [x for x in here if x["instrument"] == "APXS"])
+            out += self._chemin(t, [x for x in here if x["instrument"] == "CheMin"])
+            out += self._chemcam(t, [x for x in here if x["instrument"] == "ChemCam LIBS"], moc, names)
         return out
 
-    def _med(self, t, inst, n, sol, summary, values, url, arquivo):
+    def _meas(self, t, inst, n, sol, summary, values, url, file):
         return Measurement(
             id=f"{t.id}_{inst.lower()}_{n}", target_id=t.id, instrument=inst, sol=sol,
             site=t.site, drive=t.drive, summary=summary,
-            values_json=json.dumps(values, ensure_ascii=False), confidence="medido",
-            source_url=url, source_file=arquivo)
+            values_json=json.dumps(values, ensure_ascii=False), confidence="measured",
+            source_url=url, source_file=file)
 
     def _apxs(self, t, rows):
         out = []
         for x in rows:
-            p = _download(x["url"], self.pds_dir / "apxs" / x["arquivo"], self.offline)
+            p = _download(x["url"], self.pds_dir / "apxs" / x["file"], self.offline)
             ox = read_apxs(p) if p else {}
             if not ox:
                 continue
-            out.append(self._med(t, "APXS", len(out), int(x["sol"]), summary_apxs(ox),
-                                 {k: {"pct": v, "incerteza": e} for k, (v, e) in ox.items()},
-                                 x["url"], x["arquivo"]))
-            if len(out) == MAX_POR_INSTRUMENTO["APXS"]:
+            out.append(self._meas(t, "APXS", len(out), int(x["sol"]), summary_apxs(ox),
+                                  {k: {"pct": v, "uncertainty": e} for k, (v, e) in ox.items()},
+                                  x["url"], x["file"]))
+            if len(out) == MAX_PER_INSTRUMENT["APXS"]:
                 break
         return out
 
     def _chemin(self, t, rows):
         out = []
-        for x in rows[:MAX_POR_INSTRUMENTO["CheMin"]]:
-            p = _download(x["url"], self.pds_dir / "chemin" / x["arquivo"], self.offline)
+        for x in rows[:MAX_PER_INSTRUMENT["CheMin"]]:
+            p = _download(x["url"], self.pds_dir / "chemin" / x["file"], self.offline)
             mins = read_chemin(p) if p else []
             if mins:
-                out.append(self._med(t, "CheMin", len(out), int(x["sol"]), summary_chemin(mins),
-                                     [{"mineral": n, "pct": v, "erro": e} for n, v, e in mins],
-                                     x["url"], x["arquivo"]))
+                out.append(self._meas(t, "CheMin", len(out), int(x["sol"]), summary_chemin(mins),
+                                      [{"mineral": n, "pct": v, "error": e} for n, v, e in mins],
+                                      x["url"], x["file"]))
         return out
 
-    def _chemcam(self, t, rows, moc, nomes):
-        # um registro por alvo do PDS; nome que bate com o alvo da M8 vem primeiro
-        vistos, out = set(), []
-        rows = sorted(rows, key=lambda x: (_norm(x["alvo"]) not in nomes,
+    def _chemcam(self, t, rows, moc, names):
+        # one record per PDS target; a name matching the M8 target comes first
+        seen, out = set(), []
+        rows = sorted(rows, key=lambda x: (_norm(x["target"]) not in names,
                                            abs(int(x["sol"]) - t.sol)))
         for x in rows:
-            if x["alvo"] in vistos:
+            if x["target"] in seen:
                 continue
-            vistos.add(x["alvo"])
-            pts = moc.get((t.site, t.drive, x["alvo"]))
+            seen.add(x["target"])
+            pts = moc.get((t.site, t.drive, x["target"]))
             if not pts:
                 continue
-            txt, media = summary_chemcam(x["alvo"], pts)
-            out.append(self._med(t, "ChemCam", len(out), int(x["sol"]), txt,
-                                 {"alvo_pds": x["alvo"], "pontos": len(pts), "media_pct": media},
-                                 MOC_URL, x["arquivo"]))
-            if len(out) == MAX_POR_INSTRUMENTO["ChemCam"]:
+            txt, mean = summary_chemcam(x["target"], pts)
+            out.append(self._meas(t, "ChemCam", len(out), int(x["sol"]), txt,
+                                  {"pds_target": x["target"], "points": len(pts), "mean_pct": mean},
+                                  MOC_URL, x["file"]))
+            if len(out) == MAX_PER_INSTRUMENT["ChemCam"]:
                 break
         return out
 
 
 # --------------------------------------------------------------------------- #
-# CRISM (tarefa 5): recorte pré-calculado por etl/crism.py
+# CRISM (task 5): crop precomputed by etl/crism.py
 # --------------------------------------------------------------------------- #
 
-# Limiares conservadores escolhidos pela equipe H2G2 (não são valores oficiais).
-# Abaixo deles o pixel é "sem sinal mineral forte".
+# Conservative thresholds chosen by the H2G2 team (not official values).
+# Below them the pixel is "no strong mineral signal".
 CRISM_PARAMS = {
-    "SINDEX2": ("sulfato poli-hidratado", 0.02),
-    "BD2100_2": ("sulfato monoidratado", 0.01),
-    "BD1900_2": ("mineral hidratado", 0.01),
-    "D2300": ("argila Fe/Mg", 0.01),
-    "BD2210_2": ("argila ou sílica com Al-OH", 0.01),
+    "SINDEX2": ("polyhydrated sulfate", 0.02),
+    "BD2100_2": ("monohydrated sulfate", 0.01),
+    "BD1900_2": ("hydrated mineral", 0.01),
+    "D2300": ("Fe/Mg clay", 0.01),
+    "BD2210_2": ("Al-OH clay or silica", 0.01),
 }
 
 
@@ -334,15 +338,16 @@ class PublicOrbital:
         vals = {k: d["bands"][k][row][col] for k in CRISM_PARAMS}
         if any(v is None for v in vals.values()):
             return None
-        acima = [(v / CRISM_PARAMS[k][1], k) for k, v in vals.items() if v >= CRISM_PARAMS[k][1]]
-        fmt = lambda v: f"{v:.3f}".replace(".", ",")  # noqa: E731
-        if acima:
-            _, k = max(acima)
-            label = f"indício de {CRISM_PARAMS[k][0]} ({k} = {fmt(vals[k])})"
+        above = [(v / CRISM_PARAMS[k][1], k) for k, v in vals.items() if v >= CRISM_PARAMS[k][1]]
+        fmt = lambda v: f"{v:.3f}"  # noqa: E731
+        if above:
+            _, k = max(above)
+            label = f"sign of {CRISM_PARAMS[k][0]} ({k} = {fmt(vals[k])})"
         else:
             k = max(vals, key=lambda k: vals[k] / CRISM_PARAMS[k][1])
-            label = (f"sem sinal mineral forte neste pixel; maior índice: {CRISM_PARAMS[k][0]} "
-                     f"({k} = {fmt(vals[k])}, abaixo do limiar {fmt(CRISM_PARAMS[k][1])})")
-        return OrbitalLabel(label, "inferido de órbita",
-                            f"média de uma área de ~{d['res_m']:.0f} m; produto {d['produto']}",
-                            d["url"], f"CRISM MTRDR {d['produto']} (PDS Geosciences)")
+            label = (f"no strong mineral signal in this pixel; highest index: {CRISM_PARAMS[k][0]} "
+                     f"({k} = {fmt(vals[k])}, below the threshold {fmt(CRISM_PARAMS[k][1])})")
+        product = d["product"]
+        return OrbitalLabel(label, "inferred from orbit",
+                            f"mean of an area of ~{d['res_m']:.0f} m; product {product}",
+                            d["url"], f"CRISM MTRDR {product} (PDS Geosciences)")

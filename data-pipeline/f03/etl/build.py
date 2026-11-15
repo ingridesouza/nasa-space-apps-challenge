@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Monta o pacote offline do F03/F04: tabelas no SQLite único do projeto
-(data/local/h2g2.sqlite) e arquivos em data/local/f03/ (servidos em /bundle).
+"""Builds the offline F03/F04 bundle: tables in the project's single SQLite
+(data/local/h2g2.sqlite) and files in data/local/f03/ (served at /bundle).
 
-Uso (a partir de data-pipeline/f03/):
-    python etl/build.py                    # fonte do config.yaml
-    python etl/build.py --source mock      # sem internet, dados de teste
-    python etl/build.py --refresh-waypoints   # baixa o MMGIS do dia antes
+Usage (from data-pipeline/f03/):
+    python etl/build.py                    # source from config.yaml
+    python etl/build.py --source mock      # no internet, test data
+    python etl/build.py --refresh-waypoints   # downloads today's MMGIS first
 
-Etapas: waypoints (tarefa 2) -> conferência MMGIS x PLACES (3) -> panoramas (5)
--> fotos estáticas (7) -> base orbital HiRISE (9) -> R-trees e MANIFEST (10).
-Rodar de novo reaproveita imagens e respostas da API já baixadas.
+Steps: waypoints (task 2) -> MMGIS x PLACES check (3) -> panoramas (5)
+-> static photos (7) -> HiRISE orbital base (9) -> R-trees and MANIFEST (10).
+Running again reuses images and API responses already downloaded.
 """
 
 from __future__ import annotations
@@ -27,13 +27,13 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-sys.path.append(str(ROOT.parent.parent / "api"))  # geo.py: única implementação de haversine/bearing
+sys.path.append(str(ROOT.parent.parent / "api"))  # geo.py: the only haversine/bearing implementation
 
 from geo import R_MARS, haversine, photo_azimuth  # noqa: E402
 from etl.science import SCHEMA_SCIENCE, build_science, copy_science_files, publish  # noqa: E402
 from etl.sources import make_science_sources, make_sources  # noqa: E402
 
-Image.MAX_IMAGE_PIXELS = None  # panoramas e o recorte HiRISE são grandes
+Image.MAX_IMAGE_PIXELS = None  # panoramas and the HiRISE crop are large
 
 SCHEMA = """
 CREATE TABLE waypoints(rmc TEXT PRIMARY KEY, site INT, drive INT, sol INT,
@@ -57,7 +57,7 @@ def log(msg: str) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Etapas
+# Steps
 # --------------------------------------------------------------------------- #
 
 
@@ -68,7 +68,7 @@ def build_waypoints(db, positions, cfg):
         "INSERT INTO waypoints VALUES (?,?,?,?,?,?,?,?,?)",
         [(p.rmc, p.site, p.drive, p.sol, p.lat, p.lon, p.elev, p.yaw, p.source) for p in stops],
     )
-    log(f"[2] waypoints: {len(stops)} paradas nos sols {s['min']}–{s['max']}")
+    log(f"[2] waypoints: {len(stops)} stops in sols {s['min']}–{s['max']}")
     return stops
 
 
@@ -85,31 +85,31 @@ def compute_window(stops, cfg):
     conf = cfg["window"]
     diff = max(abs(win[k] - conf[k]) for k in win)
     if diff > 1e-5:
-        log(f"   ! janela calculada difere do config.yaml em {diff:.6f}°: {win}")
+        log(f"   ! computed window differs from config.yaml by {diff:.6f}°: {win}")
     return win
 
 
 def check_places(positions, stops, n=10):
-    """Tarefa 3: cruza n paradas do MMGIS com o PLACES (planetocêntrica)."""
+    """Task 3: crosses n MMGIS stops with PLACES (planetocentric)."""
     if not hasattr(positions, "places") or not stops:
         return None
     step = max(1, len(stops) // n)
-    pares = []
+    pairs = []
     for p in stops[::step][:n]:
         q = positions.places(p.site, p.drive)
         if q is None:
             continue
-        pares.append({"rmc": p.rmc, "sol": p.sol, "dist_m": round(haversine(p.lat, p.lon, q.lat, q.lon), 4)})
-    if not pares:
+        pairs.append({"rmc": p.rmc, "sol": p.sol, "dist_m": round(haversine(p.lat, p.lon, q.lat, q.lon), 4)})
+    if not pairs:
         return None
-    res = {"pares": pares, "max_dist_m": max(x["dist_m"] for x in pares),
+    res = {"pairs": pairs, "max_dist_m": max(x["dist_m"] for x in pairs),
            "latitude": "planetocentric_latitude"}
-    log(f"[3] MMGIS x PLACES: {len(pares)} paradas, maior diferença {res['max_dist_m']} m")
+    log(f"[3] MMGIS x PLACES: {len(pairs)} stops, largest difference {res['max_dist_m']} m")
     return res
 
 
 def prepare_pano_image(src: Path, dest: Path, max_w: int) -> tuple[int, int]:
-    """Converte para JPEG (≤ max_w px de largura) e devolve (largura, altura)."""
+    """Converts to JPEG (≤ max_w px wide) and returns (width, height)."""
     if dest.exists():
         with Image.open(dest) as im:
             return im.size
@@ -137,7 +137,7 @@ def build_panoramas(db, panos_src, positions, cfg, bundle):
     for pm in panos_src.list_panoramas(s["min"], s["max"]):
         pos = positions.locate(pm.site, pm.drive, pm.sol)
         if pos is None:
-            log(f"   ! panorama {pm.id}: parada {pm.site}_{pm.drive} sem posição; ignorado")
+            log(f"   ! panorama {pm.id}: stop {pm.site}_{pm.drive} without position; ignored")
             n_skip += 1
             continue
         w = h = None
@@ -146,28 +146,28 @@ def build_panoramas(db, panos_src, positions, cfg, bundle):
             img_rel = f"panos/pano_{pm.id}.jpg"
             w, h = prepare_pano_image(Path(pm.image), bundle / img_rel, cfg["pano_max_width"])
         vaov = round(360 * h / w, 3) if w else None
-        # horizonte lido visualmente (fração da altura); acima do centro -> vOffset negativo
+        # horizon read visually (fraction of the height); above the center -> negative vOffset
         voff = round(-(0.5 - hz[int(pm.sol)]) * vaov, 2) if vaov and int(pm.sol) in hz else 0.0
         db.execute(
             "INSERT OR REPLACE INTO panoramas VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (pm.id, pm.sol, pm.site, pm.drive, pos.lat, pos.lon, pm.center_az, 360.0, vaov, voff,
-             img_rel, pm.page_url, pm.credit, f"{pos.source}_exato", pm.date, pos.yaw, w, h, "Navcam"),
+             img_rel, pm.page_url, pm.credit, f"{pos.source}_exact", pm.date, pos.yaw, w, h, "Navcam"),
         )
         n_ok += 1
     n_ok += build_color_panoramas(db, positions, cfg, bundle)
-    log(f"[5] panoramas: {n_ok} gravados, {n_skip} sem posição")
+    log(f"[5] panoramas: {n_ok} written, {n_skip} without position")
     return n_ok
 
 
 def build_color_panoramas(db, positions, cfg, bundle) -> int:
-    """Panoramas Mastcam coloridos (config.yaml: color_panos). Entram como linha
-    especial: posição da parada, haov 360, vaov pela proporção da imagem."""
+    """Mastcam color panoramas (config.yaml: color_panos). They go in as a special
+    row: stop position, haov 360, vaov from the image aspect ratio."""
     n = 0
     for c in cfg.get("color_panos") or []:
         src = (ROOT / c["image"]).resolve()
         pos = positions.locate(c["site"], c["drive"], c["sol"])
         if pos is None or not src.exists():
-            log(f"   ! panorama colorido {c['id']}: parada {c['site']}_{c['drive']} ou imagem ausente; ignorado")
+            log(f"   ! color panorama {c['id']}: stop {c['site']}_{c['drive']} or image missing; ignored")
             continue
         img_rel = f"panos/{c['id']}.jpg"
         w, h = prepare_pano_image(src, bundle / img_rel, c.get("max_width", cfg["pano_max_width"]))
@@ -177,7 +177,7 @@ def build_color_panoramas(db, positions, cfg, bundle) -> int:
             "INSERT OR REPLACE INTO panoramas VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (f"{c['sol']}_{c['site']}_{c['drive']}_color", c["sol"], c["site"], c["drive"],
              pos.lat, pos.lon, c["center_az"], 360.0, vaov, voff, img_rel, c.get("page_url", ""),
-             c["credit"], c.get("pos_quality", "estimada"), None, pos.yaw, w, h, c.get("camera", "Mastcam")),
+             c["credit"], c.get("pos_quality", "estimated"), None, pos.yaw, w, h, c.get("camera", "Mastcam")),
         )
         n += 1
     return n
@@ -190,7 +190,7 @@ def download(session, url: str, dest: Path) -> bool:
         r = session.get(url, timeout=60)
         r.raise_for_status()
     except requests.RequestException as e:
-        log(f"   ! falha ao baixar {url}: {e.__class__.__name__}")
+        log(f"   ! failed to download {url}: {e.__class__.__name__}")
         return False
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(r.content)
@@ -200,7 +200,7 @@ def download(session, url: str, dest: Path) -> bool:
 def build_photos(db, photos_src, positions, stops, cfg, bundle):
     s = cfg["sols"]
     session = requests.Session()
-    session.headers["User-Agent"] = "H2G2-DETON8/1.0 (uso educacional)"
+    session.headers["User-Agent"] = "H2G2-DETON8/1.0 (educational use)"
     n = 0
     for ph in photos_src.list_photos(s["min"], s["max"], stops):
         pos = positions.locate(ph.site, ph.drive, ph.sol)
@@ -220,18 +220,18 @@ def build_photos(db, photos_src, positions, stops, cfg, bundle):
         db.execute(
             "INSERT OR REPLACE INTO photos VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (ph.id, ph.instrument, ph.sol, ph.site, ph.drive, ph.date_taken, pos.lat, pos.lon,
-             ph.mast_az, ph.mast_el, img_rel, thumb_rel, ph.credit, f"{pos.source}_exato",
+             ph.mast_az, ph.mast_el, img_rel, thumb_rel, ph.credit, f"{pos.source}_exact",
              ph.source, pos.yaw, photo_azimuth(ph.mast_az, pos.yaw)),
         )
         n += 1
-    log(f"[7] fotos: {n} gravadas")
+    log(f"[7] photos: {n} written")
     return n
 
 
 def localize_mastcam(db, bundle) -> int:
-    """Baixa a Mastcam de cada alvo para o pacote; a API nunca serve URL externa."""
+    """Downloads each target's Mastcam into the bundle; the API never serves an external URL."""
     session = requests.Session()
-    session.headers["User-Agent"] = "H2G2-DETON8/1.0 (uso educacional)"
+    session.headers["User-Agent"] = "H2G2-DETON8/1.0 (educational use)"
     n = 0
     for tid, url in db.execute("SELECT id, mastcam_path FROM targets WHERE mastcam_path LIKE 'http%'").fetchall():
         rel = f"mastcam/{tid}.jpg"
@@ -248,16 +248,16 @@ def build_rtrees(db):
 
 
 def build_orbital(cfg, bundle, win):
-    """Tarefa 9: base HiRISE local. Converte o recorte boxwork.tif (M7) num JPEG
-    com os limites em graus, para o Leaflet e para o recorte de 100 m."""
+    """Task 9: local HiRISE base. Converts the boxwork.tif crop (M7) into a JPEG
+    with the bounds in degrees, for the map and for the 100 m crop."""
     tif = (ROOT / cfg["public"]["hirise_tif"]).resolve()
     if not tif.exists():
-        log("[9] base orbital: boxwork.tif não encontrado; mapa sem imagem de fundo")
+        log("[9] orbital base: boxwork.tif not found; map without background image")
         return None
     try:
         import rasterio
     except ImportError:
-        log("[9] base orbital: rasterio não instalado; mapa sem imagem de fundo")
+        log("[9] orbital base: rasterio not installed; map without background image")
         return None
 
     with rasterio.open(tif) as src:
@@ -272,7 +272,7 @@ def build_orbital(cfg, bundle, win):
             dest.parent.mkdir(parents=True, exist_ok=True)
             Image.fromarray(data.transpose(1, 2, 0)).save(dest, "JPEG", quality=90)
     bounds["image"] = "tiles/boxwork.jpg"
-    log(f"[9] base orbital: {bounds['width']}×{bounds['height']} px, {bounds['res_m']} m/px")
+    log(f"[9] orbital base: {bounds['width']}×{bounds['height']} px, {bounds['res_m']} m/px")
     return bounds
 
 
@@ -282,13 +282,13 @@ def write_track(db, bundle, win, orbital, cfg):
     with_pano = {r[0] for r in db.execute("SELECT site || '_' || drive FROM panoramas")}
     for s in stops:
         s["pano"] = s["rmc"] in with_pano
-    examples = [{"nome": f"Parada {s['rmc']} (sol {s['sol']})", "lat": s["lat"], "lon": s["lon"]}
+    examples = [{"name": f"Stop {s['rmc']} (sol {s['sol']})", "lat": s["lat"], "lon": s["lon"]}
                 for s in stops if s["rmc"] in ("118_2028", "120_538", "116_1596")]
-    alvos = ROOT / "dados" / "m7_alvos.csv"
-    if alvos.exists():
+    targets = ROOT / "data" / "m7_targets.csv"
+    if targets.exists():
         import csv
-        with open(alvos, newline="", encoding="utf-8") as f:
-            examples += [{"nome": r["nome"], "lat": float(r["lat"]), "lon": float(r["lon"])}
+        with open(targets, newline="", encoding="utf-8") as f:
+            examples += [{"name": r["name"], "lat": float(r["lat"]), "lon": float(r["lon"])}
                          for r in csv.DictReader(f)]
     (bundle / "map.json").write_text(json.dumps({
         "window": win, "orbital": orbital, "stops": stops, "examples": examples,
@@ -306,63 +306,63 @@ def write_manifest(db, bundle, cfg, source, places_check, waypoints_file):
 
     pub = cfg["public"]
     manifest = {
-        "gerado_em": dt.datetime.now().isoformat(timespec="seconds"),
-        "fonte": source,
-        "janela_sols": cfg["sols"],
-        "contagens": {"paradas": count("waypoints"), "panoramas": count("panoramas"),
-                      "fotos": count("photos")},
-        "tamanho_bytes": {d: size(d) for d in ("panos", "img", "thumbs", "tiles")},
-        "conferencia_mmgis_places": places_check,
-        "referencias": {
-            "latitude": "planetocêntrica (M3)",
-            "longitude": "leste positivo, 0–360",
-            "raio_marte_m": cfg["mars_radius_m"],
-            "mast_az": "a partir da frente do rover; azimute real = mast_az + yaw (M6)",
-            "panorama_center_az": "azimute do centro da imagem, do texto da página NASA",
+        "generated_at": dt.datetime.now().isoformat(timespec="seconds"),
+        "source": source,
+        "sol_window": cfg["sols"],
+        "counts": {"stops": count("waypoints"), "panoramas": count("panoramas"),
+                   "photos": count("photos")},
+        "size_bytes": {d: size(d) for d in ("panos", "img", "thumbs", "tiles")},
+        "mmgis_places_check": places_check,
+        "references": {
+            "latitude": "planetocentric (M3)",
+            "longitude": "east positive, 0–360",
+            "mars_radius_m": cfg["mars_radius_m"],
+            "mast_az": "from the rover's front; true azimuth = mast_az + yaw (M6)",
+            "panorama_center_az": "azimuth of the image center, from the NASA page text",
         },
-        "fontes": [] if source != "public" else [
-            {"nome": "Waypoints MMGIS do MSL", "url": pub["waypoints_url"],
-             "arquivo": str(waypoints_file), "credito": "NASA/JPL-Caltech"},
-            {"nome": "PLACES (localized_interp.csv)", "arquivo": pub["places_file"],
-             "credito": "NASA/JPL-Caltech, PDS Imaging Node"},
-            {"nome": "Panoramas Navcam (science.nasa.gov)", "arquivo": pub["panoramas_csv"],
-             "credito": "NASA/JPL-Caltech"},
-            {"nome": "Feed de imagens brutas do MSL", "url": pub["raw_images_api"],
-             "credito": "NASA/JPL-Caltech"},
-            {"nome": "Mosaico HiRISE colorido de Gale (USGS)", "url": pub["hirise_cog"],
-             "credito": "NASA/JPL/University of Arizona/USGS"},
+        "sources": [] if source != "public" else [
+            {"name": "MSL MMGIS waypoints", "url": pub["waypoints_url"],
+             "file": str(waypoints_file), "credit": "NASA/JPL-Caltech"},
+            {"name": "PLACES (localized_interp.csv)", "file": pub["places_file"],
+             "credit": "NASA/JPL-Caltech, PDS Imaging Node"},
+            {"name": "Navcam panoramas (science.nasa.gov)", "file": pub["panoramas_csv"],
+             "credit": "NASA/JPL-Caltech"},
+            {"name": "MSL raw images feed", "url": pub["raw_images_api"],
+             "credit": "NASA/JPL-Caltech"},
+            {"name": "Gale HiRISE color mosaic (USGS)", "url": pub["hirise_cog"],
+             "credit": "NASA/JPL/University of Arizona/USGS"},
         ],
     }
     old = bundle / "MANIFEST.json"
-    if old.exists():  # preserva o inventário do PDS (etl/science_index.py)
+    if old.exists():  # keeps the PDS inventory (etl/science_index.py)
         prev = json.loads(old.read_text(encoding="utf-8"))
-        if "inventario_pds" in prev:
-            manifest["inventario_pds"] = prev["inventario_pds"]
-    manifest["contagens"].update({"alvos": count("targets"), "medicoes": count("measurements")})
+        if "pds_inventory" in prev:
+            manifest["pds_inventory"] = prev["pds_inventory"]
+    manifest["counts"].update({"targets": count("targets"), "measurements": count("measurements")})
     manifest["science_source"] = cfg["science_source"]
     if cfg["science_source"] == "public":
         sc, cr = cfg["science"], cfg["crism"]
-        manifest["fontes_f04"] = [
-            {"nome": "Alvos curados (M8)", "arquivo": sc["targets_csv"], "credito": "blog Curiosity, NASA"},
-            {"nome": "Inventário PDS (tarefa 2)", "arquivo": sc["index_csv"], "credito": "PDS Geosciences"},
-            {"nome": "APXS RDR (RWP)", "arquivo": f"{sc['pds_dir']}/apxs/",
+        manifest["f04_sources"] = [
+            {"name": "Curated targets (M8)", "file": sc["targets_csv"], "credit": "Curiosity blog, NASA"},
+            {"name": "PDS inventory (task 2)", "file": sc["index_csv"], "credit": "PDS Geosciences"},
+            {"name": "APXS RDR (RWP)", "file": f"{sc['pds_dir']}/apxs/",
              "url": "https://pds-geosciences.wustl.edu/missions/msl/apxs.htm",
-             "credito": "PDS Geosciences / Agência Espacial Canadense"},
-            {"nome": "ChemCam LIBS RDR (MOC)", "arquivo": f"{sc['pds_dir']}/chemcam/",
+             "credit": "PDS Geosciences / Canadian Space Agency"},
+            {"name": "ChemCam LIBS RDR (MOC)", "file": f"{sc['pds_dir']}/chemcam/",
              "url": "https://pds-geosciences.wustl.edu/missions/msl/chemcam.htm",
-             "credito": "PDS Geosciences / LANL / CNES"},
-            {"nome": "CheMin RDR (abundância mineral)", "arquivo": f"{sc['pds_dir']}/chemin/",
+             "credit": "PDS Geosciences / LANL / CNES"},
+            {"name": "CheMin RDR (mineral abundance)", "file": f"{sc['pds_dir']}/chemin/",
              "url": "https://pds-geosciences.wustl.edu/missions/msl/chemin.htm",
-             "credito": "PDS Geosciences / NASA Ames"},
-            {"nome": f"CRISM MTRDR {cr['produto']} (parâmetros SU)", "arquivo": cr["crop_json"],
-             "url": cr["page_url"], "credito": "NASA/JPL/JHUAPL, PDS Geosciences"},
-            {"nome": "Fotos Mastcam dos alvos", "arquivo": sc["mastcam_dir"], "credito": "NASA/JPL-Caltech/MSSS"},
-            {"nome": "Polígonos de terreno (M6)", "arquivo": sc["terrain_geojson"],
-             "credito": "equipe H2G2", "presente": (bundle / "terrain.geojson").exists()},
+             "credit": "PDS Geosciences / NASA Ames"},
+            {"name": f"CRISM MTRDR {cr['product']} (SU parameters)", "file": cr["crop_json"],
+             "url": cr["page_url"], "credit": "NASA/JPL/JHUAPL, PDS Geosciences"},
+            {"name": "Mastcam photos of the targets", "file": sc["mastcam_dir"], "credit": "NASA/JPL-Caltech/MSSS"},
+            {"name": "Terrain polygons (M6)", "file": sc["terrain_geojson"],
+             "credit": "H2G2 team", "present": (bundle / "terrain.geojson").exists()},
         ]
     old.write_text(json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
     db.executemany("INSERT OR REPLACE INTO meta VALUES (?,?)",
-                   [("fonte", source), ("gerado_em", manifest["gerado_em"])])
+                   [("source", source), ("generated_at", manifest["generated_at"])])
     return manifest
 
 
@@ -371,12 +371,12 @@ def write_manifest(db, bundle, cfg, source, places_check, waypoints_file):
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--source", help="mock | public | official (padrão: config.yaml)")
+    ap.add_argument("--source", help="mock | public | official (default: config.yaml)")
     ap.add_argument("--config", default=str(ROOT / "config.yaml"))
-    ap.add_argument("--bundle", help="pasta dos arquivos servidos em /bundle (padrão: config.yaml)")
-    ap.add_argument("--db", help="SQLite único do projeto (padrão: config.yaml)")
+    ap.add_argument("--bundle", help="folder of the files served at /bundle (default: config.yaml)")
+    ap.add_argument("--db", help="the project's single SQLite (default: config.yaml)")
     ap.add_argument("--refresh-waypoints", action="store_true",
-                    help="baixa o MSL_waypoints.json do dia antes de montar")
+                    help="downloads today's MSL_waypoints.json before building")
     args = ap.parse_args()
 
     cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
@@ -387,15 +387,15 @@ def main() -> int:
     waypoints_file = None
     if args.refresh_waypoints and source == "public":
         from etl.sources.public import refresh_waypoints
-        waypoints_file = refresh_waypoints(cfg["public"]["waypoints_url"], ROOT / "dados")
-        log(f"[2] MMGIS baixado: {waypoints_file}")
+        waypoints_file = refresh_waypoints(cfg["public"]["waypoints_url"], ROOT / "data")
+        log(f"[2] MMGIS downloaded: {waypoints_file}")
 
     cache = (ROOT / cfg["paths"]["cache"]).resolve()
     positions, panos_src, photos_src = make_sources(source, cfg, ROOT, cache, waypoints_file)
-    log(f"Fonte: {source} · pacote em {bundle}")
+    log(f"Source: {source} · bundle at {bundle}")
 
-    # Monta num arquivo à parte e só no fim troca as tabelas no banco único:
-    # build que falha no meio não deixa o banco do time pela metade.
+    # Builds into a separate file and only at the end swaps the tables in the single database:
+    # a build that fails midway does not leave the team's database half-done.
     db_path = Path(args.db) if args.db else (ROOT / cfg["paths"]["db"]).resolve()
     tmp_path = bundle / "f03.db.part"
     tmp_path.unlink(missing_ok=True)
@@ -408,10 +408,10 @@ def main() -> int:
     build_panoramas(db, panos_src, positions, cfg, bundle)
     build_photos(db, photos_src, positions, stops, cfg, bundle)
     build_rtrees(db)
-    n_alvos, n_med = build_science(db, make_science_sources(cfg["science_source"], cfg, ROOT)[0],
+    n_targets, n_meas = build_science(db, make_science_sources(cfg["science_source"], cfg, ROOT)[0],
                                    stops, cfg)
-    log(f"F04: {n_alvos} alvos, {n_med} medições (science_source: {cfg['science_source']})")
-    log(f"F04: arquivos no bundle: {len(copy_science_files(cfg, ROOT, bundle))}")
+    log(f"F04: {n_targets} targets, {n_meas} measurements (science_source: {cfg['science_source']})")
+    log(f"F04: files in the bundle: {len(copy_science_files(cfg, ROOT, bundle))}")
     orbital = build_orbital(cfg, bundle, win) if source != "mock" else None
     write_track(db, bundle, win, orbital, cfg)
     wp_file = waypoints_file or cfg["public"]["waypoints_file"]
@@ -421,8 +421,8 @@ def main() -> int:
     publish(tmp_path, db_path, SCHEMA + SCHEMA_SCIENCE)
     tmp_path.unlink()
 
-    c = manifest["contagens"]
-    log(f"Pronto: {c['paradas']} paradas, {c['panoramas']} panoramas, {c['fotos']} fotos · {db_path}")
+    c = manifest["counts"]
+    log(f"Done: {c['stops']} stops, {c['panoramas']} panoramas, {c['photos']} photos · {db_path}")
     return 0
 
 

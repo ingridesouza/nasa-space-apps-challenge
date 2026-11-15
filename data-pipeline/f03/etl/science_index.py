@@ -1,23 +1,23 @@
-"""Tarefa 2 da F04: inventário do PDS na janela de sols do boxwork.
+"""F04 task 2: PDS inventory over the boxwork sol window.
 
-Lê as listas oficiais do PDS Geosciences e grava `dados/science_index.csv`:
+Reads the official PDS Geosciences lists and writes `data/science_index.csv`:
 
-    sol, site, drive, instrumento, alvo, arquivo, url, n_obs
+    sol, site, drive, instrument, target, file, url, n_obs
 
-- ChemCam: lista mestre `document/msl_ccam_obs.csv` (alvo, sol, RMC site/drive).
-  Uma linha por (sol, parada, alvo, LIBS|RMI); `n_obs` conta as observações.
-- APXS: `index/index.tab`; o nome do RWP traz sol, site e drive. O label do
-  APXS não traz o nome do alvo (TARGET_NAME = MARS): `alvo` fica vazio e o
-  vínculo com o alvo é feito por sol/parada na tarefa 3.
-- CheMin: `index/index.tab` do volume RDR; só os produtos MIN (abundância
-  mineral). O nome traz sol, site e drive.
+- ChemCam: master list `document/msl_ccam_obs.csv` (target, sol, RMC site/drive).
+  One row per (sol, stop, target, LIBS|RMI); `n_obs` counts the observations.
+- APXS: `index/index.tab`; the RWP name carries sol, site and drive. The APXS
+  label does not carry the target name (TARGET_NAME = MARS): `target` stays empty and
+  the link to the target is made by sol/stop in task 3.
+- CheMin: `index/index.tab` of the RDR volume; only the MIN products (mineral
+  abundance). The name carries sol, site and drive.
 
-Rodar a partir de data-pipeline/f03/:
-    python etl/science_index.py            # baixa (ou usa o cache) e grava
-    python etl/science_index.py --offline  # só usa data/local/f03-cache/pds/
+Run from data-pipeline/f03/:
+    python etl/science_index.py            # downloads (or uses the cache) and writes
+    python etl/science_index.py --offline  # only uses data/local/f03-cache/pds/
 
-As listas brutas ficam em data/local/f03-cache/pds/ para o ETL rodar sem internet.
-A contagem por instrumento vai para o `inventario_pds` do MANIFEST.json.
+The raw lists stay in data/local/f03-cache/pds/ so the ETL runs without internet.
+The count per instrument goes into the `pds_inventory` of MANIFEST.json.
 """
 
 from __future__ import annotations
@@ -44,11 +44,11 @@ LISTS = {
     "apxs_index.tab": f"{APXS}/index/index.tab",
     "chemin_index.tab": f"{CMIN}/index/index.tab",
 }
-# "Type of Product" da lista mestre -> instrumento (escuros e sem laser ficam fora)
+# "Type of Product" of the master list -> instrument (darks and no-laser are left out)
 CCAM_TYPES = {"1-D Single laser": "ChemCam LIBS", "Statistics": "ChemCam LIBS",
               "Image": "ChemCam RMI"}
 NAME_RE = re.compile(r"(RWP|MIN)(\d{4})(\d{3})(\d{4})", re.I)
-COLUNAS = ["sol", "site", "drive", "instrumento", "alvo", "arquivo", "url", "n_obs"]
+COLUMNS = ["sol", "site", "drive", "instrument", "target", "file", "url", "n_obs"]
 
 
 def fetch(cache: Path, offline: bool) -> dict[str, Path]:
@@ -57,12 +57,12 @@ def fetch(cache: Path, offline: bool) -> dict[str, Path]:
     for name, url in LISTS.items():
         dest = cache / name
         if not offline:
-            print(f"baixando {url}", flush=True)
+            print(f"downloading {url}", flush=True)
             r = requests.get(url, timeout=180)
             r.raise_for_status()
             dest.write_bytes(r.content)
         elif not dest.exists():
-            sys.exit(f"--offline sem cache: falta {dest}")
+            sys.exit(f"--offline without cache: missing {dest}")
         out[name] = dest
     return out
 
@@ -78,17 +78,17 @@ def chemcam_rows(path: Path, smin: int, smax: int) -> list[dict]:
             inst = CCAM_TYPES.get(r["Type of Product"].strip())
             if inst is None or not smin <= sol <= smax:
                 continue
-            alvo = r["Target"].strip()
-            g = groups.setdefault((sol, site, drive, inst, alvo), {
-                "sol": sol, "site": site, "drive": drive, "instrumento": inst, "alvo": alvo,
-                "arquivo": r["EDR Filename"].strip(),
+            target = r["Target"].strip()
+            g = groups.setdefault((sol, site, drive, inst, target), {
+                "sol": sol, "site": site, "drive": drive, "instrument": inst, "target": target,
+                "file": r["EDR Filename"].strip(),
                 "url": f"{CCAM}/data/sol{sol:05d}/", "n_obs": 0})
             g["n_obs"] += 1
     return list(groups.values())
 
 
-def index_rows(path: Path, kind: str, instrumento: str, base: str, smin: int, smax: int) -> list[dict]:
-    """APXS (RWP) ou CheMin (MIN): linhas do index.tab do volume."""
+def index_rows(path: Path, kind: str, instrument: str, base: str, smin: int, smax: int) -> list[dict]:
+    """APXS (RWP) or CheMin (MIN): rows of the volume's index.tab."""
     rows = []
     with path.open(encoding="utf-8", errors="replace", newline="") as f:
         for cols in csv.reader(f):
@@ -104,8 +104,8 @@ def index_rows(path: Path, kind: str, instrumento: str, base: str, smin: int, sm
                 continue
             folder = cols[1].lower().rstrip("/")
             ext = ".csv"
-            rows.append({"sol": sol, "site": site, "drive": drive, "instrumento": instrumento,
-                         "alvo": "", "arquivo": pid.lower() + ext,
+            rows.append({"sol": sol, "site": site, "drive": drive, "instrument": instrument,
+                         "target": "", "file": pid.lower() + ext,
                          "url": f"{base}/{folder}/{pid.lower()}{ext}", "n_obs": 1})
     return rows
 
@@ -115,8 +115,8 @@ def update_manifest(bundle: Path, counts: dict, smin: int, smax: int) -> bool:
     if not mf.exists():
         return False
     data = json.loads(mf.read_text(encoding="utf-8"))
-    data["inventario_pds"] = {"janela_sols": {"min": smin, "max": smax},
-                              "arquivo": "dados/science_index.csv", "linhas_por_instrumento": counts}
+    data["pds_inventory"] = {"sol_window": {"min": smin, "max": smax},
+                             "file": "data/science_index.csv", "rows_per_instrument": counts}
     mf.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
     return True
 
@@ -125,7 +125,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", default=str(ROOT / "config.yaml"))
     ap.add_argument("--cache", default=str(ROOT.parent.parent / "data" / "local" / "f03-cache" / "pds"))
-    ap.add_argument("--out", default=str(ROOT / "dados" / "science_index.csv"))
+    ap.add_argument("--out", default=str(ROOT / "data" / "science_index.csv"))
     ap.add_argument("--bundle", default=str(ROOT.parent.parent / "data" / "local" / "f03"))
     ap.add_argument("--offline", action="store_true")
     args = ap.parse_args()
@@ -137,22 +137,22 @@ def main() -> int:
     rows = chemcam_rows(files["ccam_obs.csv"], smin, smax)
     rows += index_rows(files["apxs_index.tab"], "RWP", "APXS", APXS, smin, smax)
     rows += index_rows(files["chemin_index.tab"], "MIN", "CheMin", CMIN, smin, smax)
-    rows.sort(key=lambda r: (r["sol"], r["instrumento"], r["alvo"], r["arquivo"]))
+    rows.sort(key=lambda r: (r["sol"], r["instrument"], r["target"], r["file"]))
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, COLUNAS)
+        w = csv.DictWriter(f, COLUMNS)
         w.writeheader()
         w.writerows(rows)
 
-    counts = Counter(r["instrumento"] for r in rows)
-    sols = {k: len({r["sol"] for r in rows if r["instrumento"] == k}) for k in counts}
-    print(f"{len(rows)} linhas em {out}")
+    counts = Counter(r["instrument"] for r in rows)
+    sols = {k: len({r["sol"] for r in rows if r["instrument"] == k}) for k in counts}
+    print(f"{len(rows)} rows in {out}")
     for k in sorted(counts):
-        print(f"  {k}: {counts[k]} linhas · {sols[k]} sols")
+        print(f"  {k}: {counts[k]} rows · {sols[k]} sols")
     noted = update_manifest(Path(args.bundle), dict(counts), smin, smax)
-    print("MANIFEST.json atualizado" if noted else "MANIFEST.json não encontrado (rode o build antes)")
+    print("MANIFEST.json updated" if noted else "MANIFEST.json not found (run the build first)")
     return 0
 
 

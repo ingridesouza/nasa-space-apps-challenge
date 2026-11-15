@@ -1,13 +1,13 @@
-"""Script de teste do adaptador RAD (radiação, PDS-PPI/UCLA).
+"""Test script for the RAD adapter (radiation, PDS-PPI/UCLA).
 
-Uso:
+Usage:
     python scripts/fetch_rad_test.py [sol]
 
-Sem argumento, usa o sol 4650 (mesmo exemplo do REMS, para comparar).
-Baixa o arquivo real do sol, extrai a dose do detector E por
-observação (unidade: µGy/h) e imprime as primeiras leituras, além da
-dose diária estimada (média das leituras × 24h) para comparar com a
-faixa conhecida de Marte (~200-250 µGy/dia).
+Without an argument, uses sol 4650 (same example as REMS, for comparison).
+Downloads the real file of the sol, extracts the detector E dose per
+observation (unit: µGy/h) and prints the first readings, plus the
+estimated daily dose (mean of the readings × 24h) to compare with the
+known Mars range (~200-250 µGy/day).
 """
 
 import os
@@ -25,27 +25,27 @@ def main() -> None:
     sol = int(sys.argv[1]) if len(sys.argv) > 1 else 4650
 
     adapter = PDSRadAdapter()
-    print(f"[1/2] Buscando arquivo RAD do sol {sol}...")
-    resultado = adapter.fetch_sol(sol)
-    print(f"      arquivo: {resultado['product_filename']}")
-    print(f"      {len(resultado['leituras'])} leituras com dosimetria completa no sol")
+    print(f"[1/2] Fetching RAD file for sol {sol}...")
+    result = adapter.fetch_sol(sol)
+    print(f"      file: {result['product_filename']}")
+    print(f"      {len(result['readings'])} readings with full dosimetry on the sol")
 
-    print("[2/2] Primeiras leituras:")
+    print("[2/2] First readings:")
     doses = []
-    for leitura in resultado["leituras"][:5]:
-        dose = leitura["dose_e_ugy_por_hora"]
+    for reading in result["readings"][:5]:
+        dose = reading["dose_e_ugy_per_hour"]
         print(
-            f"      obs {leitura['indice']:>3} | {leitura['lmst']} (LMST) | "
-            f"duração {leitura['duracao_s']:.0f}s | dose_E = {dose:.4f} µGy/h"
+            f"      obs {reading['index']:>3} | {reading['lmst']} (LMST) | "
+            f"duration {reading['duration_s']:.0f}s | dose_E = {dose:.4f} µGy/h"
         )
 
-    for leitura in resultado["leituras"]:
-        if leitura["dose_e_ugy_por_hora"] is not None:
-            doses.append(leitura["dose_e_ugy_por_hora"])
+    for reading in result["readings"]:
+        if reading["dose_e_ugy_per_hour"] is not None:
+            doses.append(reading["dose_e_ugy_per_hour"])
 
     if doses:
-        media = sum(doses) / len(doses)
-        print(f"\n      dose média do sol: {media:.4f} µGy/h -> ~{media * 24:.1f} µGy/dia estimado")
+        mean = sum(doses) / len(doses)
+        print(f"\n      mean dose of the sol: {mean:.4f} µGy/h -> ~{mean * 24:.1f} µGy/day estimated")
 
 
 if __name__ == "__main__":

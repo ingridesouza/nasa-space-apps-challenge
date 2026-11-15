@@ -1,4 +1,4 @@
-"""Fábrica de fontes: devolve (posições, panoramas, fotos) para o nome pedido."""
+"""Source factory: returns (positions, panoramas, photos) for the requested name."""
 
 from __future__ import annotations
 
@@ -24,11 +24,11 @@ def make_sources(name: str, cfg: dict, base_dir: Path, cache_dir: Path, waypoint
             ph["el_min"], ph["el_max"], ph["min_az_sep"],
         )
         return positions, panos, photos
-    raise ValueError(f"fonte desconhecida: {name!r} (use mock | public | official)")
+    raise ValueError(f"unknown source: {name!r} (use mock | public | official)")
 
 
 def make_science_sources(name: str, cfg: dict, base_dir: Path):
-    """Fábrica da F04: devolve (ScienceSource, OrbitalMineralSource)."""
+    """F04 factory: returns (ScienceSource, OrbitalMineralSource)."""
     if name == "mock":
         from .mock import MockOrbital, MockScience
         return MockScience(base_dir / cfg["science"]["targets_csv"]), MockOrbital()
@@ -40,6 +40,6 @@ def make_science_sources(name: str, cfg: dict, base_dir: Path):
                 PublicOrbital(base_dir / cfg["crism"]["crop_json"]))
     if name == "official":
         raise NotImplementedError(
-            f"science_source '{name}' ainda não implementada (depende da aba Resources, M1). "
-            "Use science_source: public no config.yaml.")
-    raise ValueError(f"science_source desconhecida: {name!r} (use mock | public | official)")
+            f"science_source '{name}' not implemented yet (depends on the Resources tab, M1). "
+            "Use science_source: public in config.yaml.")
+    raise ValueError(f"unknown science_source: {name!r} (use mock | public | official)")

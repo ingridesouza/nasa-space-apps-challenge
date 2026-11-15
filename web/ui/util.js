@@ -1,35 +1,35 @@
 import { SLOPE_VERDICT } from '../layers.js'
 
-/** Escapa texto da API antes de ir pra innerHTML. */
+/** Escapes API text before it goes into innerHTML. */
 export function esc(v) {
   return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
 }
 
-/** Número com casas fixas, ou '—' quando a API devolve null (sem dado real). */
-export const num = (v, casas = 0) => (v === null || v === undefined ? '—' : Number(v).toFixed(casas))
+/** Number with fixed decimals, or '—' when the API returns null (no real data). */
+export const num = (v, decimals = 0) => (v === null || v === undefined ? '—' : Number(v).toFixed(decimals))
 
 export const coord = (p) => `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`
 
-/** Veredito GO/NO-GO (antes VerdictBadge.tsx). checklist: [{ok, label}]. */
-export function veredito(status, checklist = [], rotulo = null) {
-  const v = { ...SLOPE_VERDICT[status], ...(rotulo && { label: rotulo }) }
-  const itens = checklist
-    .map((i) => `<div class="h2g2-mono ${i.ok ? 'ok' : 'falha'}">${i.ok ? '✓' : '⚠'} ${esc(i.label)}</div>`)
+/** GO/NO-GO verdict (formerly VerdictBadge.tsx). checklist: [{ok, label}]. */
+export function verdict(status, checklist = [], label = null) {
+  const v = { ...SLOPE_VERDICT[status], ...(label && { label }) }
+  const items = checklist
+    .map((i) => `<div class="h2g2-mono ${i.ok ? 'ok' : 'fail'}">${i.ok ? '✓' : '⚠'} ${esc(i.label)}</div>`)
     .join('')
-  return `<div class="h2g2-veredito" style="--cor:${v.color}">
-    <div class="h2g2-display h2g2-veredito-titulo"><span style="font-size:.8em">●</span>${esc(v.label)}</div>
-    ${itens && `<div class="h2g2-veredito-check">${itens}</div>`}
+  return `<div class="h2g2-verdict" style="--tone:${v.color}">
+    <div class="h2g2-display h2g2-verdict-title"><span style="font-size:.8em">●</span>${esc(v.label)}</div>
+    ${items && `<div class="h2g2-verdict-check">${items}</div>`}
   </div>`
 }
 
-/** Alertas da feature 08 (api/alertas.py): mesmas cores do veredito. */
-const ALERTA_COR = { perigo: 'var(--verdict-perigo)', atencao: 'var(--verdict-atencao)', info: 'var(--ink-3)' }
+/** Feature 08 alerts (api/alerts.py): same colors as the verdict. */
+const ALERT_COLOR = { danger: 'var(--verdict-danger)', caution: 'var(--verdict-caution)', info: 'var(--ink-3)' }
 
-/** a.distancia_m (só nos alertas de /api/route, não nos de /api/point):
- * posição real ao longo da caminhada, não a rota inteira. */
-export const alertasHtml = (alertas) => alertas
-  .map((a) => `<div class="h2g2-mono h2g2-alerta" title="fonte: ${esc(a.fonte)}" style="color:${ALERTA_COR[a.nivel]}">
-    ● ${a.distancia_m !== undefined ? `<span class="h2g2-dim">a ${num(a.distancia_m)}m do início:</span> ` : ''}${esc(a.mensagem)}</div>`)
+/** a.distance_m (only in /api/route alerts, not in /api/point ones):
+ * actual position along the walk, not the whole route. */
+export const alertsHtml = (alerts) => alerts
+  .map((a) => `<div class="h2g2-mono h2g2-alert" title="source: ${esc(a.source)}" style="color:${ALERT_COLOR[a.level]}">
+    ● ${a.distance_m !== undefined ? `<span class="h2g2-dim">${num(a.distance_m)} m from start:</span> ` : ''}${esc(a.message)}</div>`)
   .join('')
 
 const MARS_RADIUS_M = 3_396_190
@@ -40,12 +40,12 @@ function haversineM(lat1, lon1, lat2, lon2) {
   return MARS_RADIUS_M * 2 * Math.asin(Math.sqrt(a))
 }
 
-/** Feição IAU/USGS mais próxima -- client-side, a lista tem ~13 feições. */
-export function nomeMaisProximo(feicoes, lat, lon) {
-  let melhor = null
-  for (const f of feicoes) {
+/** Nearest IAU/USGS feature -- client-side, the list has ~13 features. */
+export function nearestName(features, lat, lon) {
+  let best = null
+  for (const f of features) {
     const d = haversineM(lat, lon, f.lat, f.lon)
-    if (!melhor || d < melhor.distance_m) melhor = { feature: f, distance_m: d }
+    if (!best || d < best.distance_m) best = { feature: f, distance_m: d }
   }
-  return melhor
+  return best
 }

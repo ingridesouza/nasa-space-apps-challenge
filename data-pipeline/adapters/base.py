@@ -1,10 +1,10 @@
-"""Interface comum que todo adaptador de fonte de dado precisa implementar.
+"""Common interface every data source adapter must implement.
 
-Cada fonte (Mars Trek, PDS, API de imagens do MSL, AI4Mars, MMGIS...) ganha
-um adaptador que sabe buscar e normalizar seus próprios dados. O resto do
-pipeline (e a API) só conhece o formato normalizado -- nunca o formato
-bruto de cada fonte. Isso é o que permite trocar `product_id`/URL na sexta
-sem reescrever lógica de ingestão.
+Each source (Mars Trek, PDS, MSL images API, AI4Mars, MMGIS...) gets
+an adapter that knows how to fetch and normalize its own data. The rest of the
+pipeline (and the API) only knows the normalized format -- never the raw
+format of each source. That is what allows swapping `product_id`/URL on Friday
+without rewriting ingestion logic.
 """
 
 from abc import ABC, abstractmethod
@@ -21,7 +21,7 @@ class BBox:
 
 @dataclass
 class TileResult:
-    """Um tile baixado e já localizado no CRS de trabalho."""
+    """A downloaded tile already located in the working CRS."""
 
     row: int
     col: int
@@ -31,25 +31,25 @@ class TileResult:
 
 
 class LayerAdapter(ABC):
-    """Adaptador de uma camada de dado (raster servido em tiles)."""
+    """Adapter for a data layer (raster served as tiles)."""
 
-    #: preenchido pelas subclasses, usado no `raster_registry`
-    categoria: str
+    #: filled in by the subclasses, used in `raster_registry`
+    category: str
 
     @abstractmethod
     def fetch_tiles(self, bbox: BBox, tile_matrix: str, out_dir: str) -> list[TileResult]:
-        """Baixa os tiles que cobrem `bbox` no nível `tile_matrix` e
-        devolve onde cada um foi salvo localmente."""
+        """Downloads the tiles covering `bbox` at level `tile_matrix` and
+        returns where each one was saved locally."""
         raise NotImplementedError
 
     def to_raster_registry_entry(self, layer_name: str, tiles: list[TileResult], out_dir: str) -> dict:
-        """Normaliza o resultado de `fetch_tiles` para o schema de
-        `raster_registry` descrito na feature 01 (seção 3.1)."""
+        """Normalizes the result of `fetch_tiles` to the
+        `raster_registry` schema described in feature 01 (section 3.1)."""
         return {
             "layer_name": layer_name,
             "local_tile_path": out_dir,
             "bbox": tiles[0].bbox.__dict__ if tiles else None,
             "minzoom": None,
             "maxzoom": None,
-            "categoria": self.categoria,
+            "category": self.category,
         }

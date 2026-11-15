@@ -1,15 +1,15 @@
-"""Adaptador para rasters servidos como ArcGIS ImageServer no Mars Trek
--- usado pelo DTM HiRISE de 1 m de Gale (item 6 da tabela da feature 01).
+"""Adapter for rasters served as an ArcGIS ImageServer on Mars Trek
+-- used by the Gale 1 m HiRISE DTM (item 6 of the feature 01 table).
 
-Diferente do WMTS (adapters/mars_trek_wmts.py), aqui não existe grade
-fixa de tiles: o serviço exporta um recorte raster sob medida via
-`exportImage`, com os valores reais de pixel (elevação em metros, não
-uma imagem renderizada) -- confirmado batendo contra o DEM de Gale:
-valores entre -4531 m e -4476 m, consistentes com o piso da cratera.
+Unlike WMTS (adapters/mars_trek_wmts.py), there is no fixed tile grid
+here: the service exports a custom raster crop via
+`exportImage`, with the real pixel values (elevation in meters, not
+a rendered image) -- confirmed against the Gale DEM:
+values between -4531 m and -4476 m, consistent with the crater floor.
 
-Descoberto via `scripts/lookup_mars_trek_product.py` (ver
-PROXIMOS-PASSOS.md) a partir do resultado de busca "Gale Crater" no
-Mars Trek, serviço `ArcGISImageService` do item "MRO HiRISE, Gale
+Discovered via `scripts/lookup_mars_trek_product.py` (see
+NEXT-STEPS.md) from the "Gale Crater" search result on
+Mars Trek, `ArcGISImageService` service of the item "MRO HiRISE, Gale
 Crater DEM".
 """
 
@@ -21,7 +21,7 @@ from .base import BBox, LayerAdapter, TileResult
 
 
 class ArcGISImageServerAdapter(LayerAdapter):
-    categoria = "topografica"
+    category = "topographic"
 
     def __init__(self, image_server_url: str, spatial_ref_wkid: int = 104905):
         self.image_server_url = image_server_url.rstrip("/")
@@ -33,9 +33,9 @@ class ArcGISImageServerAdapter(LayerAdapter):
         return resp.json()
 
     def fetch_tiles(self, bbox: BBox, tile_matrix: str, out_dir: str) -> list[TileResult]:
-        """`tile_matrix` aqui é reaproveitado para o tamanho de saída em
-        pixels, no formato "LARGURAxALTURA" (ex. "512x512") -- não existe
-        grade de tile neste serviço, é um recorte sob medida por bbox."""
+        """`tile_matrix` is reused here for the output size in
+        pixels, in the "WIDTHxHEIGHT" format (e.g. "512x512") -- there is no
+        tile grid in this service, it is a custom crop by bbox."""
         width, height = (int(v) for v in tile_matrix.lower().split("x"))
 
         os.makedirs(out_dir, exist_ok=True)

@@ -1,8 +1,8 @@
-"""Sampling de valor real de raster num ponto lat/lon -- só funciona
-para camadas `tipo_acesso = 'raster_unico'` no raster_registry (um
-GeoTIFF georreferenciado, ex. o DTM/MOLA), não para `tiles_wmts` (tiles
-PNG soltos, sem georreferência própria por arquivo -- precisariam virar
-um mosaico primeiro, ver PROXIMOS-PASSOS.md)."""
+"""Sampling of a real raster value at a lat/lon point -- only works
+for layers with `access_type = 'single_raster'` in raster_registry (one
+georeferenced GeoTIFF, e.g. the DTM/MOLA), not for `tiles_wmts` (loose
+PNG tiles, with no per-file georeference -- they would first need to
+become a mosaic, see NEXT-STEPS.md)."""
 
 import os
 import sqlite3
@@ -12,39 +12,39 @@ import rasterio
 
 from geo import MARS_METERS_PER_DEGREE
 
-# Limite de 20° citado no doc da feature 01 (seção "feature 02"): mesmo
-# limite de inclinação de caminhada usado pelo programa Artemis.
-# "atencao" é uma faixa de alerta antes de bater no limite real.
-LIMITE_SLOPE_ATENCAO_DEG = 15.0
-LIMITE_SLOPE_PERIGO_DEG = 20.0
+# 20° limit cited in the feature 01 doc ("feature 02" section): the same
+# walking slope limit used by the Artemis program.
+# "caution" is a warning band before hitting the real limit.
+SLOPE_CAUTION_LIMIT_DEG = 15.0
+SLOPE_DANGER_LIMIT_DEG = 20.0
 
 
 def classify_slope(slope_deg: float) -> str:
-    if slope_deg >= LIMITE_SLOPE_PERIGO_DEG:
-        return "perigo"
-    if slope_deg >= LIMITE_SLOPE_ATENCAO_DEG:
-        return "atencao"
-    return "seguro"
+    if slope_deg >= SLOPE_DANGER_LIMIT_DEG:
+        return "danger"
+    if slope_deg >= SLOPE_CAUTION_LIMIT_DEG:
+        return "caution"
+    return "safe"
 
 
 def _slope_degrees(dataset: rasterio.DatasetReader, row: int, col: int) -> float | None:
-    """Calcula a inclinação (slope) por diferença finita numa janela
-    3x3 ao redor do pixel -- suficiente para o MVP, não é um algoritmo
-    de slope "oficial" (ex. Horn 1981), mas usa dado real de elevação."""
+    """Computes the slope by finite difference over a 3x3 window
+    around the pixel -- enough for the MVP, it is not an "official" slope
+    algorithm (e.g. Horn 1981), but it uses real elevation data."""
     window = rasterio.windows.Window(max(col - 1, 0), max(row - 1, 0), 3, 3)
     try:
-        janela = dataset.read(1, window=window)
+        win = dataset.read(1, window=window)
     except Exception:
         return None
 
-    if janela.shape != (3, 3):
+    if win.shape != (3, 3):
         return None
 
     pixel_size_deg = abs(dataset.transform.a)
     pixel_size_m = pixel_size_deg * MARS_METERS_PER_DEGREE
 
-    dz_dx = (janela[1, 2] - janela[1, 0]) / (2 * pixel_size_m)
-    dz_dy = (janela[2, 1] - janela[0, 1]) / (2 * pixel_size_m)
+    dz_dx = (win[1, 2] - win[1, 0]) / (2 * pixel_size_m)
+    dz_dy = (win[2, 1] - win[0, 1]) / (2 * pixel_size_m)
     import math
 
     slope_rad = math.atan(math.hypot(dz_dx, dz_dy))
@@ -52,10 +52,10 @@ def _slope_degrees(dataset: rasterio.DatasetReader, row: int, col: int) -> float
 
 
 def sample_point(local_tile_path: str, lat: float, lon: float) -> dict | None:
-    """Abre o GeoTIFF e devolve {valor, slope_deg} no ponto, ou None se
-    o ponto cair fora da extensão do raster -- ou se o arquivo não
-    existe: o registry pode listar uma camada ainda não baixada (hoje o
-    MOLA, sem script de fetch), e isso não pode derrubar o /api/point."""
+    """Opens the GeoTIFF and returns {value, slope_deg} at the point, or None if
+    the point falls outside the raster extent -- or if the file does not
+    exist: the registry may list a layer not downloaded yet (today the
+    MOLA, with no fetch script), and that must not break /api/point."""
     if not os.path.isfile(local_tile_path):
         return None
     with rasterio.open(local_tile_path) as dataset:
@@ -64,72 +64,72 @@ def sample_point(local_tile_path: str, lat: float, lon: float) -> dict | None:
             return None
 
         row, col = dataset.index(lon, lat)
-        valor = dataset.read(1)[row, col]
+        value = dataset.read(1)[row, col]
         nodata = dataset.nodata
-        if nodata is not None and valor == nodata:
+        if nodata is not None and value == nodata:
             return None
 
-        resultado = {"valor": float(valor)}
+        result = {"value": float(value)}
         slope = _slope_degrees(dataset, row, col)
         if slope is not None:
-            resultado["slope_deg"] = round(slope, 2)
-            resultado["slope_status"] = classify_slope(slope)
-        return resultado
+            result["slope_deg"] = round(slope, 2)
+            result["slope_status"] = classify_slope(slope)
+        return result
 
 
-#: qual camada de elevação vira o valor "oficial" (`elevacao_m`/`slope_deg`
-#: no topo da resposta) quando mais de uma cobre o ponto -- a mais
-#: precisa primeiro.
-PRIORIDADE_ELEVACAO = ["dtm_hirise_1m", "mola_topografia_regional"]
+#: which elevation layer becomes the "official" value (`elevation_m`/`slope_deg`
+#: at the top of the response) when more than one covers the point -- the most
+#: precise first.
+ELEVATION_PRIORITY = ["dtm_hirise_1m", "mola_regional_topography"]
 
 
 def sample_all_rasters(conn: sqlite3.Connection, lat: float, lon: float) -> dict:
-    """Consulta o raster_registry e amostra todas as camadas do tipo
-    `raster_unico` que cobrem o ponto.
+    """Queries raster_registry and samples all layers of type
+    `single_raster` that cover the point.
 
-    Formato de resposta no nível raiz (`elevacao_m`, `slope_deg`,
-    `slope_status`, `classe_ai4mars`, `mineral_crism`) segue
-    EXATAMENTE o contrato documentado em
-    feature-01-mapa-hiperlocal-boxwork.md, seção 3.2 -- é o que a
-    feature 02 (rota/A*) e a feature 08 (voz) devem ler. `classe_ai4mars`
-    e `mineral_crism` ficam `None` (não `"desconhecido"` nem inventado):
-    AI4Mars não cobre a época do boxwork e CRISM não tem observação no
-    bbox -- ver PROXIMOS-PASSOS.md.
+    Root-level response format (`elevation_m`, `slope_deg`,
+    `slope_status`, `ai4mars_class`, `crism_mineral`) follows
+    EXACTLY the contract documented in
+    feature-01-mapa-hiperlocal-boxwork.md, section 3.2 -- it is what
+    feature 02 (route/A*) and feature 08 (voice) must read. `ai4mars_class`
+    and `crism_mineral` stay `None` (not `"unknown"` nor invented):
+    AI4Mars does not cover the boxwork period and CRISM has no observation in the
+    bbox -- see NEXT-STEPS.md.
 
-    `fontes` é uma extensão nossa (não está na spec original): todas as
-    fontes de elevação que cobrem o ponto, não só a "oficial" -- usado
-    pelo frontend pra mostrar "outras fontes de elevação" de forma
-    transparente."""
+    `sources` is our own extension (not in the original spec): all the
+    elevation sources that cover the point, not only the "official" one -- used
+    by the frontend to show "other elevation sources"
+    transparently."""
     rows = conn.execute(
         """
-        SELECT layer_name, local_tile_path, categoria
+        SELECT layer_name, local_tile_path, category
         FROM raster_registry
-        WHERE tipo_acesso = 'raster_unico'
+        WHERE access_type = 'single_raster'
           AND min_lon <= ? AND ? <= max_lon
           AND min_lat <= ? AND ? <= max_lat
         """,
         (lon, lon, lat, lat),
     ).fetchall()
 
-    fontes = {}
+    sources = {}
     for row in rows:
-        valores = sample_point(row["local_tile_path"], lat, lon)
-        if valores is not None:
-            fontes[row["layer_name"]] = {"categoria": row["categoria"], **valores}
+        values = sample_point(row["local_tile_path"], lat, lon)
+        if values is not None:
+            sources[row["layer_name"]] = {"category": row["category"], **values}
 
-    principal = None
-    for nome in PRIORIDADE_ELEVACAO:
-        if nome in fontes:
-            principal = fontes[nome]
+    main = None
+    for name in ELEVATION_PRIORITY:
+        if name in sources:
+            main = sources[name]
             break
-    if principal is None and fontes:
-        principal = next(iter(fontes.values()))
+    if main is None and sources:
+        main = next(iter(sources.values()))
 
     return {
-        "elevacao_m": principal["valor"] if principal else None,
-        "slope_deg": principal.get("slope_deg") if principal else None,
-        "slope_status": principal.get("slope_status") if principal else None,
-        "classe_ai4mars": None,  # AI4Mars não cobre a época do boxwork -- ver PROXIMOS-PASSOS.md
-        "mineral_crism": None,  # CRISM sem observação no bbox -- ver PROXIMOS-PASSOS.md
-        "fontes": fontes,
+        "elevation_m": main["value"] if main else None,
+        "slope_deg": main.get("slope_deg") if main else None,
+        "slope_status": main.get("slope_status") if main else None,
+        "ai4mars_class": None,  # AI4Mars does not cover the boxwork period -- see NEXT-STEPS.md
+        "crism_mineral": None,  # CRISM with no observation in the bbox -- see NEXT-STEPS.md
+        "sources": sources,
     }

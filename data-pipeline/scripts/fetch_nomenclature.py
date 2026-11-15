@@ -1,14 +1,14 @@
-"""Baixa a nomenclatura oficial IAU/USGS (item 12 da feature 01) pra
-área de Gale, a partir do webmap "Mars High-Resolution Mosaic Viewer"
-da USGS no ArcGIS Online -- descoberto em 2026-11-13 via busca na API
-pública do ArcGIS (ver PROXIMOS-PASSOS.md).
+"""Downloads the official IAU/USGS nomenclature (item 12 of feature 01) for
+the Gale area, from the USGS "Mars High-Resolution Mosaic Viewer" webmap
+on ArcGIS Online -- discovered on 2026-11-13 via a search on the public
+ArcGIS API (see NEXT-STEPS.md).
 
-As camadas de nomenclatura desse webmap vêm como `featureCollection`
-embutida no próprio JSON do item (não é uma FeatureServer separada
-consultável por bbox) -- por isso baixamos tudo uma vez e filtramos
-localmente pelas features que tocam nosso bbox de interesse.
+The nomenclature layers of this webmap come as a `featureCollection`
+embedded in the item's own JSON (it is not a separate FeatureServer
+queryable by bbox) -- so we download everything once and filter
+locally by the features that touch our bbox of interest.
 
-Uso:
+Usage:
     python scripts/fetch_nomenclature.py
 """
 
@@ -24,9 +24,9 @@ import requests
 WEBMAP_ITEM_ID = "b164957a19544f55a8d6a001c952a590"  # USGS: Mars High-Resolution Mosaic Viewer
 OUT_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "local", "nomenclature.json")
 
-# bbox generoso ao redor de Gale (cobre a cratera inteira + Aeolis Mons/Palus),
-# bem maior que o bbox de teste de 3x3km -- nomenclatura é esparsa, vale
-# pegar um raio maior pra não perder feições próximas relevantes.
+# generous bbox around Gale (covers the whole crater + Aeolis Mons/Palus),
+# much larger than the 3x3km test bbox -- nomenclature is sparse, it is worth
+# taking a larger radius so as not to miss relevant nearby features.
 GALE_REGION_BBOX = (135.0, -8.0, 141.0, -2.0)  # min_lon, min_lat, max_lon, max_lat
 
 
@@ -42,7 +42,7 @@ def bbox_intersects(a: tuple[float, float, float, float], b_attrs: dict) -> bool
 
 
 def main() -> None:
-    print("Buscando webmap de nomenclatura da USGS...")
+    print("Fetching the USGS nomenclature webmap...")
     resp = requests.get(
         f"https://www.arcgis.com/sharing/rest/content/items/{WEBMAP_ITEM_ID}/data",
         params={"f": "json"},
@@ -51,36 +51,36 @@ def main() -> None:
     resp.raise_for_status()
     data = resp.json()
 
-    resultado = []
+    result = []
     for layer in data.get("operationalLayers", []):
-        titulo = layer.get("title") or ""
-        if "Nomenclature" not in titulo:
+        title = layer.get("title") or ""
+        if "Nomenclature" not in title:
             continue
         for sub in layer.get("featureCollection", {}).get("layers", []):
             for feat in sub.get("featureSet", {}).get("features", []):
                 attrs = feat.get("attributes", {})
                 if bbox_intersects(GALE_REGION_BBOX, attrs):
-                    resultado.append(
+                    result.append(
                         {
-                            "nome": attrs.get("name"),
-                            "tipo": attrs.get("type"),
-                            "categoria_camada": titulo,
+                            "name": attrs.get("name"),
+                            "type": attrs.get("type"),
+                            "layer_category": title,
                             "lat": attrs.get("center_lat"),
                             "lon": attrs.get("center_lon"),
-                            "diametro_km": attrs.get("diameter"),
-                            "aprovado_iau": attrs.get("approval"),
-                            "fonte_url": attrs.get("link"),
+                            "diameter_km": attrs.get("diameter"),
+                            "iau_approved": attrs.get("approval"),
+                            "source_url": attrs.get("link"),
                         }
                     )
 
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
     with open(OUT_PATH, "w", encoding="utf-8") as f:
-        json.dump(resultado, f, ensure_ascii=False, indent=2)
+        json.dump(result, f, ensure_ascii=False, indent=2)
 
-    print(f"{len(resultado)} feições encontradas na região de Gale:")
-    for item in resultado:
-        print(f"  - {item['nome']} ({item['tipo']}) -- {item['lat']:.3f}, {item['lon']:.3f}")
-    print(f"\nSalvo em {OUT_PATH}")
+    print(f"{len(result)} features found in the Gale region:")
+    for item in result:
+        print(f"  - {item['name']} ({item['type']}) -- {item['lat']:.3f}, {item['lon']:.3f}")
+    print(f"\nSaved to {OUT_PATH}")
 
 
 if __name__ == "__main__":
