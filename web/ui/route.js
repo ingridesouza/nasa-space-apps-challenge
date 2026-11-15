@@ -96,6 +96,7 @@ function o2Html(r) {
       <div class="o2-out" style="width:${pct(out)}%;background:${color(out)}"></div>
       <div class="o2-reserve" style="left:${100 - MIN_RESERVE_PCT * 100}%" title="20% minimum reserve"></div>
     </div>
+    <p class="caption mono" aria-hidden="true">${num(out, 1)} L outbound · ${num(back, 1)} L round trip · of ${cap} L (20% reserve)</p>
   </div>`
 }
 
@@ -116,7 +117,8 @@ function routeDetail(r, top = '') {
     ${top}
     ${noReturnHtml(r)}
     ${target ? `<div class="route-sec"><span class="sci-sec">Passes near</span>
-      <button type="button" class="target-btn" data-action="target">◇ ${esc(target.name)} <span class="mono">open science card ›</span></button></div>` : ''}`
+      <button type="button" class="target-btn" data-action="target">◇ ${esc(target.name)} <span class="mono">open science card ›</span></button></div>` : ''}
+    ${evaSection(r)}`
 }
 
 /** F06: "couple the forecast to the route, suggesting the best window for the EVA". */
@@ -174,9 +176,12 @@ function evaSection(r) {
   const p = st.fc
   const sol = st.solEva ?? p?.sol ?? ''
   if (sol && st.condKey !== sol) loadConditions(sol)
-  // solar_event is the only alert here worth a banner -- dust_season/stale_data
-  // already show in the #c-status panel (app.js); this one is sol-specific and
-  // tied to the EVA being planned, so it belongs on the route card too.
+  // solar_event/dust_storm_event are the alerts worth a banner here --
+  // dust_season/stale_data already show in the #c-status panel (app.js);
+  // these two are sol-specific, confirmed real events, tied to the EVA
+  // being planned, so they belong on the route card too.
+  const HAZARD_LABEL = { solar_event: 'Solar particle event', dust_storm_event: 'Dust storm' }
+  const hazardAlert = st.cond?.alerts?.find((a) => a.type in HAZARD_LABEL)
   const solarAlert = st.cond?.alerts?.find((a) => a.type === 'solar_event')
   const top = `<div class="sci-top"><span class="sci-sec">EVA window · ${esc(Math.ceil(minutes / 60))}h</span>
     <span class="sol-step mono">
@@ -184,8 +189,8 @@ function evaSection(r) {
       <label>sol <input type="number" data-sol-eva min="1" step="1" value="${esc(sol)}" aria-label="EVA sol"></label>
       <button type="button" data-sol-step="1" aria-label="Next sol">›</button>
     </span></div>`
-  const solarBanner = solarAlert
-    ? `<p class="suggestion-reason v-${solarAlert.level}" title="source: ${esc(solarAlert.source)}"><span class="fl-sec">Solar particle event</span>${esc(solarAlert.message)}</p>`
+  const hazardBanner = hazardAlert
+    ? `<p class="suggestion-reason v-${hazardAlert.level}" title="source: ${esc(hazardAlert.source)}"><span class="fl-sec">${esc(HAZARD_LABEL[hazardAlert.type])}</span>${esc(hazardAlert.message)}</p>`
     : ''
   let body
   if (p === undefined) body = '<p class="empty">computing from the local forecast…</p>'
@@ -208,7 +213,7 @@ function evaSection(r) {
       ${div}
       <p class="caption mono" title="${esc(p.method)} · ${esc(p.source)}">${p.earth_date ? `${esc(DATE.format(new Date(`${p.earth_date}T12:00:00Z`)))} on Earth · Ls ${num(p.ls, 0)}° · ` : ''}estimated, not measured · typical error ±${num(error?.temp_min_c?.mean_error, 1)} °C (min)${error?.dose_ugy_day ? ` · ±${num(error.dose_ugy_day.mean_error, 0)} µGy/day` : ''} · base: ${p.base_origin === 'local' ? `habitat measurement, sol ${esc(p.base_sol)}` : `PDS, sol ${esc(p.base_sol)}`}</p>`
   }
-  return `<div class="route-sec">${top}${solarBanner}${body}${p ? measureForm(p) : ''}</div>`
+  return `<div class="route-sec">${top}${hazardBanner}${body}${p ? measureForm(p) : ''}</div>`
 }
 
 const activeRoute = () => st.data?.routes.find((r) => r.type === st.type) ?? null
