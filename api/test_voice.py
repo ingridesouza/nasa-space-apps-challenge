@@ -51,4 +51,12 @@ assert ok("Marvin how much radiation will I get today", "question")["question"] 
 assert ok("Hey Marvin, route to the base", "route", "the base")["activated"]
 assert ok("A Marvin, can I climb here?", "question")["question"] == "can I climb here?"
 ok("Hey Marvin, I fell in a hole near the ridge", "question")                  # "hole" does not become a return to base
+# "fast" is 0.75 from "east": "fast router" must not open a route to "Boxwork east contact"
+EAST = DESTINATIONS + [{"name": "Boxwork east contact", "lat": 0, "lon": 0}]
+r = interpret("Marvin, what is the fast router?", EAST)
+assert not (r["destination"] and r["destination"]["name"] == "Boxwork east contact"), r
+assert interpret("Marvin, route to Altadina", EAST)["destination"]["name"].startswith("Altadena")  # real misspelling still works
+# what Whisper small really heard as the "Confirm?" answer (one person's recordings): still yes / no
+ok("one, yes.", "yes", require_activation=False)
+ok("no concept", "no", require_activation=False)
 print("test_voice: ok")

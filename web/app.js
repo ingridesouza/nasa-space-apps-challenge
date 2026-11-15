@@ -7,7 +7,7 @@ import {
 } from './api.js'
 import { TOGGLEABLE_LAYERS } from './layers.js'
 import * as map from './map.js'
-import { initAssistant, speak } from './ui/agent.js'
+import { initAssistant } from './ui/agent.js'
 import { initAnswerCard } from './ui/answer-card.js'
 import { arrivalHour, renderLayers } from './ui/layers-panel.js'
 import { initRoute, routeForAgent, showOptions } from './ui/route.js'
@@ -586,7 +586,7 @@ initVoice($('btn-voice'), $('voice-status'), {
   currentPoint: () => state.position,
   route: (_origin, destination) => openRouteTo(destination),
   ask: (text) => {
-    return assistant.send(text, true) // the answer card opens by itself; the assistant history stays closed
+    return assistant.send(text) // the answer card opens by itself; the assistant history stays closed
   },
   execute,
   context,
@@ -629,7 +629,7 @@ register('m-A', {
     if (!c) return 'The map has not loaded yet.'
     if (state.map === 'viewer') openMap('explore')
     $('readout').hidden = false
-    speak((await readPoint(c.lat, c.lon)).replaceAll('·', ',').replace('°E', ' degrees east'))
+    await readPoint(c.lat, c.lon) // the readout line shows lat, lon and elevation
   },
 })
 register('m-B', {
@@ -744,11 +744,6 @@ register('m-G', {
   close: () => { assistant.open(false) },
   next: () => changePage($('assistant'), 1) || 'Assistant: there is no older answer.',
   previous: () => changePage($('assistant'), -1) || 'Assistant: already on the newest.',
-  listen: () => {
-    const b = $('assistant').querySelector('.h2g2-asst-item:not(.page-out) [data-listen]')
-    if (!b) return 'There is no answer to listen to.'
-    b.click()
-  },
 })
 register('m-H', {
   close: () => { if ($('viewer-close').hidden) return 'The viewer is already empty.'; closeViewer() },
@@ -762,13 +757,12 @@ register('m-I', {
   },
 })
 register('m-J', {
-  read: () => { if ($('c-status').hidden) return 'There is no warning.'; speak($('c-status').textContent.trim()) },
+  read: () => ($('c-status').hidden ? 'There is no warning.' : { ok: true, text: $('c-status').textContent.trim() }),
 })
 register('sys', {
   back: () => { if (!$('assistant').hidden) assistant.open(false); else back() },
-  silence: () => { speechSynthesis.cancel() },
   microphone: () => { if ($('btn-voice').getAttribute('aria-pressed') !== 'true') return 'The microphone is already off.'; $('btn-voice').click() },
-  help: () => { speak(describeOpen()) },
+  help: () => ({ ok: true, text: describeOpen() }),
 })
 initCommands().catch((e) => console.warn('command catalog unavailable:', e))
 

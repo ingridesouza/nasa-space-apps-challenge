@@ -7,15 +7,6 @@ import { coord, esc } from './util.js'
 
 const MAX_HISTORY = 4
 
-/** Speech output: only local system voices, never network ones (offline). */
-export function speak(text) {
-  const voice = speechSynthesis.getVoices().find((v) => v.lang.startsWith('en') && v.localService)
-  const u = new SpeechSynthesisUtterance(text)
-  u.lang = 'en-US'
-  if (voice) u.voice = voice
-  speechSynthesis.cancel() // do not stack answers
-  speechSynthesis.speak(u)
-}
 
 /**
  * el: <section id="assistant">.
@@ -48,15 +39,14 @@ export function initAssistant(el, currentPoint, currentRoute = () => null, openR
             ? `<div class="h2g2-error">${esc(h.error)}</div><div class="h2g2-dim h2g2-micro">Alerts still apply: they do not depend on the model.</div>`
             : `<p class="h2g2-asst-r">${esc(h.answer)}</p>
                <div class="h2g2-dim h2g2-micro">sources: ${esc(h.sources.join(' · ') || 'none')} · ${h.seconds}s
-               ${'speechSynthesis' in window ? ` · <button type="button" class="h2g2-link-btn" data-listen="${i}">▶ listen</button>` : ''}</div>`}
+               </div>`}
       </article>`).join('')
     el.innerHTML = `<div class="h2g2-asst-hist">${items || '<p class="h2g2-dim h2g2-small">Say "Hey Marvin" and ask the question.</p>'}</div>`
     // F11: no scrolling; history in pages (newest first)
     paginate(el, { sel: ':scope > .h2g2-asst-hist > *', max: () => innerHeight * 0.62 - 28 })
   }
 
-  /** byVoice: the question came from the microphone, so the answer is spoken too. */
-  async function send(question, byVoice = false) {
+  async function send(question) {
     if (busy || !question.trim()) return
     busy = true
     const h = { question: question.trim(), about: about(), seconds: 0 }
@@ -79,11 +69,9 @@ export function initAssistant(el, currentPoint, currentRoute = () => null, openR
       if (route) openRoute({ lat: route.lat, lon: route.lon })
       const replan = r.actions?.findLast((a) => a.type === 'replan')
       if (replan) showOptions(replan.result, replan.origin)
-      if (byVoice) speak(`You asked: ${h.question} ${r.answer}`) // repeats what it heard: a transcription error becomes audible
     } catch (err) {
       h.error = err.message
       h.card = err.card ?? null
-      if (byVoice) speak('The assistant is offline. The alerts still apply.')
     } finally {
       clearInterval(timer)
       h.seconds = Math.round((performance.now() - start) / 1000)
@@ -98,10 +86,6 @@ export function initAssistant(el, currentPoint, currentRoute = () => null, openR
     if (isOpen) render()
   }
 
-  el.addEventListener('click', (e) => {
-    const i = e.target.closest('[data-listen]')?.dataset.listen
-    if (i !== undefined && history[i]?.answer) speak(history[i].answer)
-  })
   // click outside the panel or Esc closes; the next spoken question reopens it
   document.addEventListener('pointerdown', (e) => {
     if (!el.hidden && !el.contains(e.target)) open(false)

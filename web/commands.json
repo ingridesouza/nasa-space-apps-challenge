@@ -850,15 +850,6 @@
       "go back",
       "return"
      ]
-    },
-    "listen": {
-     "desc": "reads the answer of the current page aloud",
-     "spoken": [
-      "listen",
-      "repeat",
-      "read",
-      "say again"
-     ]
     }
    }
   },
@@ -936,7 +927,7 @@
    ],
    "actions": {
     "read": {
-     "desc": "reads the warning aloud",
+     "desc": "shows the warning text",
      "spoken": [
       "read",
       "listen",
@@ -964,16 +955,6 @@
       "exit all"
      ]
     },
-    "silence": {
-     "desc": "stops speaking",
-     "spoken": [
-      "silence",
-      "quiet",
-      "stop talking",
-      "shut up",
-      "enough"
-     ]
-    },
     "microphone": {
      "desc": "turns off the hands-free microphone (turn it back on: hold space or click the voice pill)",
      "spoken": [
@@ -983,7 +964,7 @@
      ]
     },
     "help": {
-     "desc": "says the open blocks and what can be asked",
+     "desc": "shows the open blocks and what can be asked",
      "spoken": [
       "help",
       "commands",
