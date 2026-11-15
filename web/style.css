@@ -64,10 +64,13 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
   border:1px solid var(--b400);border-radius:3px;background:linear-gradient(160deg,rgba(32,56,98,.55),rgba(18,18,20,.9) 58%);backdrop-filter:blur(10px);color:var(--b200);font-size:12px;font-weight:600;letter-spacing:.08em;cursor:pointer;box-shadow:0 0 18px rgba(166,166,176,.22),0 4px 14px rgba(0,0,0,.5)}
 .pilula.frame::before,.pilula.frame::after{width:12px;height:12px;border-color:var(--b300)}
 .pilula kbd{font-family:inherit;font-size:10px;border:1px solid var(--line);border-radius:2px;padding:0 5px;color:var(--dim)}
-/* F08 voz: botão no canto do topo e linha de estado (ouvindo / transcrevendo / ouvi "…") */
-.btn-voz{left:auto;right:16px;transform:none}
-.btn-voz:not(.on){color:var(--dim);border-color:var(--line)}
-.voz-status{position:absolute;z-index:15;top:58px;left:50%;transform:translateX(-50%);max-width:min(90vw,640px);padding:6px 14px;font-size:12px;text-align:center;color:var(--hud-cyan);border:1px solid var(--hud-cyan);border-radius:3px;background:rgba(18,18,20,.9);pointer-events:none}
+/* F08 voz: a pílula é o microfone; o texto dela é o estado (ouvindo / transcrevendo / ouvi "…") */
+#btn-voz{max-width:min(calc(100vw - 32px),640px)}
+#voz-status{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#voz-status[hidden]{display:inline!important}
+.voz-ico{flex:none;width:8px;height:8px;border-radius:50%;background:var(--dim)}
+#btn-voz.on .voz-ico{background:var(--mars2);box-shadow:0 0 8px var(--mars2)}
+#btn-voz:not(.on){color:var(--dim);border-color:var(--line)}
 .assistente{position:absolute;z-index:14;top:62px;left:50%;transform:translateX(-50%);width:min(620px,calc(100vw - 32px));max-height:62vh;overflow-y:auto;padding:14px}
 .h2g2-linha-topo{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .h2g2-panel-title{margin:0;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--b300)}
@@ -78,10 +81,6 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .h2g2-small{font-size:13px}
 .h2g2-erro{color:#FF9C7D;font-size:13px}
 .h2g2-link-btn{background:none;border:0;padding:0;color:var(--mut);font-family:'JetBrains Mono',monospace;font-size:11px;text-decoration:underline;cursor:pointer}
-.h2g2-ass-form{display:flex;gap:8px;margin:10px 0}
-.h2g2-ass-form input{flex:1;min-width:0;min-height:36px;padding:0 10px;background:rgba(10,10,11,.8);border:1px solid var(--line);border-radius:2px;color:var(--tx);font:inherit;font-size:14px}
-.h2g2-ass-form input:focus{border-color:var(--b400)}
-.h2g2-ass-form button{padding:0 14px;border:1px solid transparent;background:var(--mars);color:#fff;cursor:pointer;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
 .h2g2-ass-sugestoes{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 .h2g2-ass-sugestoes button{padding:4px 10px;font-size:11px;background:var(--n850);color:var(--b300);border:1px solid var(--line);border-radius:999px;cursor:pointer}
 .h2g2-ass-sugestoes button:hover:not(:disabled){border-color:var(--b400)}
@@ -235,6 +234,8 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .tipos{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:4px}
 .tipo{min-height:32px;border:1px solid var(--line);background:var(--n850);color:var(--mut);font-family:'Chakra Petch',sans-serif;font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 .tipo:hover{border-color:var(--b400)}
+.sugestao-motivo{margin:0 0 6px;color:var(--b200);font-size:12px;line-height:1.4}
+.sugestao-lista{margin:4px 0;padding-left:0;list-style:none;font-size:11px;line-height:1.5;color:var(--mut)}
 .tipo.on{border-color:var(--b300);background:rgba(32,56,98,.8);color:var(--b200)}
 .h2g2-veredito{border:1px solid var(--cor);border-radius:3px;padding:10px;background:color-mix(in srgb,var(--cor) 10%,transparent)}
 .h2g2-veredito-titulo{color:var(--cor);font-family:'Chakra Petch',sans-serif;font-weight:600;font-size:15px;display:flex;align-items:flex-start;gap:8px}
@@ -280,8 +281,6 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
   .coords{bottom:auto;top:auto;bottom:12px}
   .camadas{top:110px;width:220px}
   .pilula{left:auto;right:16px;transform:none}
-  .btn-voz{top:58px}
-  .voz-status{top:100px}
   .fichas{right:12px;left:12px;width:auto}
 }
 .rota-topo{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
@@ -291,5 +290,4 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .legenda-rota > div span{display:flex;align-items:center;gap:6px}
 .legenda-rota i{width:14px;height:4px;border-radius:2px}
 .legenda-rota .legenda-titulo{display:block;margin-bottom:4px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;opacity:.6}
-.h2g2-ass-form input:focus-visible{outline:none}
 .h2g2-fechar-mapa{display:flex;align-items:center;justify-content:center;color:var(--b200)}

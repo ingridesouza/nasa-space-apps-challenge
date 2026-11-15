@@ -27,10 +27,11 @@
     </div>
 
     <!-- F08: assistente local -->
-    <button id="btn-assistente" class="pilula frame mono" type="button" aria-expanded="false" aria-controls="assistente">Send your request</button>
+    <!-- F08: só por voz. A pílula mostra o estado do microfone; clique liga/desliga o "Ei guia" -->
+    <button id="btn-voz" class="pilula frame mono" type="button" aria-pressed="true" title="Microfone sempre ouvindo pelo &quot;Ei guia&quot;; clique para desligar. Ou segure espaço para falar.">
+      <span class="voz-ico" aria-hidden="true"></span><span id="voz-status" aria-live="polite">ligando o microfone…</span>
+    </button>
     <section id="assistente" class="card panel assistente" hidden aria-label="Assistente H2G2"></section>
-    <button id="btn-voz" class="pilula frame mono btn-voz" type="button" aria-pressed="true" title="Microfone sempre ouvindo pelo &quot;Ei guia&quot;; clique para desligar. Ou segure espaço para falar.">Voz <kbd>espaço</kbd></button>
-    <div id="voz-status" class="voz-status mono" aria-live="polite" hidden></div>
 
     <!-- MAPA (F01): o mesmo elemento vira círculo (minimizado) ou tela cheia -->
     <div id="mapa-box" class="mapa-box" title="Expandir mapa">

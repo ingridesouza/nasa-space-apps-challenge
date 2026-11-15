@@ -47,7 +47,7 @@ microfone ─▶ detector de fala (navegador) ─▶ Whisper (API) ─▶ palavr
 
 **API, `POST /api/voz/transcrever`**
 - O corpo é o áudio bruto (float32, 16 kHz, mono).
-- Limite de 15 s, cerca de 1 MB. Acima disso, responde 413.
+- Limite de 60 s, cerca de 3,8 MB. Acima disso, responde 413.
 
 **Front, `web/ui/voz.js` + `web/ui/voz-captura.js` (AudioWorklet)**
 - Microfone com cancelamento de eco, supressão de ruído e ganho automático.
@@ -81,7 +81,7 @@ microfone ─▶ detector de fala (navegador) ─▶ Whisper (API) ─▶ palavr
 - **Detector de fala no AudioWorklet, por energia, sem biblioteca:**
   - o limiar se adapta ao ruído de fundo medido nos primeiros 2 s;
   - a gravação começa depois de 150 ms acima do limiar e guarda os 300 ms anteriores;
-  - termina depois de 800 ms de silêncio, com no máximo 15 s.
+  - termina depois de 1,2 s de silêncio, com no máximo 59 s (a API aceita até 60 s).
 - A frase segue para a fase 1. Sem a palavra "Guia", é ignorada sem aviso.
 - Um interruptor "mãos-livres" liga e desliga esse modo. O "segure espaço" continua valendo.
 

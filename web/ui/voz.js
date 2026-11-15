@@ -7,7 +7,7 @@ const TAXA = 16000
 const INICIO_S = 0.15 // fala começa depois disso acima do limiar
 const FIM_S = 1.2 // e termina depois disso de silêncio (fala livre tem pausa: "to no meio de uma rota… e")
 const ANTES_S = 0.3 // guarda o começo da palavra que disparou o detector
-const MAX_S = 14 // a API recusa acima de 15 s
+const MAX_S = 59 // a API recusa acima de 60 s
 const CONFIRMA_MS = 8000 // janela do "sim" depois que o sistema termina de falar
 const ESCUTA_MS = 8000 // depois de um "Ei guia" sozinho, espera o pedido por este tempo
 
@@ -64,7 +64,7 @@ export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar }) {
   let mudoAte = 0
 
   const mostrar = (texto) => { status.textContent = texto; status.hidden = !texto }
-  const ocioso = () => mostrar(!maosLivres ? ''
+  const ocioso = () => mostrar(!maosLivres ? 'microfone desligado · segure espaço para falar'
     : ctx?.state === 'running' ? 'diga "Ei guia" · ou segure espaço' : 'clique na página para ligar o microfone')
 
   async function ligarMicrofone() {
@@ -171,7 +171,7 @@ export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar }) {
       await agir(r, confirmando, ativado)
     } catch (e) {
       mostrar(`voz: ${e.message}`)
-      falar('A voz falhou. Use a caixa de texto.')
+      falar('A voz falhou. Tente de novo.')
     } finally {
       ocupado = false
     }

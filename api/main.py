@@ -22,18 +22,21 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from agente import AgenteIndisponivel, fontes_do_contexto, montar_contexto, perguntar
+from agente import (SOCORRO, AgenteIndisponivel, agrupar_alertas, contexto_em_texto, fontes_do_contexto, montar_contexto,
+                    perguntar, resposta_de_socorro, tirar_perigo_repetido)
 from alertas import BASE_LAT_LON, alertas_da_rota, alertas_do_ponto, paradas_no_bbox, tempo_e_alertas_do_sol
 from conditions import get_cached_conditions
 from db import get_connection
 from mosaics import build_hillshade_png, build_mosaic_png
 from nomenclature import get_cached_nomenclature
+from previsao_rota import prever_rota
 from previsao import apagar_medicao, previsao_do_sol, registrar_medicao, risco_inclinacao, status_previsto
 from raster_sampling import sample_all_rasters
 from route_planning import ForaDoGridError, SemCaminhoError, plan_route
+from sugestao_rotas import sugerir
 from tempo_marte import sol_msl
 from tile_server import render_tile
-from vector_queries import all_photos, nearby_photos, nearest_science_target
+from vector_queries import all_photos, nearby_photos, nearest_science_target, todos_alvos_cientificos
 import ficha
 import panorama
 from voz import MODELO, MODELO_CONFIRMACAO, TAXA_HZ, _modelo, interpretar, transcrever
@@ -293,11 +296,37 @@ def get_route(
         alertas.sort(key=lambda a: a["distancia_m"])
         rota["alertas"] = alertas
 
+    # feature 02 + 08: acréscimo -- ordem sugerida com o porquê; nenhuma rota sai da lista
+    resultado["sugestao"] = sugerir(resultado["rotas"])
     return resultado
+
+
+@app.get("/api/previsao-rota")
+def get_previsao_rota(origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float,
+                      tipo: str = "mais_segura", sol: int | None = None):
+    """Ferramenta do agente: análise preditiva da rota (terreno pelo histórico do
+    Curiosity, clima e janela no sol da EVA, dose prevista). Ver previsao_rota.py."""
+    resultado = get_route(origin_lat, origin_lon, dest_lat, dest_lon, [], [])
+    rota = next((r for r in resultado["rotas"] if r["tipo"] == tipo), None)
+    if rota is None:
+        raise HTTPException(status_code=404, detail=f"Variante {tipo!r} não existe para estes pontos")
+    return {**prever_rota(rota, sol if sol is not None else sol_msl(datetime.now(timezone.utc))),
+            "sugestao": resultado["sugestao"]}
+
+
+class RotaDaPergunta(BaseModel):
+    """Rota aberta na tela: com ela, o backend roda a ferramenta antes de perguntar."""
+    origin_lat: float = Field(ge=-90, le=90)
+    origin_lon: float = Field(ge=-180, le=360)
+    dest_lat: float = Field(ge=-90, le=90)
+    dest_lon: float = Field(ge=-180, le=360)
+    tipo: str = "mais_segura"
+    sol: int | None = Field(None, ge=1, le=20000)  # sol da EVA; None = hoje
 
 
 class Pergunta(BaseModel):
     pergunta: str = Field(min_length=1, max_length=500)
+    rota: RotaDaPergunta | None = None
     # sem ponto escolhido, o assistente responde sobre a base (mesma de api/alertas.py)
     lat: float = Field(BASE_LAT_LON[0], ge=-90, le=90)
     lon: float = Field(BASE_LAT_LON[1], ge=-180, le=360)
@@ -309,24 +338,71 @@ def ask(p: Pergunta, request: Request):
     """Feature 08, fase 2: pergunta em linguagem natural sobre o ponto,
     respondida pelo modelo local só com o contexto do /api/point."""
     ponto = get_point(p.lat, p.lon, request)
+    if SOCORRO.search(p.pergunta):
+        return {"resposta": resposta_de_socorro(ponto, BASE_LAT_LON), "socorro": True,
+                "fontes": ["DTM HiRISE (inclinação)", "posição da base (H2G2)"], "alertas": ponto["alertas"]}
     condicoes = get_cached_conditions(p.sol)
     if condicoes:
         condicoes["tempo"], condicoes["alertas"] = tempo_e_alertas_do_sol(p.sol)
         condicoes["previsao_hoje"] = previsao_do_sol(condicoes["tempo"]["sol_agora"])
     ctx = montar_contexto(ponto, condicoes)
+    if p.rota:
+        try:
+            ctx["previsao_rota"] = get_previsao_rota(**p.rota.model_dump())
+        except HTTPException as e:  # sem caminho/fora do mapa: o agente diz que não há previsão
+            ctx["previsao_rota"] = {"erro": e.detail}
+    acoes, alertas_ferramenta, fontes_ferramenta = [], [], []
+
+    def executar(nome: str, args: dict) -> str:
+        """Ferramentas do agente (tool calling). Argumento vem do modelo: valida antes de usar."""
+        try:
+            if nome == "listar_alvos_cientificos":
+                conn = get_connection()
+                try:
+                    alvos = todos_alvos_cientificos(conn)
+                finally:
+                    conn.close()
+                fontes_ferramenta.append("alvos científicos (F04)")
+                return "\n".join(f"- {a['nome']}: lat {a['lat']}, lon {a['lon']}; {a['medicao_curiosity'] or 'sem medição'}"
+                                 for a in alvos) or "nenhum alvo cadastrado"
+            if nome == "consultar_ponto":
+                lat, lon = float(args["lat"]), float(args["lon"])
+                return contexto_em_texto(montar_contexto(get_point(lat, lon, request), None))
+            if nome == "planejar_rota":
+                lat, lon = float(args["dest_lat"]), float(args["dest_lon"])
+                pos = get_posicao()  # a rota sai do astronauta, como no front, não do ponto clicado
+                r = get_route(pos["lat"], pos["lon"], lat, lon, [], [])
+                sg = r["sugestao"]
+                sugerida = next(x for x in r["rotas"] if x["tipo"] == sg["sugerida"])
+                alertas_ferramenta.extend(sugerida["alertas"])
+                acoes.append({"tipo": "abrir_rota", "lat": lat, "lon": lon})
+                fontes_ferramenta.append("rotas: A* sobre o DTM HiRISE + regra de sugestão H2G2")
+                return "\n".join([f"SUGESTÃO DO SISTEMA: {sg['motivo']}", *(f"- rota {x['tipo']}: {x['rotulo']} ({x['por_que']})" for x in sg["resumo"]),
+                                   *(f"- rota {x['tipo']}: {round(x['distancia_m'])} m, ~{round(x['tempo_estimado_min'])} min" for x in r["rotas"]),
+                                   *([sg["aviso_poeira"]] if sg["aviso_poeira"] else [])])
+            return f"ferramenta desconhecida: {nome}"
+        except (KeyError, TypeError, ValueError) as e:
+            return f"argumento inválido para {nome}: {e}"
+        except HTTPException as e:  # fora do mapa / sem caminho: o modelo diz que não há
+            return f"sem resultado: {e.detail}"
+
     try:
-        resposta = perguntar(p.pergunta, ctx)
+        resposta = perguntar(p.pergunta, ctx, executar)
     except AgenteIndisponivel as e:
         # 503 com os alertas: as regras de segurança não dependem do modelo
         raise HTTPException(status_code=503, detail={"mensagem": str(e), "alertas": ponto["alertas"]})
     # Perigo é dito por regra, antes da resposta: o modelo de 3B às vezes o omite.
-    perigos = " ".join(a["mensagem"] for a in ponto["alertas"] if a["nivel"] == "perigo")
+    alertas_rota = (ctx.get("previsao_rota") or {}).get("alertas", []) + alertas_ferramenta
+    lista_perigos = [a for a in agrupar_alertas(ponto["alertas"] + alertas_rota) if a["nivel"] == "perigo"]
+    resposta = tirar_perigo_repetido(resposta, lista_perigos)
+    perigos = " ".join(a["mensagem"] for a in lista_perigos)
     if perigos:
         resposta = f"Perigo: {perigos} {resposta}"
-    return {"resposta": resposta, "fontes": fontes_do_contexto(ctx), "alertas": ponto["alertas"]}
+    return {"resposta": resposta, "fontes": list(dict.fromkeys(fontes_do_contexto(ctx) + fontes_ferramenta)),
+            "alertas": ponto["alertas"], "acoes": acoes}
 
 
-LIMITE_AUDIO_BYTES = 15 * TAXA_HZ * 4  # 15 s de float32 mono
+LIMITE_AUDIO_BYTES = 60 * TAXA_HZ * 4  # 60 s de float32 mono
 
 
 @app.on_event("startup")
@@ -366,7 +442,7 @@ async def voz(request: Request, ativado: bool = False, confirmando: bool = False
     Ver docs/feature-08-voz-plano-execucao.md."""
     corpo = await request.body()
     if len(corpo) > LIMITE_AUDIO_BYTES:
-        raise HTTPException(status_code=413, detail="áudio acima de 15 s")
+        raise HTTPException(status_code=413, detail="áudio acima de 60 s")
     if not corpo or len(corpo) % 4:
         raise HTTPException(status_code=400, detail="corpo precisa ser float32 mono 16 kHz")
     audio = np.frombuffer(corpo, np.float32)

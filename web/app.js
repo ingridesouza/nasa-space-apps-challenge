@@ -9,7 +9,7 @@ import { TOGGLEABLE_LAYERS } from './layers.js'
 import * as mapa from './map.js'
 import { iniciarAssistente } from './ui/agente.js'
 import { renderCamadas } from './ui/camadas.js'
-import { iniciarRota } from './ui/rota.js'
+import { iniciarRota, rotaParaAgente } from './ui/rota.js'
 import { iniciarVoz } from './ui/voz.js'
 import { esc } from './ui/util.js'
 
@@ -424,7 +424,10 @@ document.addEventListener('keydown', (e) => {
 })
 
 // ---------------- F08: assistente ----------------
-const assistente = iniciarAssistente($('assistente'), $('btn-assistente'), () => estado.local ?? estado.posicao)
+const assistente = iniciarAssistente($('assistente'), () => estado.local ?? estado.posicao, rotaParaAgente, (destino) => {
+  estado.rotaAtiva = true // igual ao "Planejar rota" e à rota por voz
+  return definirDestino(destino)
+})
 
 // ---------------- F08: voz ("Ei guia, rota até …" ou pergunta falada) ----------------
 // a rota sempre sai da posição atual (rastreador); a voz só escolhe o destino

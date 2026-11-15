@@ -51,11 +51,11 @@ export async function enviarVoz(audio, { ativado, confirmando, lat, lon }) {
 }
 
 /** F08: pergunta ao agente local. 503 (modelo fora) traz detail={mensagem, alertas}. */
-export async function perguntar(pergunta, lat, lon) { // sem lat/lon: a API usa a base
+export async function perguntar(pergunta, lat, lon, rota = null) { // sem lat/lon: a API usa a base
   const resp = await fetch('/api/ask', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(lat === undefined ? { pergunta } : { pergunta, lat, lon }),
+    body: JSON.stringify({ pergunta, ...(lat !== undefined && { lat, lon }), ...(rota && { rota }) }),
   })
   const corpo = await resp.json().catch(() => null)
   if (!resp.ok) throw new Error(corpo?.detail?.mensagem ?? `/api/ask falhou: ${resp.status}`)
