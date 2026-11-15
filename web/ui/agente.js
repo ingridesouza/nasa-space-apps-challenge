@@ -1,15 +1,8 @@
-// F08: assistente sempre à mão (botão no topo ou tecla "/"). Responde sobre o ponto
-// clicado ou, sem ponto, sobre a base. Modelo local: a espera é visível (contador).
+// F08: assistente sempre à mão (pílula no topo ou tecla "/"). Responde sobre o destino
+// ou, sem destino, sobre a posição atual. Modelo local: a espera é visível (contador).
 import { perguntar } from '../api.js'
 import { coord, esc } from './util.js'
 
-const SUGESTOES = [
-  'Posso subir aqui com segurança?',
-  'Qual a melhor hora para a EVA hoje?',
-  'Qual a previsão de temperatura para hoje?',
-  'Quanta radiação vou receber hoje?',
-  'Tem alvo científico perto daqui?',
-]
 const MAX_HISTORICO = 4
 
 /** Voz de saída: só vozes locais do sistema, nunca as de rede (offline). */
@@ -24,7 +17,7 @@ export function falar(texto) {
 
 /**
  * el: <section id="assistente">; botao: abre/fecha.
- * pontoAtual(): {lat, lon} do ponto clicado, ou null (a API usa a base).
+ * pontoAtual(): {lat, lon, rotulo} do destino ou da posição atual, ou null (a API usa a base).
  */
 export function iniciarAssistente(el, botao, pontoAtual) {
   const historico = [] // {pergunta, sobre, resposta?, fontes?, erro?, segundos}
@@ -33,7 +26,7 @@ export function iniciarAssistente(el, botao, pontoAtual) {
 
   const sobre = () => {
     const p = pontoAtual()
-    return p ? `o ponto clicado (${coord(p)})` : 'a base (nenhum ponto escolhido)'
+    return p ? `${p.rotulo ?? 'o ponto'} (${coord(p)})` : 'a base (nenhum ponto escolhido)'
   }
 
   function render() {
@@ -52,16 +45,10 @@ export function iniciarAssistente(el, botao, pontoAtual) {
                ${'speechSynthesis' in window ? ` · <button type="button" class="h2g2-link-btn" data-ouvir="${i}">▶ ouvir</button>` : ''}</div>`}
       </article>`).join('')
     el.innerHTML = `
-      <div class="h2g2-linha-topo">
-        <p class="h2g2-panel-title">Pergunte ao H2G2 · assistente local</p>
-        <button class="h2g2-close-btn" data-fechar aria-label="Fechar assistente">×</button>
-      </div>
       <form class="h2g2-ass-form">
-        <input name="q" maxlength="500" required autocomplete="off" placeholder="Pergunte sobre ${esc(sobre())}" aria-label="Pergunta ao assistente">
+        <input name="q" maxlength="500" required autocomplete="off" aria-label="Pergunta ao assistente">
         <button class="h2g2-mono" ${ocupado ? 'disabled' : ''}>perguntar</button>
       </form>
-      <div class="h2g2-ass-sugestoes">${SUGESTOES.map((s) => `<button type="button" data-sugestao="${esc(s)}" ${ocupado ? 'disabled' : ''}>${esc(s)}</button>`).join('')}</div>
-      <div class="h2g2-dim h2g2-micro">Responde só com o pacote de dados local: cita a fonte, diz "não sei" quando não tem o dado e nunca decide pela tripulação.</div>
       ${itens ? `<div class="h2g2-ass-hist">${itens}</div>` : ''}`
     const novo = el.querySelector('input[name=q]')
     novo.value = digitado
@@ -116,13 +103,13 @@ export function iniciarAssistente(el, botao, pontoAtual) {
     enviar(q)
   })
   el.addEventListener('click', (e) => {
-    if (e.target.closest('[data-fechar]')) return abrir(false)
-    const s = e.target.closest('[data-sugestao]')?.dataset.sugestao
-    if (s) return enviar(s)
     const i = e.target.closest('[data-ouvir]')?.dataset.ouvir
     if (i !== undefined && historico[i]?.resposta) falar(historico[i].resposta)
   })
-  // "/" abre de qualquer lugar (fora de campo de texto); Esc fecha
+  // clique fora do painel (e fora da pílula) fecha; "/" abre de qualquer lugar (fora de campo de texto); Esc fecha
+  document.addEventListener('pointerdown', (e) => {
+    if (!el.hidden && !el.contains(e.target) && !botao.contains(e.target)) abrir(false)
+  })
   document.addEventListener('keydown', (e) => {
     const digitando = e.target.closest?.('input, textarea')
     if (e.key === '/' && !digitando && el.hidden) {

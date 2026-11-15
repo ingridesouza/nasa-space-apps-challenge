@@ -29,9 +29,9 @@ Protótipo de apoio a astronauta na cratera Gale (área do Curiosity). Princípi
 |---|---|
 | `api/` | API FastAPI (F01–F08). Endpoints em `api/main.py`, lógica em módulos planos; F03 em `panorama.py`, F04 em `ficha.py`; `geo.py` é a única geometria |
 | `data-pipeline/` | ETL: adapters, `db/schema.sql`, scripts `fetch_*`/`seed_*`; `f03/` = ETL do F03/F04 (config, dados de entrada, panoramas). Saída em `data/local/` (ignorado): banco único `h2g2.sqlite` + `f03/` servido em `/bundle` |
-| `web/` | Front HTML/CSS/JS puro (features 01/02/03/04/08), servido pela API em `/`; `web/f03/` = front antigo do F03/F04 em `/f03/`, até juntar os fronts |
+| `web/` | Front HTML/CSS/JS puro (features 01/02/03/04/05/06/08), servido pela API em `/`: visor em tela cheia, minimapa que expande, card de rota |
 | `docs/` | Proposta, pitch, plano de produto, `feature-NN-*.md` |
-| `subprojetos/f03-f04-victoria/` | Só docs do F03/F04 (código e dados já mesclados em `api/`, `data-pipeline/f03/` e `web/f03/`) |
+| `subprojetos/f03-f04-victoria/` | Só docs do F03/F04 (código e dados já mesclados em `api/`, `data-pipeline/f03/` e `web/`) |
 
 Features: 01 mapa em camadas · 02 rota+risco · 03 fotos/panorama no ponto · 04 ficha científica · 05 condições REMS/RAD · 06 clima · 07 HUD · 08 agente local · 09 sync Terra–Marte · 10 perigos colaborativos. Detalhes em `docs/Plano_Produto_Completo.md`.
 

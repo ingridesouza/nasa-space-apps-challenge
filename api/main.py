@@ -127,7 +127,7 @@ def get_mosaic(layer_name: str):
     if row["tipo_acesso"] == "hillshade_derivado":
         png_bytes = build_hillshade_png(row["local_tile_path"])
     elif row["tipo_acesso"] == "tiles_wmts":
-        png_bytes = build_mosaic_png(row["local_tile_path"])
+        png_bytes = build_mosaic_png(row["local_tile_path"], paleta_termica=(layer_name == "themis_termica"))
     else:
         raise HTTPException(status_code=404, detail=f"tipo_acesso {row['tipo_acesso']!r} não vira mosaico")
 
@@ -439,6 +439,15 @@ def delete_medicao(sol: int):
     if not apagar_medicao(sol):
         raise HTTPException(status_code=404, detail=f"Nenhuma medição local no sol {sol}")
     return {"apagada": sol}
+
+
+@app.get("/api/posicao")
+def get_posicao():
+    # Sem rastreador real: a posição do astronauta é simulada na base
+    # provisória (api/alertas.py), a mesma do limite de 2 km e do assistente.
+    lat, lon = BASE_LAT_LON
+    return {"lat": lat, "lon": lon, "fonte": "simulado",
+            "rotulo": "rastreador simulado: base provisória na parada do Curiosity do sol 4650"}
 
 
 @app.get("/health")

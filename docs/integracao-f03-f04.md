@@ -45,7 +45,7 @@ Commits: `b27dca6` (ficha científica com PDS, Mastcam e CRISM) e `705c18a`
 | Nomes de rotas | Mantidos: `/panoramas/nearest`, `/photos/near`, `/science/card`, `/orbital/crop`, `/map` e `/bundle` |
 | Dados de entrada | Movidos com `git mv` para `data-pipeline/f03/` (`dados/`, `dados_panoramas/`, `config.yaml`, `etl/`, `coletar_panoramas.py`) |
 | Migração | O cache e o pacote antigos foram movidos para `data/local/f03-cache/` e `data/local/f03/`. O ETL foi regerado a partir deles, sem acessar a rede |
-| Front antigo do F03 | Movido para `web/f03/` e servido em `/f03/` até os fronts serem juntados |
+| Front antigo do F03 | Virou a base do `web/` (layout e estética); a pasta `web/f03/` foi removida |
 | Entrega | Commits no `main` local, sem branch e sem PR. O push ainda não foi feito |
 
 ## 4. Como ficou
@@ -86,9 +86,26 @@ Commits: `b27dca6` (ficha científica com PDS, Mastcam e CRISM) e `705c18a`
 
 - Combinar com o Hugo antes do push, porque a integração remove tabelas e
   scripts que ele usava.
-- Juntar os fronts `web/` e `web/f03/`.
 - Atualizar `PROXIMOS-PASSOS.md`, `docs/feature-08-agente-local.md` e
   `docs/migracao-front-html-puro.md`, que ainda citam as tabelas antigas.
 - Decidir se remove a função `localize_mastcam`, que nada chama, e a pasta
   local `data/local/rover_photos/`.
 - Instalar o Ollama quando o agente (`/api/ask`) for necessário.
+
+## 7. Junção dos fronts
+
+O `web/` usa o layout e a estética do front do subprojeto.
+
+| Tema | Decisão |
+|---|---|
+| Visor | Panorama ou foto em tela cheia; cards à direita (status, panorama, fotos) e ficha F04 ao lado |
+| Mapa | Uma instância MapLibre: círculo no canto inferior esquerdo, expande para tela cheia (⤢) com o seletor de camadas compacto |
+| Posição atual | Rastreador simulado: `GET /api/posicao` devolve a `BASE_LAT_LON` de `api/alertas.py` (parada do sol 4650). Não há base humana em Marte |
+| Rota | Origem sempre a posição atual. "Planejar rota" expande o mapa; destino por clique ou LAT/LON. Ao minimizar, o visor mostra o destino e o card de rota fica recolhido no topo |
+| Card de status | Só posição (ou destino), nome IAU mais próximo e distância da parada. O resto o astronauta em rota já sabe |
+| F05/F06 | Previsão, janela da EVA e medição do habitat ficam no card de rota |
+| HUD | Só o nome do projeto |
+| F07 modo traje | Removido |
+| F08 assistente | Pílula no topo central (tecla /); responde sobre o destino ou a posição |
+| Removidos | Painel do ponto, painel de condições, faixa de previsão, lightbox, `web/f03/` |
+| API | `/api/posicao` novo; `alvo_cientifico` da rota ganhou `lat`/`lon` (campos novos) |

@@ -1,7 +1,6 @@
 // Mapa MapLibre (antes MapCanvas.tsx + style.ts). API imperativa direta:
 // app.js chama as funções exportadas quando o estado muda.
 import { Map, Marker, NavigationControl } from './lib/maplibre/maplibre-gl.mjs'
-import { getRoverTrack } from './api.js'
 import { LAYER_MAXZOOM, SLOPE_COLOR_HEX, TOGGLEABLE_LAYERS } from './layers.js'
 
 /** Centro da campanha de boxwork (sol ~4500-4684, MSL_waypoints.json) --
@@ -10,9 +9,6 @@ const CENTRO_INICIAL = [137.384, -4.801]
 const ZOOM_INICIAL = 15 // começa no nível da HiRISE
 
 const ROUTE_ID = 'h2g2-route-line'
-const PHOTOS_ID = 'h2g2-rover-photos'
-const TRACK_LINE_ID = 'rover_track_line'
-const TRACK_STOPS_ID = 'rover_track_stops'
 
 const corPorStatus = (padrao) => [
   'match', ['get', 'slope_status'],
@@ -70,21 +66,50 @@ function buildStyle(metas) {
 
 let map = null
 let carregado = false
-let modo = 'point'
-let trilhaVisivel = false
-let marcadorClique, marcadorOrigem, marcadorDestino
+let modo = 'visor' // 'visor' (círculo) | 'explorar' | 'rota'
+let marcadorClique, marcadorOrigem, marcadorDestino, marcadorPano
 
-function marcador(classe, filho) {
+function marcador(classe, filho, opcoes = {}) {
   const el = document.createElement('div')
   el.className = classe
-  if (filho) el.appendChild(filho)
-  return new Marker({ element: el })
+  if (typeof filho === 'string') el.innerHTML = filho
+  else if (filho) el.appendChild(filho)
+  return new Marker({ element: el, ...opcoes })
 }
+
+// bandeira de chegada: a base do mastro (x=3, y=27) cai exatamente no destino
+const BANDEIRA = `<svg viewBox="0 0 24 28" width="24" height="28" aria-hidden="true">
+  <path d="M3 27V2" stroke="#0a0a0b" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M3 27V2" stroke="#e2e2e6" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M4 2.5h16l-4 5 4 5H4z" fill="#E8643F" stroke="#0a0a0b" stroke-width="1.2" stroke-linejoin="round"/>
+</svg>`
 
 const vazio = () => ({ type: 'FeatureCollection', features: [] })
 
-/** Cria o mapa. callbacks: onClick(lat, lon), onPhotoClick(props), onZoom(z), onLoad(). */
-export function criarMapa(container, metas, { onClick, onPhotoClick, onZoom, onLoad }) {
+// botão ✕ de fechar o mapa expandido: fica logo abaixo dos seletores de zoom (mesmo grupo)
+let aoFechar = () => {}
+const ControleFechar = {
+  onAdd() {
+    const grupo = document.createElement('div')
+    grupo.className = 'maplibregl-ctrl maplibregl-ctrl-group'
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.className = 'h2g2-fechar-mapa'
+    b.title = 'Fechar mapa (Esc)'
+    b.setAttribute('aria-label', 'Fechar mapa')
+    b.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+    // stopPropagation: senão o clique chega ao #mapa-box, que reabre o mapa logo após fechar
+    b.addEventListener('click', (e) => { e.stopPropagation(); aoFechar() })
+    grupo.appendChild(b)
+    this._grupo = grupo
+    return grupo
+  },
+  onRemove() { this._grupo.remove() },
+}
+
+/** Cria o mapa. callbacks: onClick(lat, lon), onLoad(), onFechar(). */
+export function criarMapa(container, metas, { onClick, onLoad, onFechar }) {
+  aoFechar = onFechar ?? (() => {})
   const bounds = dataBounds(metas)
   const base = new Set(TOGGLEABLE_LAYERS.filter((l) => l.grupo === 'base').map((l) => l.id))
   const baseBounds = dataBounds(metas.filter((m) => base.has(m.layer_name)))
@@ -99,32 +124,25 @@ export function criarMapa(container, metas, { onClick, onPhotoClick, onZoom, onL
     minZoom: baseBounds ? minZoomToCover(baseBounds, rect.width, rect.height) : undefined,
     attributionControl: false,
   })
-  map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right')
+  // o de baixo entra primeiro: na faixa inferior o último adicionado fica em cima
+  map.addControl(ControleFechar, 'bottom-left')
+  map.addControl(new NavigationControl({ showCompass: false }), 'bottom-left')
 
   const dot = document.createElement('div')
   dot.className = 'h2g2-crosshair-dot'
   marcadorClique = marcador('h2g2-crosshair', dot)
+  marcadorPano = marcador('h2g2-pano-marker') // criado antes: fica por baixo dos outros
   marcadorOrigem = marcador('h2g2-route-marker h2g2-route-marker--origin')
-  marcadorDestino = marcador('h2g2-route-marker h2g2-route-marker--destination')
+  marcadorOrigem.getElement().title = 'Posição atual (início do trajeto)'
+  marcadorDestino = marcador('h2g2-flag', BANDEIRA, { anchor: 'bottom-left', offset: [-3, 1] })
+  marcadorDestino.getElement().title = 'Destino'
 
   map.on('click', (e) => {
     // pin de foto consome o clique (não abre briefing nem marca rota por baixo)
-    const foto = carregado && map.queryRenderedFeatures(e.point, { layers: [PHOTOS_ID] })[0]
-    if (foto) return onPhotoClick(foto.properties)
-    if (modo === 'point') marcadorClique.setLngLat(e.lngLat).addTo(map)
+    if (modo === 'visor') return // minimizado: o clique só expande (app.js)
+    if (modo === 'explorar') marcadorClique.setLngLat(e.lngLat).addTo(map)
     onClick(e.lngLat.lat, e.lngLat.lng)
   })
-
-  // `zoom` dispara dezenas de vezes por segundo -- throttle ~8/s; zoomend garante o valor final
-  let ultimo = 0
-  map.on('zoom', () => {
-    const agora = performance.now()
-    if (agora - ultimo > 120) {
-      ultimo = agora
-      onZoom(map.getZoom())
-    }
-  })
-  map.on('zoomend', () => onZoom(map.getZoom()))
 
   map.on('load', () => {
     map.addSource(ROUTE_ID, { type: 'geojson', data: vazio() })
@@ -135,63 +153,9 @@ export function criarMapa(container, metas, { onClick, onPhotoClick, onZoom, onL
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-width': 4, 'line-color': corPorStatus(SLOPE_COLOR_HEX.seguro) },
     })
-    map.addSource(PHOTOS_ID, { type: 'geojson', data: vazio() })
-    map.addLayer({
-      id: PHOTOS_ID,
-      type: 'circle',
-      source: PHOTOS_ID,
-      paint: { 'circle-radius': 5, 'circle-color': '#f2b33d', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#0a0a0b' },
-    })
-    map.on('mouseenter', PHOTOS_ID, () => (map.getCanvas().style.cursor = 'pointer'))
-    map.on('mouseleave', PHOTOS_ID, () => (map.getCanvas().style.cursor = modo === 'point' ? '' : 'crosshair'))
-
     carregado = true
-    onZoom(map.getZoom())
     onLoad()
 
-    // trilha do Curiosity (feature 08) -- falha silenciosa, o mapa segue útil sem ela
-    getRoverTrack().then(adicionarTrilha).catch(() => {})
-  })
-}
-
-/** Paradas reais do Curiosity coloridas pela inclinação medida pelo rover
- * (mesmos limites do DTM). Entra desligada, como Relevo/THEMIS. */
-function adicionarTrilha(paradas) {
-  map.addSource('rover_track', {
-    type: 'geojson',
-    data: {
-      type: 'FeatureCollection',
-      features: [
-        { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: paradas.map((s) => [s.lon, s.lat]) } },
-        ...paradas.map((s) => ({
-          type: 'Feature',
-          properties: { slope_status: s.status, tilt: s.tilt, sol: s.sol },
-          geometry: { type: 'Point', coordinates: [s.lon, s.lat] },
-        })),
-      ],
-    },
-  })
-  const visibility = trilhaVisivel ? 'visible' : 'none'
-  map.addLayer({
-    id: TRACK_LINE_ID,
-    type: 'line',
-    source: 'rover_track',
-    filter: ['==', ['geometry-type'], 'LineString'],
-    layout: { visibility },
-    paint: { 'line-color': '#ffffff', 'line-opacity': 0.35, 'line-width': 1 },
-  })
-  map.addLayer({
-    id: TRACK_STOPS_ID,
-    type: 'circle',
-    source: 'rover_track',
-    filter: ['==', ['geometry-type'], 'Point'],
-    layout: { visibility },
-    paint: {
-      'circle-radius': ['match', ['get', 'slope_status'], 'seguro', 3, 6],
-      'circle-color': corPorStatus(SLOPE_COLOR_HEX.seguro),
-      'circle-stroke-color': '#05070a',
-      'circle-stroke-width': 1,
-    },
   })
 }
 
@@ -203,13 +167,27 @@ export function setCamadaOpacidade(id, opacidade) {
   map?.setPaintProperty(id, 'raster-opacity', opacidade)
 }
 
-/** 'point' | 'pick-origin' | 'pick-destination' -- cursor vira mira no modo rota. */
+/** 'visor' (círculo) | 'explorar' | 'rota' -- cursor vira mira no modo rota. */
 export function setModo(novo) {
   modo = novo
   if (!map) return
-  map.getCanvas().style.cursor = modo === 'point' ? '' : 'crosshair'
-  // crosshair antigo do "último ponto" confundia a leitura da rota
-  if (modo !== 'point') marcadorClique.remove()
+  map.getCanvas().style.cursor = modo === 'rota' ? 'crosshair' : ''
+  if (modo !== 'explorar') marcadorClique.remove()
+}
+
+/** Depois de o contêiner mudar de tamanho (círculo <-> tela cheia). */
+export function redimensionar() {
+  map?.resize()
+}
+
+/** Centra no ponto ou, com rota, enquadra a rota inteira. */
+export function centrar(p, rota = null) {
+  if (!map) return
+  const coords = (rota?.trechos_risco ?? []).flatMap((t) => [[t.de[1], t.de[0]], [t.para[1], t.para[0]]])
+  if (coords.length) {
+    const lons = coords.map((c) => c[0]), lats = coords.map((c) => c[1])
+    map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: 24, duration: 0, maxZoom: 18 })
+  } else if (p) map.jumpTo({ center: [p.lon, p.lat], zoom: Math.max(map.getZoom(), 16) })
 }
 
 export function limparPonto() {
@@ -223,10 +201,14 @@ function posicionar(m, p) {
 }
 export const setOrigem = (p) => posicionar(marcadorOrigem, p)
 export const setDestino = (p) => posicionar(marcadorDestino, p)
+/** Parada do Curiosity onde foi tirado o panorama mostrado na barra (null tira). */
+export function setPanorama(p) {
+  posicionar(marcadorPano, p)
+  if (p && marcadorPano) marcadorPano.getElement().title = `Panorama mais próximo · sol ${p.sol}`
+}
 
 let marcadoresEscala = []
-/** Paradas intermediárias da rota (não confundir com a trilha do Curiosity,
- * que também usa a palavra "paradas" em outro sentido). Quantidade varia,
+/** Paradas intermediárias da rota. Quantidade varia,
  * então recria os marcadores a cada chamada em vez de reusar um fixo. */
 export function setEscalas(escalas) {
   if (!map) return
@@ -244,27 +226,4 @@ export function setRota(rota) {
       geometry: { type: 'LineString', coordinates: [[t.de[1], t.de[0]], [t.para[1], t.para[0]]] },
     })),
   })
-}
-
-export function setFotos(fotos) {
-  if (!carregado) return
-  map.getSource(PHOTOS_ID).setData({
-    type: 'FeatureCollection',
-    features: fotos.map((p) => ({
-      type: 'Feature',
-      properties: { lat: p.lat, lon: p.lon, sol: p.sol, camera: p.camera, url: p.url },
-      geometry: { type: 'Point', coordinates: [p.lon, p.lat] },
-    })),
-  })
-}
-
-export function setFotosVisiveis(visivel) {
-  if (carregado) setCamadaVisivel(PHOTOS_ID, visivel)
-}
-
-export function setTrilhaVisivel(visivel) {
-  trilhaVisivel = visivel
-  if (!map?.getLayer(TRACK_LINE_ID)) return
-  setCamadaVisivel(TRACK_LINE_ID, visivel)
-  setCamadaVisivel(TRACK_STOPS_ID, visivel)
 }

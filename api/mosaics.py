@@ -65,10 +65,17 @@ def build_mosaic_image(local_tile_path: str) -> Image.Image | None:
     return mosaico
 
 
-def build_mosaic_png(local_tile_path: str) -> bytes | None:
+def build_mosaic_png(local_tile_path: str, paleta_termica: bool = False) -> bytes | None:
+    """`paleta_termica=True` pra camadas cujo mosaico é cinza puro (hoje
+    só THEMIS) -- ver `aplicar_paleta_termica`, mesmo tratamento usado
+    pelo tile server (api/tile_server.py), só que aqui pra miniatura do
+    painel de camadas (`/mosaics/{layer}.png`)."""
     mosaico = build_mosaic_image(local_tile_path)
     if mosaico is None:
         return None
+
+    if paleta_termica:
+        mosaico = Image.fromarray(aplicar_paleta_termica(np.array(mosaico)), mode="RGB")
 
     buf = io.BytesIO()
     mosaico.save(buf, format="PNG")
@@ -107,7 +114,49 @@ def build_hillshade_array(dtm_path: str, azimuth_deg: float = 315.0, altitude_de
         azimuth_rad - aspect_rad
     )
     shade = np.nan_to_num(shade, nan=0.5)
+
+    # Alongamento de contraste (percentil 2-98) -- o boxwork é
+    # relativamente plano, então o `shade` bruto fica todo espremido
+    # numa faixa estreita de cinza (baixo contraste visual, reportado
+    # pelo usuário como "camada ligada mas invisível"). Isto só
+    # reescala os MESMOS valores reais de sombreamento pro intervalo
+    # 0-255 inteiro, igual ao hillshade do GDAL/QGIS faz por padrão --
+    # não inventa relevo novo, só usa a faixa de exibição toda em vez
+    # de desperdiçar a maior parte em cinzas quase idênticos.
+    p_baixo, p_alto = np.percentile(shade, [2, 98])
+    if p_alto > p_baixo:
+        shade = (shade - p_baixo) / (p_alto - p_baixo)
     return np.clip(shade * 255, 0, 255).astype("uint8")
+
+
+#: paleta sequencial (estilo "inferno") pra traduzir o valor de brilho
+#: já real do mosaico THEMIS em cor -- é só uma tradução visual do MESMO
+#: pixel (não calibra temperatura real em °C, que exigiria metadado
+#: radiométrico que não baixamos), por isso o nome evita "temperatura".
+#: Sem isso, THEMIS sai cinza puro e fica indistinguível da imagem
+#: óptica por baixo (mesmo problema do hillshade acima).
+_PALETA_TERMICA_STOPS = [
+    (0, (0, 0, 4)),
+    (64, (87, 16, 110)),
+    (128, (188, 55, 84)),
+    (192, (249, 142, 8)),
+    (255, (252, 255, 164)),
+]
+
+
+def aplicar_paleta_termica(cinza: np.ndarray) -> np.ndarray:
+    """Recebe um array 2D (ou RGB com r==g==b) 0-255 e devolve RGB
+    (..., 3) colorido pela paleta sequencial acima -- mesmo valor de
+    pixel real, só mapeado numa cor que o olho humano consegue
+    distinguir (ver docstring da paleta)."""
+    if cinza.ndim == 3:
+        cinza = cinza[..., 0] if cinza.shape[-1] in (3, 4) else cinza[0]
+
+    xp = [s[0] for s in _PALETA_TERMICA_STOPS]
+    r = np.interp(cinza, xp, [s[1][0] for s in _PALETA_TERMICA_STOPS])
+    g = np.interp(cinza, xp, [s[1][1] for s in _PALETA_TERMICA_STOPS])
+    b = np.interp(cinza, xp, [s[1][2] for s in _PALETA_TERMICA_STOPS])
+    return np.stack([r, g, b], axis=-1).astype("uint8")
 
 
 def build_hillshade_png(dtm_path: str, azimuth_deg: float = 315.0, altitude_deg: float = 45.0) -> bytes | None:
