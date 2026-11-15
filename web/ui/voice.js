@@ -1,4 +1,4 @@
-// F08 voice: "Guide, route to Altadena" → local Whisper → "Confirm?" → "yes" → route on the map → spoken summary.
+// F08 voice: "Marvin, route to Altadena" → local Whisper → "Confirm?" → "yes" → route on the map → spoken summary.
 // Hands-free (energy-based speech detector) or "hold space". Plan: docs/feature-08-voz-plano-execucao.md
 import { sendVoice } from '../api.js'
 import { speak } from './agent.js'
@@ -9,7 +9,7 @@ const END_S = 1.2 // and ends after this much silence (free speech has pauses: "
 const BEFORE_S = 0.3 // keeps the start of the word that triggered the detector
 const MAX_S = 59 // the API rejects more than 60 s
 const CONFIRM_MS = 8000 // window for the "yes" after the system finishes speaking
-const LISTEN_MS = 8000 // after a bare "Hey guide", waits for the request this long
+const LISTEN_MS = 8000 // after a bare "Hey Marvin", waits for the request this long
 
 /** Resamples to 16 kHz by averaging each window (no aliasing from skipping samples). */
 export function to16k(samples, rate) {
@@ -46,11 +46,12 @@ export function routeSummary(data, name) {
  * button: turns hands-free on/off; status: state line (aria-live).
  * currentPoint() → {lat, lon} | null; route(origin, destination) → Promise<data from /api/route | null>;
  * ask(text): sends to the assistant, which shows and speaks the answer.
+ * execute(cmd) → {ok, text}: interface command (F11); context() → {openBlocks, focus}.
  */
-export function initVoice(button, status, { currentPoint, route, ask }) {
+export function initVoice(button, status, { currentPoint, route, ask, execute, context }) {
   let ctx = null
   let rate = 48000
-  let handsFree = true // like Siri: always listening for "Hey guide"; the button turns it off
+  let handsFree = true // like Siri: always listening for "Hey Marvin"; the button turns it off
   let holding = false
   let busy = false
   let recording = null // frames of the current utterance
@@ -58,14 +59,14 @@ export function initVoice(button, status, { currentPoint, route, ask }) {
   let above = 0
   let below = 0
   let noise = 0.01
-  let pending = null // route waiting for the "yes"
+  let pending = null // route or interface command waiting for the "yes"
   let confirmUntil = 0
-  let listenUntil = 0 // > now: the next utterance is already addressed to the Guide
+  let listenUntil = 0 // > now: the next utterance is already addressed to Marvin
   let muteUntil = 0
 
   const show = (text) => { status.textContent = text; status.hidden = !text }
   const idle = () => show(!handsFree ? 'microphone off · hold space to talk'
-    : ctx?.state === 'running' ? 'say "Hey guide" · or hold space' : 'click the page to turn on the microphone')
+    : ctx?.state === 'running' ? 'say "Hey Marvin" · or hold space' : 'click the page to turn on the microphone')
 
   async function startMicrophone() {
     if (ctx) return
@@ -166,7 +167,7 @@ export function initVoice(button, status, { currentPoint, route, ask }) {
     const confirming = Boolean(pending)
     try {
       const p = currentPoint()
-      const r = await sendVoice(audio, { activated, confirming, lat: p?.lat, lon: p?.lon })
+      const r = await sendVoice(audio, { activated, confirming, lat: p?.lat, lon: p?.lon, ...context() })
       if (r.text) show(`heard: “${r.text}”`)
       await act(r, confirming, activated)
     } catch (e) {
@@ -182,6 +183,7 @@ export function initVoice(button, status, { currentPoint, route, ask }) {
       const action = pending
       pending = null
       if (r.intent !== 'yes') return speak('Cancelled.')
+      if (action.command) return runInterface(action.command)
       speak(`Computing the route to ${action.name}.`)
       return speak(routeSummary(await route(action.origin, action.destination), action.name))
     }
@@ -196,10 +198,24 @@ export function initVoice(button, status, { currentPoint, route, ask }) {
       return speak(r.speech)
     }
     if (r.intent === 'route') return speak(r.speech) // "mark on the map where you are"
+    if (r.intent === 'interface') {
+      if (!r.command) return speak(r.speech) // missing argument or ambiguous block: the speech says what
+      if (!r.confirm) return runInterface(r.command)
+      pending = { command: r.command }
+      confirmUntil = Date.now() + CONFIRM_MS
+      return speak(r.speech)
+    }
     if (r.intent === 'question') return ask(r.question)
     if (r.intent === 'yes' || r.intent === 'no') return speak('There is nothing to confirm.')
     if (activated && r.speech) speak(r.speech) // "I didn't understand." only when the person pressed to talk
     else idle()
+  }
+
+  /** Interface action: no speech on success (only the status line), speech on failure. */
+  async function runInterface(cmd) {
+    const res = await execute(cmd)
+    show(`${res.ok ? '✓' : '✕'} ${res.text}`)
+    if (!res.ok) speak(res.text)
   }
 
   const typing = (e) => e.target.closest?.('input, textarea, select, [contenteditable]')

@@ -2,6 +2,7 @@
 // with the question and shows the answer. Answers about the destination or, with no destination,
 // about the current position. Local model: the wait is visible (counter).
 import { ask } from '../api.js'
+import { goToPage, paginate } from './pages.js'
 import { coord, esc } from './util.js'
 
 const MAX_HISTORY = 4
@@ -45,7 +46,9 @@ export function initAssistant(el, currentPoint, currentRoute = () => null, openR
                <div class="h2g2-dim h2g2-micro">sources: ${esc(h.sources.join(' · ') || 'none')} · ${h.seconds}s
                ${'speechSynthesis' in window ? ` · <button type="button" class="h2g2-link-btn" data-listen="${i}">▶ listen</button>` : ''}</div>`}
       </article>`).join('')
-    el.innerHTML = `<div class="h2g2-asst-hist">${items || '<p class="h2g2-dim h2g2-small">Say "Hey guide" and ask the question.</p>'}</div>`
+    el.innerHTML = `<div class="h2g2-asst-hist">${items || '<p class="h2g2-dim h2g2-small">Say "Hey Marvin" and ask the question.</p>'}</div>`
+    // F11: no scrolling; history in pages (newest first)
+    paginate(el, { sel: ':scope > .h2g2-asst-hist > *', max: () => innerHeight * 0.62 - 28 })
   }
 
   /** byVoice: the question came from the microphone, so the answer is spoken too. */
@@ -55,6 +58,7 @@ export function initAssistant(el, currentPoint, currentRoute = () => null, openR
     const h = { question: question.trim(), about: about(), seconds: 0 }
     history.unshift(h)
     history.length = Math.min(history.length, MAX_HISTORY)
+    goToPage(el, 0)
     render()
     const start = performance.now()
     timer = setInterval(() => {

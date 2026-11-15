@@ -48,8 +48,8 @@ export const getPhotosNear = (lat, lon) => get(`/photos/near?lat=${lat}&lon=${lo
 export const getScienceCard = (lat, lon) => get(`/science/card?lat=${lat}&lon=${lon}`)
 
 /** F08 voice: float32 mono 16 kHz audio → {text, intent, destination, origin, speech}. */
-export async function sendVoice(audio, { activated, confirming, lat, lon }) {
-  const q = new URLSearchParams({ activated, confirming, ...(lat !== undefined && { lat, lon }) })
+export async function sendVoice(audio, { activated, confirming, lat, lon, openBlocks = [], focus = null }) {
+  const q = new URLSearchParams({ activated, confirming, open_blocks: openBlocks.join(','), ...(focus && { focus }), ...(lat !== undefined && { lat, lon }) })
   const resp = await fetch(`/api/voice?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: audio })
   const body = await resp.json().catch(() => null)
   if (!resp.ok) throw new Error(body?.detail ?? `/api/voice failed: ${resp.status}`)

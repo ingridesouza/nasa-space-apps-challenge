@@ -14,8 +14,7 @@
   };
 
   function source(l) {
-    const name = esc(l.source_file || "source");
-    return l.source_url ? `<a href="${esc(l.source_url)}" target="_blank" rel="noopener">${name}</a>` : name;
+    return esc(l.source_file || "source"); // file name only: an external link does not work offline
   }
 
   function line(l) {

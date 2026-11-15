@@ -3,8 +3,8 @@
 from measure_voice import word_errors
 from voice import choose_language, interpret, words
 
-assert words("Guide, route to Altadena!") == ["guide", "route", "to", "altadena"]
-assert word_errors("Guide, route to the base.", "guide route to the base") == (0, 5)
+assert words("Marvin, route to Altadena!") == ["marvin", "route", "to", "altadena"]
+assert word_errors("Marvin, route to the base.", "marvin route to the base") == (0, 5)
 assert word_errors("route to the base", "route to base") == (1, 4)       # missing word
 assert word_errors("route to the base", "boot to the case") == (2, 4)    # two swapped
 assert word_errors("yes", "") == (1, 1)                                  # nothing heard
@@ -27,27 +27,27 @@ def ok(text, intent, destination=None, **kw):
     return r
 
 
-ok("Guide, what is the best route to the base?", "route", "the base")
-ok("Guide, rout to Altadena.", "route", "Altadena — drill hole #43")              # typical Whisper error
-ok("Guide, take me to the boxwork ridges.", "route", "Boxwork ridges — sulfate cementation")
-ok("Guid, route to Totoral", "route", "Totoral / Sillar — ridge vs. depression")  # activation misheard
-ok("Guide, I want to go back.", "route", "the base")                            # back with no destination = base
-ok("Guide, route to the marked point", "route", "the marked point")
-ok("Guide, route to Mars Central", "question")                                  # destination outside the list: to the model
+ok("Marvin, what is the best route to the base?", "route", "the base")
+ok("Marvin, rout to Altadena.", "route", "Altadena — drill hole #43")              # typical Whisper error
+ok("Marvin, take me to the boxwork ridges.", "route", "Boxwork ridges — sulfate cementation")
+ok("Marvim, route to Totoral", "route", "Totoral / Sillar — ridge vs. depression")  # activation misheard
+ok("Marvin, I want to go back.", "route", "the base")                            # back with no destination = base
+ok("Marvin, route to the marked point", "route", "the marked point")
+ok("Marvin, route to Mars Central", "question")                                  # destination outside the list: to the model
 # free speech: a report goes whole to the model, even mentioning "route" or "back"
-r = ok("Hello guide, I'm in the middle of a route and a very toxic gas showed up", "question")
+r = ok("Hello Marvin, I'm in the middle of a route and a very toxic gas showed up", "question")
 assert r["activated"] and r["question"] == "I'm in the middle of a route and a very toxic gas showed up", r
-ok("Hey, guide, the suit is losing pressure and I think I need to go back soon", "question")
-assert ok("Hi, oh guide, route to Altadena", "route", "Altadena — drill hole #43")["activated"]
-ok("I talked to the guide yesterday", "none")                                   # "guide" after the 3rd word
-ok("What is the best route to the base?", "none")                               # no "Guide": ignored
+ok("Hey, Marvin, the suit is losing pressure and I think I need to go back soon", "question")
+assert ok("Hi, oh Marvin, route to Altadena", "route", "Altadena — drill hole #43")["activated"]
+ok("I talked to Marvin yesterday", "none")                                       # "Marvin" after the 3rd word
+ok("What is the best route to the base?", "none")                               # no "Marvin": ignored
 ok("Yes.", "yes", require_activation=False)                                     # confirmation window
 ok("No, cancel.", "no", require_activation=False)
 ok("Yeah", "yes", require_activation=False)                                     # short "yes" from small
 ok("NO, CANCEL!", "no", require_activation=False)
 ok("Thanks for watching.", "question", require_activation=False)                # common hallucination: does not confirm
-assert ok("Guide, can I climb here safely?", "question")["question"] == "can I climb here safely?"
-assert ok("Guide how much radiation will I get today", "question")["question"] == "how much radiation will I get today"
-assert ok("Hey guide, route to the base", "route", "the base")["activated"]
-assert ok("A guide, can I climb here?", "question")["question"] == "can I climb here?"
+assert ok("Marvin, can I climb here safely?", "question")["question"] == "can I climb here safely?"
+assert ok("Marvin how much radiation will I get today", "question")["question"] == "how much radiation will I get today"
+assert ok("Hey Marvin, route to the base", "route", "the base")["activated"]
+assert ok("A Marvin, can I climb here?", "question")["question"] == "can I climb here?"
 print("test_voice: ok")

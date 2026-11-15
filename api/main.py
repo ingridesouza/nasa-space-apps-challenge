@@ -27,6 +27,7 @@ from insolation import at_point as insolation_at_point, sun_at_hour
 from agent import (DISTRESS, AgentUnavailable, ask as ask_agent, build_context, context_as_text, context_sources,
                    distress_answer, group_alerts, strip_repeated_danger)
 from alerts import BASE_LAT_LON, point_alerts, route_alerts, sol_time_and_alerts, stops_in_bbox
+import commands
 from conditions import get_cached_conditions
 from db import get_connection
 from mosaics import build_hillshade_png, build_mosaic_png
@@ -478,17 +479,31 @@ def voice_destinations(lat: float | None, lon: float | None) -> list[dict]:
     return destinations
 
 
+class CommandRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=300)
+    open_blocks: list[str] = []  # ids of the visible blocks (m-A…): breaks the tie of "next" with no block cited
+    focus: str | None = None  # last block used
+
+
+@app.post("/api/command")
+async def command(p: CommandRequest):
+    """Feature 11: text -> ONE command from the catalog web/commands.json, which the front executes.
+    command None + speech None = not a command (the front sends it to the agent as a question)."""
+    return await run_in_threadpool(commands.interpret, p.text, p.open_blocks, p.focus)
+
+
 @app.post("/api/voice")
 async def voice(request: Request, activated: bool = False, confirming: bool = False,
-                lat: float | None = Query(None, ge=-90, le=90), lon: float | None = Query(None, ge=-180, le=360)):
+                lat: float | None = Query(None, ge=-90, le=90), lon: float | None = Query(None, ge=-180, le=360),
+                open_blocks: str = "", focus: str | None = None):
     """Feature 08, voice: raw audio (float32 mono 16 kHz) -> text -> command.
     lat/lon: marked point (where the astronaut is). activated: it already came from
-    "hold space" or from the "Confirm?" window -- the word "Guide" is not needed.
+    "hold space" or from the "Confirm?" window -- the word "Marvin" is not needed.
     confirming: expects only "yes"/"no", so it goes to the fast model.
     Hands-free (neither): the fast model first checks whether the speech is addressed
-    to the "Guide"; background talk does not occupy the big model. Only "Hey guide"
+    to "Marvin"; background talk does not occupy the big model. Only "Hey Marvin"
     returns intent "listen": the front beeps and treats the next utterance as activated.
-    The big model must also hear "guide" for the utterance to count.
+    The big model must also hear "Marvin" for the utterance to count.
     See docs/feature-08-voz-plano-execucao.md."""
     body = await request.body()
     if len(body) > AUDIO_LIMIT_BYTES:
@@ -500,13 +515,13 @@ async def voice(request: Request, activated: bool = False, confirming: bool = Fa
         raise HTTPException(status_code=400, detail="audio with an invalid value")
     try:
         if not (activated or confirming):
-            # small only discards what it heard clearly and without "guide"; when in doubt, the big one decides.
+            # small only discards what it heard clearly and without "Marvin"; when in doubt, the big one decides.
             # It does not confirm on its own: with the vocabulary it may hear the wake word in similar speech.
             quick = await run_in_threadpool(transcribe, audio, CONFIRM_MODEL)  # ~1 s
             trigger = interpret(quick["text"] or "", [], require_activation=True)
             if quick["text"] and not trigger["activated"]:
                 return {**quick, "activated": False, "intent": "none", "destination": None, "speech": None}
-            if trigger["activated"] and trigger["intent"] == "none":  # only "Hey guide": listen now, without the big one (~6 s)
+            if trigger["activated"] and trigger["intent"] == "none":  # only "Hey Marvin": listen now, without the big one (~6 s)
                 return {**quick, **trigger, "intent": "listen", "speech": None}
         model = CONFIRM_MODEL if confirming else WHISPER_MODEL
         heard = await run_in_threadpool(transcribe, audio, model)  # heavy CPU: outside the API loop
@@ -518,7 +533,12 @@ async def voice(request: Request, activated: bool = False, confirming: bool = Fa
     destinations = voice_destinations(lat, lon)
     cmd = interpret(heard["text"], destinations, require_activation=not (activated or confirming))
     if cmd["activated"] and cmd["intent"] == "none" and not confirming:
-        cmd["intent"] = "listen"  # only "Hey guide", no request: the front beeps and waits for the next utterance
+        cmd["intent"] = "listen"  # only "Hey Marvin", no request: the front beeps and waits for the next utterance
+    if cmd["intent"] == "question":
+        # F11: before becoming a question to the agent, check whether it is an interface command ("Atlas, zoom in")
+        ui = await run_in_threadpool(commands.interpret, cmd["question"], [b for b in open_blocks.split(",") if b], focus)
+        if ui["speech"]:
+            return {**heard, **cmd, **ui, "intent": "interface", "destination": None}
     destination = cmd["destination"]
     origin = {"lat": lat, "lon": lon} if lat is not None and lon is not None else {"lat": BASE_LAT_LON[0], "lon": BASE_LAT_LON[1]}
     if destination and destination.get("keys") == ["point", "marked"]:
