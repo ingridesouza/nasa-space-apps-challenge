@@ -37,7 +37,7 @@ front:
 	@echo "Front servido pela API: rode 'make run' e abra http://localhost:8000"
 
 test:
-	cd api && $(PY) test_alertas.py && $(PY) test_agente.py && $(PY) test_previsao.py && $(PY) test_voz.py && $(PY) -m pytest -q test_f03.py
+	cd api && $(PY) test_alertas.py && $(PY) test_agente.py && $(PY) test_previsao.py && $(PY) test_voz.py && $(PY) test_comandos.py && $(PY) -m pytest -q test_f03.py
 	@if command -v node >/dev/null; then node web/test_voz.mjs; else echo "node ausente: pulei web/test_voz.mjs"; fi
 
 # Fase 0 da voz: grava as frases no microfone da demo e compara os modelos Whisper

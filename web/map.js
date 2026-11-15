@@ -189,6 +189,19 @@ export function centrar(p, rota = null) {
   } else if (p) map.jumpTo({ center: [p.lon, p.lat], zoom: Math.max(map.getZoom(), 16) })
 }
 
+/** F11 voz: zoom relativo (níveis inteiros). */
+export function zoom(delta) {
+  map?.easeTo({ zoom: map.getZoom() + delta, duration: 300 })
+}
+
+/** F11 voz: desloca um terço da tela para o lado pedido. */
+export function mover(direcao) {
+  if (!map) return
+  const [dx, dy] = { norte: [0, -1], sul: [0, 1], leste: [1, 0], oeste: [-1, 0] }[direcao]
+  const c = map.getContainer()
+  map.panBy([dx * c.clientWidth / 3, dy * c.clientHeight / 3], { duration: 300 })
+}
+
 export function limparPonto() {
   marcadorClique?.remove()
 }

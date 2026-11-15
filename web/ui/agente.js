@@ -1,6 +1,7 @@
 // F08: assistente sempre à mão (pílula no topo ou tecla "/"). Responde sobre o destino
 // ou, sem destino, sobre a posição atual. Modelo local: a espera é visível (contador).
 import { perguntar } from '../api.js'
+import { irPagina, paginar } from './paginas.js'
 import { coord, esc } from './util.js'
 
 const MAX_HISTORICO = 4
@@ -18,8 +19,9 @@ export function falar(texto) {
 /**
  * el: <section id="assistente">; botao: abre/fecha.
  * pontoAtual(): {lat, lon, rotulo} do destino ou da posição atual, ou null (a API usa a base).
+ * comando(texto) → Promise<string|null>: F11, tenta como comando de interface; null = é pergunta.
  */
-export function iniciarAssistente(el, botao, pontoAtual) {
+export function iniciarAssistente(el, botao, pontoAtual, { comando } = {}) {
   const historico = [] // {pergunta, sobre, resposta?, fontes?, erro?, segundos}
   let ocupado = false
   let relogio = null
@@ -53,6 +55,8 @@ export function iniciarAssistente(el, botao, pontoAtual) {
     const novo = el.querySelector('input[name=q]')
     novo.value = digitado
     if (comFoco) novo.focus()
+    // F11: sem rolagem; histórico em páginas (a mais nova primeiro)
+    paginar(el, { sel: ':scope > .h2g2-ass-hist > *', max: () => innerHeight * 0.62 - 28 - (el.querySelector('form')?.offsetHeight ?? 0) })
   }
 
   /** porVoz: a pergunta veio do microfone, então a resposta também é falada. */
@@ -62,7 +66,15 @@ export function iniciarAssistente(el, botao, pontoAtual) {
     const h = { pergunta: pergunta.trim(), sobre: sobre(), segundos: 0 }
     historico.unshift(h)
     historico.length = Math.min(historico.length, MAX_HISTORICO)
+    irPagina(el, 0)
     render()
+    // F11: digitado também pode ser comando ("Alfa aproxima"); falado já passou por isso na API
+    const feito = porVoz || !comando ? null : await comando(h.pergunta).catch(() => null)
+    if (feito) {
+      Object.assign(h, { resposta: feito, fontes: ['comando de interface'] })
+      ocupado = false
+      return render()
+    }
     const inicio = performance.now()
     relogio = setInterval(() => {
       h.segundos = Math.round((performance.now() - inicio) / 1000)

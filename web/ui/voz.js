@@ -46,8 +46,9 @@ export function resumoRota(data, nome) {
  * botao: liga/desliga o mãos-livres; status: linha de estado (aria-live).
  * pontoAtual() → {lat, lon} | null; rota(origem, destino) → Promise<dados do /api/route | null>;
  * perguntar(texto): manda ao assistente, que mostra e fala a resposta.
+ * executar(cmd) → {ok, texto}: comando de interface (F11); contexto() → {abertos, foco}.
  */
-export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar }) {
+export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar, executar, contexto }) {
   let ctx = null
   let taxa = 48000
   let maosLivres = true // como a Siri: sempre ouvindo pelo "Ei guia"; o botão desliga
@@ -58,7 +59,7 @@ export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar }) {
   let acima = 0
   let abaixo = 0
   let ruido = 0.01
-  let pendente = null // rota esperando o "sim"
+  let pendente = null // rota ou comando de interface esperando o "sim"
   let confirmarAte = 0
   let escutaAte = 0 // > agora: a próxima fala já é com o Guia
   let mudoAte = 0
@@ -166,7 +167,7 @@ export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar }) {
     const confirmando = Boolean(pendente)
     try {
       const p = pontoAtual()
-      const r = await enviarVoz(audio, { ativado, confirmando, lat: p?.lat, lon: p?.lon })
+      const r = await enviarVoz(audio, { ativado, confirmando, lat: p?.lat, lon: p?.lon, ...contexto() })
       if (r.texto) mostrar(`ouvi: “${r.texto}”`)
       await agir(r, confirmando, ativado)
     } catch (e) {
@@ -182,6 +183,7 @@ export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar }) {
       const acao = pendente
       pendente = null
       if (r.intencao !== 'sim') return falar('Cancelado.')
+      if (acao.comando) return interface_(acao.comando)
       falar(`Calculando a rota até ${acao.nome}.`)
       return falar(resumoRota(await rota(acao.origem, acao.destino), acao.nome))
     }
@@ -196,10 +198,24 @@ export function iniciarVoz(botao, status, { pontoAtual, rota, perguntar }) {
       return falar(r.fala)
     }
     if (r.intencao === 'rota') return falar(r.fala) // "marque no mapa onde você está"
+    if (r.intencao === 'interface') {
+      if (!r.comando) return falar(r.fala) // falta argumento ou bloco ambíguo: a fala diz o quê
+      if (!r.confirmar) return interface_(r.comando)
+      pendente = { comando: r.comando }
+      confirmarAte = Date.now() + CONFIRMA_MS
+      return falar(r.fala)
+    }
     if (r.intencao === 'pergunta') return perguntar(r.pergunta)
     if (r.intencao === 'sim' || r.intencao === 'nao') return falar('Não há nada para confirmar.')
     if (ativado && r.fala) falar(r.fala) // "Não entendi." só quando a pessoa apertou para falar
     else ocioso()
+  }
+
+  /** Ação de interface: sem fala no acerto (só a linha de estado), fala no erro. */
+  async function interface_(cmd) {
+    const res = await executar(cmd)
+    mostrar(`${res.ok ? '✓' : '✕'} ${res.texto}`)
+    if (!res.ok) falar(res.texto)
   }
 
   const digitando = (e) => e.target.closest?.('input, textarea, select, [contenteditable]')

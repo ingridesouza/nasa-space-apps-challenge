@@ -29,7 +29,8 @@ TAXA_HZ = 16000
 # "EVA" saiu: puxava "Ei guia" para "EVA". "Ei guia" entra inteiro, não só "Guia".
 VOCABULARIO = ("Ei guia, rota, base, habitat, boxwork, Curiosity, Altadena, Totoral, Sillar, "
                "cratera Gale, sol, inclinação, radiação, alvo científico, segurança, subir, "
-               "emergência, gás tóxico, vazamento, oxigênio, traje, pressão, poeira")
+               "emergência, gás tóxico, vazamento, oxigênio, traje, pressão, poeira, "
+               "Alfa, Bravo, Charlie, Delta, Eco, Foxtrot, Golf, Hotel, Índia, zoom, camada, panorama, ficha, próxima")
 MAX_SEM_FALA = 0.6    # no_speech_prob acima disso: trecho é silêncio/ruído
 # avg_logprob abaixo disso: o modelo está chutando. -0,6 = confiança 0,55; na 1ª gravação real
 # (14/11, microfone de notebook) as frases inventadas vieram com 0,50-0,55 e as boas com 0,61+.

@@ -42,12 +42,23 @@ export const getFotosPerto = (lat, lon) => get(`/photos/near?lat=${lat}&lon=${lo
 export const getFichaCientifica = (lat, lon) => get(`/science/card?lat=${lat}&lon=${lon}`)
 
 /** F08 voz: áudio float32 mono 16 kHz → {texto, intencao, destino, origem, fala}. */
-export async function enviarVoz(audio, { ativado, confirmando, lat, lon }) {
-  const q = new URLSearchParams({ ativado, confirmando, ...(lat !== undefined && { lat, lon }) })
+export async function enviarVoz(audio, { ativado, confirmando, lat, lon, abertos = [], foco = null }) {
+  const q = new URLSearchParams({ ativado, confirmando, abertos: abertos.join(','), ...(foco && { foco }), ...(lat !== undefined && { lat, lon }) })
   const resp = await fetch(`/api/voz?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: audio })
   const corpo = await resp.json().catch(() => null)
   if (!resp.ok) throw new Error(corpo?.detail ?? `/api/voz falhou: ${resp.status}`)
   return corpo
+}
+
+/** F11: texto → {comando|null, confirmar, fala}. fala null = não é comando de interface. */
+export async function postComando(texto, { abertos = [], foco = null } = {}) {
+  const resp = await fetch('/api/comando', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ texto, abertos, foco }),
+  })
+  if (!resp.ok) throw new Error(`/api/comando falhou: ${resp.status}`)
+  return resp.json()
 }
 
 /** F08: pergunta ao agente local. 503 (modelo fora) traz detail={mensagem, alertas}. */

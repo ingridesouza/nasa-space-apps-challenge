@@ -3,7 +3,7 @@
 // A posição atual vem do rastreador (simulado em /api/posicao) e é a origem da rota.
 import {
   getFichaCientifica, getFotosPerto, getLayers, getPanorama,
-  getPoint, getPosicao,
+  getPoint, getPosicao, postComando,
 } from './api.js'
 import { TOGGLEABLE_LAYERS } from './layers.js'
 import * as mapa from './map.js'
@@ -11,6 +11,8 @@ import { iniciarAssistente } from './ui/agente.js'
 import { renderCamadas } from './ui/camadas.js'
 import { iniciarRota } from './ui/rota.js'
 import { iniciarVoz } from './ui/voz.js'
+import { contexto, executar, iniciarComandos, registrar } from './ui/comandos.js'
+import { mudarPagina, paginar } from './ui/paginas.js'
 import { esc } from './ui/util.js'
 
 const $ = (id) => document.getElementById(id)
@@ -116,6 +118,7 @@ function colapsarGrupo(id, c) {
   t.textContent = c ? '‹' : '›'
   t.title = `${c ? 'Expandir' : 'Recolher'} ${t.dataset.nome}`
   t.setAttribute('aria-expanded', String(!c))
+  if (id === 'g-rota' && !c) requestAnimationFrame(() => paginar($('c-rota'))) // escondido mediu 0 px
   if (id === 'g-imagens') {
     $('fichas').classList.toggle('colapsada', c)
     if (!c) requestAnimationFrame(() => { viewer?.resize(); posicionarFichas() }) // pannellum mediu 0 px escondido
@@ -225,8 +228,12 @@ function mostrarFicha(d, abrir = false) {
   $('ficha-nome').textContent = nome
   $('ficha-tipo').textContent = tipo
   $('ficha').innerHTML = H2G2Card.html(d)
-  requestAnimationFrame(posicionarFichas)
+  requestAnimationFrame(() => { paginarFicha(); posicionarFichas() })
 }
+// F11: ficha sem rolagem, em páginas; a lista de linhas quebra item a item
+const paginarFicha = () => paginar($('ficha'), { sel: ':scope > :not(ul), :scope > ul > li', max: () => innerHeight * 0.42 })
+$('c-ficha').addEventListener('toggle', () => { if ($('c-ficha').open) paginarFicha() })
+addEventListener('resize', () => { paginarFicha(); paginar($('c-rota')); paginar($('assistente')) })
 
 // ---------------- Mapa: círculo <-> tela cheia ----------------
 const camadas = () => renderCamadas($('camadas'), estado)
@@ -427,7 +434,16 @@ document.addEventListener('keydown', (e) => {
 })
 
 // ---------------- F08: assistente ----------------
-const assistente = iniciarAssistente($('assistente'), $('btn-assistente'), () => estado.local ?? estado.posicao)
+const assistente = iniciarAssistente($('assistente'), $('btn-assistente'), () => estado.local ?? estado.posicao, {
+  // F11: digitado como comando de interface; confirmação no diálogo do navegador
+  comando: async (texto) => {
+    const r = await postComando(texto, contexto())
+    if (!r.fala) return null
+    if (!r.comando) return r.fala
+    if (r.confirmar && !confirm(r.fala)) return 'Cancelado.'
+    return (await executar(r.comando)).texto
+  },
+})
 
 // F08 voz: "Ei guia, rota até …" ou pergunta falada; a origem é sempre a posição atual
 iniciarVoz($('btn-voz'), $('voz-status'), {
@@ -437,7 +453,95 @@ iniciarVoz($('btn-voz'), $('voz-status'), {
     if ($('assistente').hidden) assistente.abrir(true)
     return assistente.enviar(texto, true)
   },
+  executar,
+  contexto,
 })
+
+// ---------------- F11: ações de cada bloco (catálogo em comandos.json) ----------------
+const viewerAtivo = () => viewerFundo ?? viewer
+const clicar = (sel) => { const b = $('c-rota').querySelector(sel); if (!b) return false; b.click() }
+function ligarCamada(camada, visivel, opacidade) {
+  const c = estado.camadas[camada]
+  c.visible = visivel
+  if (opacidade !== undefined) { c.opacity = opacidade; mapa.setCamadaOpacidade(camada, opacidade) }
+  mapa.setCamadaVisivel(camada, visivel)
+  camadas()
+}
+registrar('m-A', {
+  expandir: () => { if (estado.mapa !== 'visor') return 'Mapa já está aberto.'; abrirMapa('explorar') },
+  recolher: () => { if (estado.mapa === 'visor') return 'Mapa já está recolhido.'; fecharMapa() },
+  aproximar: ({ niveis }) => { mapa.zoom(niveis) },
+  afastar: ({ niveis }) => { mapa.zoom(-niveis) },
+  mover: ({ direcao }) => { mapa.mover(direcao) },
+  centralizar: () => { mapa.centrar(estado.destino ?? estado.posicao, estado.rota) },
+})
+registrar('m-B', {
+  ligar: ({ camada }) => ligarCamada(camada, true),
+  desligar: ({ camada }) => ligarCamada(camada, false),
+  opacidade: ({ camada, valor }) => ligarCamada(camada, true, valor / 100),
+})
+registrar('m-C', {
+  planejar: () => { abrirMapa('rota') },
+  tipo: ({ tipo }) => clicar(`[data-tipo="${tipo}"]`),
+  sol: ({ delta }) => clicar(`[data-sol-passo="${delta}"]`),
+  alvo: () => clicar('[data-acao="alvo"]'),
+  proxima: () => mudarPagina($('c-rota'), 1) || 'Rota: já está na última página.',
+  anterior: () => mudarPagina($('c-rota'), -1) || 'Rota: já está na primeira página.',
+  recolher: () => { colapsarGrupo('g-rota', true) },
+  expandir: () => { colapsarGrupo('g-rota', false) },
+  cancelar: () => { if (!estado.rotaAtiva) return 'Não há rota.'; cancelarRota() },
+})
+registrar('m-D', {
+  expandir: () => { if (!viewer) return 'Sem panorama aqui.'; if (!noVisor) expandir() },
+  recolher: () => { if (!noVisor) return 'Panorama não está no visor.'; recolher() },
+  girar: ({ direcao, graus }) => {
+    const v = viewerAtivo()
+    if (!v) return 'Sem panorama aqui.'
+    if (direcao === 'esquerda' || direcao === 'direita') v.setYaw(v.getYaw() + (direcao === 'direita' ? graus : -graus))
+    else v.setPitch(v.getPitch() + (direcao === 'cima' ? graus : -graus))
+  },
+  aproximar: () => { const v = viewerAtivo(); if (!v) return 'Sem panorama aqui.'; v.setHfov(v.getHfov() - 15) },
+  afastar: () => { const v = viewerAtivo(); if (!v) return 'Sem panorama aqui.'; v.setHfov(v.getHfov() + 15) },
+})
+registrar('m-E', {
+  abrir: ({ n }) => {
+    const ft = fotosLista[fotosPag * FOTOS_POR_PAG + n - 1]
+    if (!ft) return `Não há foto ${n} nesta página.`
+    abrirFoto(ft)
+  },
+  proxima: () => {
+    if ((fotosPag + 1) * FOTOS_POR_PAG >= fotosLista.length) return 'Fotos: já está na última página.'
+    fotosPag++; renderFotos(1)
+  },
+  anterior: () => {
+    if (fotosPag === 0) return 'Fotos: já está na primeira página.'
+    fotosPag--; renderFotos(-1)
+  },
+})
+registrar('m-F', {
+  abrir: () => { if ($('c-ficha').hidden) return 'Sem ficha aberta.'; $('c-ficha').open = true },
+  fechar: () => { $('c-ficha').open = false },
+  proxima: () => mudarPagina($('ficha'), 1) || 'Ficha: já está na última página.',
+  anterior: () => mudarPagina($('ficha'), -1) || 'Ficha: já está na primeira página.',
+})
+registrar('m-G', {
+  abrir: () => { assistente.abrir(true) },
+  fechar: () => { assistente.abrir(false) },
+  proxima: () => mudarPagina($('assistente'), 1) || 'Assistente: não há resposta mais antiga.',
+  anterior: () => mudarPagina($('assistente'), -1) || 'Assistente: já está na mais nova.',
+})
+registrar('m-H', {
+  fechar: () => { if ($('visor-fechar').hidden) return 'O visor já está vazio.'; fecharVisor() },
+})
+registrar('m-I', {
+  definir: ({ lat, lon }) => {
+    if (estado.mapa !== 'rota') abrirMapa('rota')
+    $('lat').value = lat
+    $('lon').value = lon
+    $('coords').requestSubmit()
+  },
+})
+iniciarComandos().catch((e) => console.warn('catálogo de comandos indisponível:', e))
 
 // ---------------- Carga inicial ----------------
 getPosicao()

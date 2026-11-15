@@ -2,6 +2,7 @@
 // com a janela da EVA da previsão local. A origem é sempre a posição atual.
 import { apagarMedicao, getPrevisao, getRoute, postMedicao } from '../api.js'
 import { SLOPE_COLOR_HEX } from '../layers.js'
+import { paginar } from './paginas.js'
 import { coord, esc, num } from './util.js'
 
 const TIPO_LABEL = { mais_segura: 'Mais segura', mais_rapida: 'Mais rápida', mais_ciencia: 'Mais ciência' }
@@ -180,8 +181,10 @@ function render() {
   }
   el.innerHTML = `<div class="rota-corpo">
     <div class="rota-body">${corpo}
-      <button type="button" class="link-btn rota-cancelar" data-acao="cancelar">✕ cancelar rota</button></div>
+      <button type="button" class="link-btn rota-cancelar pag-fixo" data-acao="cancelar">✕ cancelar rota</button></div>
   </div>`
+  // F11: sem rolagem; seções do card viram páginas (‹ 1/3 ›)
+  paginar(el, { sel: ':scope > .rota-corpo > .rota-body > *', max: () => Math.min(innerHeight - 40, 560) })
 }
 
 /** callbacks: onCancelar(), onRotaAtiva(rota|null), onAdicionarEscala(), onRemoverEscala(i), onAbrirAlvo(alvo). */

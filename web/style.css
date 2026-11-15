@@ -64,7 +64,7 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
   border:1px solid var(--b400);border-radius:3px;background:linear-gradient(160deg,rgba(32,56,98,.55),rgba(18,18,20,.9) 58%);backdrop-filter:blur(10px);color:var(--b200);font-size:12px;font-weight:600;letter-spacing:.08em;cursor:pointer;box-shadow:0 0 18px rgba(166,166,176,.22),0 4px 14px rgba(0,0,0,.5)}
 .pilula.frame::before,.pilula.frame::after{width:12px;height:12px;border-color:var(--b300)}
 .pilula kbd{font-family:inherit;font-size:10px;border:1px solid var(--line);border-radius:2px;padding:0 5px;color:var(--dim)}
-.assistente{position:absolute;z-index:14;top:62px;left:50%;transform:translateX(-50%);width:min(620px,calc(100vw - 32px));max-height:62vh;overflow-y:auto;padding:14px}
+.assistente{position:absolute;z-index:14;top:62px;left:50%;transform:translateX(-50%);width:min(620px,calc(100vw - 32px));max-height:62vh;overflow:hidden;padding:14px}
 .h2g2-linha-topo{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .h2g2-panel-title{margin:0;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--b300)}
 .h2g2-close-btn{background:none;border:0;color:var(--mut);font-size:18px;cursor:pointer}
@@ -162,7 +162,7 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
    O botão de cada uma fica no vão à esquerda do card; recolhida, sobra só o botão no canto da barra. */
 .flutuante{display:contents}
 .grupo{position:absolute;right:20px;width:calc(var(--painel-w) + 44px);padding-left:44px;max-height:calc(100% - 40px);
-  display:flex;flex-direction:column;gap:12px;overflow-y:auto;scrollbar-width:none;pointer-events:none;animation:grupo-in .22s ease}
+  display:flex;flex-direction:column;gap:12px;overflow:hidden;pointer-events:none;animation:grupo-in .22s ease}
 .grupo::-webkit-scrollbar{display:none}
 #g-rota{top:20px;z-index:8;width:calc(var(--painel-w) * .86 + 44px)}
 #g-rota.colapsada{width:30px}
@@ -212,7 +212,7 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .ficha-card summary::after,.rota-corpo > summary::after{content:"+";margin-left:auto;font-family:'JetBrains Mono',monospace;color:var(--dim)}
 .ficha-card[open] summary::after,.rota-corpo[open] > summary::after{content:"–"}
 .ficha-nome{font-family:'Chakra Petch',sans-serif;font-weight:600;font-size:16px}
-.ficha-body{padding:0 12px 12px;max-height:42vh;overflow-y:auto}
+.ficha-body{padding:0 12px 12px;max-height:42vh;overflow:hidden}
 .ficha{display:grid;grid-template-columns:88px 1fr;gap:12px;align-items:start}
 .ficha-img{width:88px;height:88px;object-fit:cover;background:#000;border:1px solid var(--line)}
 .ficha .tags{display:flex;flex-wrap:wrap;gap:6px}
@@ -268,7 +268,7 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 
 @media (max-width:900px){
   :root{--mini:120px}
-  .flutuante{display:flex;flex-direction:column;gap:12px;overflow-y:auto;scrollbar-width:none;pointer-events:none;z-index:7;
+  .flutuante{display:flex;flex-direction:column;gap:12px;overflow:hidden;pointer-events:none;z-index:7;
     position:absolute;top:auto;bottom:0;left:0;right:0;width:auto;max-height:55vh;padding:12px;background:linear-gradient(transparent,rgba(0,0,0,.7) 20%)}
   #g-rota,#g-imagens,#g-rota.colapsada,#g-imagens.colapsada{position:static;width:auto;padding:0;max-height:none;overflow:visible;z-index:auto}
   .flutuante:not(:has(.card:not([hidden]))){background:none}
@@ -295,3 +295,19 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 @media (max-width:900px){.pilula.btn-voz{right:auto;left:16px}}
 .btn-voz[aria-pressed='false']{opacity:.55}
 .voz-status{position:absolute;z-index:15;top:112px;left:50%;transform:translateX(-50%);max-width:min(90vw,640px);padding:8px 16px;font-size:12px;text-align:center;color:var(--b200);border:1px solid var(--line);background:rgba(10,10,11,.75);pointer-events:none}
+
+/* ---------- F11: visor por voz ---------- */
+/* nenhuma rolagem: conteúdo que não cabe vira página (‹ 1/3 ›), ver ui/paginas.js */
+html,body,.app{overflow:hidden}
+.pag-fora{display:none!important}
+.pag-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:8px}
+.rota-card > .pag-nav{margin:0 0 10px}
+/* id do bloco (m-A…), pequeno e discreto no topo; o nome falado fica no title */
+[data-modal]:not(.frame)::before,.modal-id{content:attr(data-modal);position:absolute;z-index:4;top:2px;left:50%;transform:translateX(-50%);
+  font-family:'JetBrains Mono',monospace;font-size:9px;line-height:1;letter-spacing:.12em;color:var(--dim);opacity:.8;pointer-events:none}
+.mapa-box[data-modal]::before{top:8px;z-index:3;text-shadow:0 1px 2px #000}
+.visor[data-modal]::before,.mapa-aberto .mapa-box[data-modal]::before{top:auto;bottom:6px}
+.ficha-card[data-modal]::before{top:1px}
+/* acionado por comando: o selo acende por um instante */
+.modal-acionado[data-modal]:not(.frame)::before,.modal-acionado .modal-id{animation:modal-pisca .7s ease}
+@keyframes modal-pisca{0%,60%{color:var(--b200);opacity:1;text-shadow:0 0 8px var(--hud-cyan)}}

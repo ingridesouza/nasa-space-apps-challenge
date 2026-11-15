@@ -35,6 +35,7 @@ from route_planning import ForaDoGridError, SemCaminhoError, plan_route
 from tempo_marte import sol_msl
 from tile_server import render_tile
 from vector_queries import all_photos, nearby_photos, nearest_science_target
+import comandos
 import ficha
 import panorama
 from voz import MODELO, MODELO_CONFIRMACAO, TAXA_HZ, _modelo, interpretar, transcrever
@@ -356,9 +357,23 @@ def destinos_por_voz(lat: float | None, lon: float | None) -> list[dict]:
     return destinos
 
 
+class PedidoComando(BaseModel):
+    texto: str = Field(min_length=1, max_length=300)
+    abertos: list[str] = []  # ids dos blocos visíveis (m-A…): desempata "próxima" sem bloco citado
+    foco: str | None = None  # último bloco usado
+
+
+@app.post("/api/comando")
+async def comando(p: PedidoComando):
+    """Feature 11: texto -> UM comando do catálogo web/comandos.json, que o front executa.
+    comando None + fala None = não é comando (o front manda ao agente como pergunta)."""
+    return await run_in_threadpool(comandos.interpretar, p.texto, p.abertos, p.foco)
+
+
 @app.post("/api/voz")
 async def voz(request: Request, ativado: bool = False, confirmando: bool = False,
-              lat: float | None = Query(None, ge=-90, le=90), lon: float | None = Query(None, ge=-180, le=360)):
+              lat: float | None = Query(None, ge=-90, le=90), lon: float | None = Query(None, ge=-180, le=360),
+              abertos: str = "", foco: str | None = None):
     """Feature 08, voz: áudio bruto (float32 mono 16 kHz) -> texto -> comando.
     lat/lon: ponto marcado (onde o astronauta está). ativado: já veio de
     "segure espaço" ou da janela do "Confirma?" -- dispensa a palavra "Guia".
@@ -397,6 +412,11 @@ async def voz(request: Request, ativado: bool = False, confirmando: bool = False
     cmd = interpretar(ouvido["texto"], destinos, exigir_ativacao=not (ativado or confirmando))
     if cmd["ativado"] and cmd["intencao"] == "nenhuma" and not confirmando:
         cmd["intencao"] = "escutar"  # só "Ei guia", sem pedido: o front bipa e espera a próxima fala
+    if cmd["intencao"] == "pergunta":
+        # F11: antes de virar pergunta ao agente, vê se é comando de interface ("Alfa, aproxima")
+        ui = await run_in_threadpool(comandos.interpretar, cmd["pergunta"], [a for a in abertos.split(",") if a], foco)
+        if ui["fala"]:
+            return {**ouvido, **cmd, **ui, "intencao": "interface", "destino": None}
     destino = cmd["destino"]
     origem = {"lat": lat, "lon": lon} if lat is not None and lon is not None else {"lat": BASE_LAT_LON[0], "lon": BASE_LAT_LON[1]}
     if destino and destino.get("chaves") == ["ponto", "marcado"]:
