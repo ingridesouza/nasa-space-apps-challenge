@@ -10,6 +10,7 @@ Testar:
 """
 
 import os
+import sqlite3
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,7 +32,7 @@ from raster_sampling import sample_all_rasters
 from route_planning import ForaDoGridError, SemCaminhoError, plan_route
 from tempo_marte import sol_msl
 from tile_server import render_tile
-from vector_queries import all_photos, nearby_photos, nearest_science_target
+from vector_queries import all_photos, nearby_photos, nearest_science_target, todos_alvos_cientificos
 import ficha
 import panorama
 
@@ -232,6 +233,29 @@ def get_tile(layer_name: str, z: int, x: int, y: int):
         raise HTTPException(status_code=404, detail="Tile fora da cobertura real desta camada")
 
     return Response(content=png_bytes, media_type="image/png")
+
+
+@app.get("/api/alvos-cientificos")
+def get_alvos_cientificos():
+    """Ferramenta de consulta pra camada de IA (F08/Hugo) decidir destino
+    científico em linguagem natural -- ver docs/feature-02-arquitetura-
+    ferramentas-ia-rota.md, seção 3.1. Devolve os alvos reais crus, sem
+    filtro nem pontuação: quem decide qual combina com o objetivo falado
+    é a IA, não este endpoint (hoje só 3 alvos cadastrados, não compensa
+    busca/ranking aqui). Reaproveita a mesma query que route_planning.py
+    já usa na variante "mais_ciencia" -- nenhuma lógica nova."""
+    conn = get_connection()
+    try:
+        alvos = todos_alvos_cientificos(conn)
+    except sqlite3.OperationalError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Tabela de alvos científicos não populada ({e}) -- rodar a ETL do F03/F04 "
+            "(data-pipeline/f03/etl/build.py, ver CLAUDE.md) antes de usar este endpoint",
+        )
+    finally:
+        conn.close()
+    return alvos
 
 
 @app.get("/api/route")
