@@ -46,7 +46,6 @@
       // generic "Gale Crater" row is noise on a card that must stay short
       const lines = (d.rows || []).filter((r) => r.section !== "name").concat(d.context || []);
       if (lines.length) h += `<ul class="sci-lines">${lines.map(line).join("")}</ul>`;
-      if (d.mastcam) h += `<p class="caption mono">${esc(d.mastcam.label)} · ${esc(d.mastcam.credit)}</p>`;
       return h;
     },
   };
