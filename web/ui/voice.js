@@ -171,8 +171,7 @@ export function initVoice(button, status, { currentPoint, route, ask, execute, c
       if (r.text) show(`heard: “${r.text}”`)
       await act(r, confirming, activated)
     } catch (e) {
-      show(`voice: ${e.message}`)
-      speak('Voice failed. Try again.')
+      show(`voice: ${e.message.split(' (')[0]}`) // on-screen only, never spoken
     } finally {
       busy = false
     }
