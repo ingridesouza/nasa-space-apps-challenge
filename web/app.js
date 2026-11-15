@@ -9,7 +9,7 @@ import { TOGGLEABLE_LAYERS } from './layers.js'
 import * as map from './map.js'
 import { initAssistant } from './ui/agent.js'
 import { arrivalHour, renderLayers } from './ui/layers-panel.js'
-import { initRoute, routeForAgent } from './ui/route.js'
+import { initRoute, routeForAgent, showOptions } from './ui/route.js'
 import { initVoice } from './ui/voice.js'
 import { esc } from './ui/util.js'
 
@@ -31,6 +31,7 @@ const state = {
   atmosphere: { geo: null, variable: 'temp_max_c' }, // REMS points layer (GeoJSON from /api/atmosphere/track)
 }
 let awaitingStop = false
+let awaitingPosition = false // "📍 I am here": the next click becomes the astronaut's position (no GPS)
 
 // ---------------- Place (position or destination): status, panorama, photos, science card ----------------
 let placeSeq = 0
@@ -294,7 +295,7 @@ function openMap(mode) {
 
 function closeMap() {
   state.map = 'viewer'
-  awaitingStop = false
+  awaitingStop = awaitingPosition = false
   document.body.classList.remove('map-open')
   $('map-box').title = 'Expand map'
   for (const id of ['layers-panel', 'coords', 'readout']) $(id).hidden = true
@@ -317,9 +318,13 @@ $('btn-route').addEventListener('click', () => openMap('route'))
 const updateRoute = initRoute($('c-route'), {
   onCancel: cancelRoute,
   mapReady: map.mapReady,
-  onActiveRoute: (r) => {
+  onActiveRoute: (r, others = []) => {
     state.route = r
-    map.setRoute(r)
+    if (r?.title) { // replanning option: the flag follows the end of the chosen option
+      state.destination = { lat: r.points.at(-1)[0], lon: r.points.at(-1)[1] }
+      map.setDestination(state.destination)
+    }
+    map.setRoute(r, others)
     if (state.layers.insolation.visible) updateInsolation() // destination/arrival changed
     if (r && state.map === 'viewer') map.center(null, r)
     // route computed: the bar opens with panorama, photos and science card of the DESTINATION (not the origin)
@@ -331,6 +336,11 @@ const updateRoute = initRoute($('c-route'), {
     if (state.map !== 'route') openMap('route')
     awaitingStop = true
     instruction('click the map to add the STOP')
+  },
+  onMarkPosition: () => {
+    if (state.map !== 'route') openMap('route')
+    awaitingPosition = true
+    instruction('click the map WHERE YOU ARE')
   },
   onRemoveStop: (i) => {
     state.stops.splice(i, 1)
@@ -360,7 +370,7 @@ function setDestination(p) {
 function cancelRoute() {
   Object.assign(state, { routeActive: false, destination: null, stops: [], route: null })
   if (state.layers.insolation.visible) updateInsolation()
-  awaitingStop = false
+  awaitingStop = awaitingPosition = false
   map.setDestination(null)
   map.setStops([])
   map.setRoute(null)
@@ -411,6 +421,12 @@ let readoutSeq = 0
 async function mapClick(lat, lon) {
   const p = { lat, lon }
   if (state.map === 'route') {
+    if (awaitingPosition) { // the followed route does not change: only where the new options start from
+      awaitingPosition = false
+      instruction(null)
+      state.position = { lat, lon, label: 'the marked position', source: 'marked on the map', kind: 'position' }
+      return map.setOrigin(state.position)
+    }
     if (awaitingStop) {
       awaitingStop = false
       instruction(null)
@@ -530,19 +546,30 @@ document.addEventListener('keydown', (e) => {
 })
 
 // ---------------- F08: assistant ----------------
-const assistant = initAssistant($('assistant'), () => state.place ?? state.position, routeForAgent, (destination) => {
-  state.routeActive = true // same as "Plan route" and the voice route
-  return setDestination(destination)
-})
+/** Route requested by voice or planned by the agent: opens the map in route mode, like the
+ * "Plan route" button -- only setting the destination left the route hidden in the viewer minimap. */
+function openRouteTo(destination) {
+  if (state.map !== 'route') openMap('route')
+  state.routeActive = true
+  return setDestination({ lat: destination.lat, lon: destination.lon })
+}
+
+/** Problem reported in the middle of the route: the card shows the new options; the flag goes to the end of the suggested one. */
+function showReplanning(res, origin) {
+  if (state.map !== 'route') openMap('route')
+  state.routeActive = true
+  $('c-route').hidden = false
+  showOptions(res, origin)
+}
+
+const assistant = initAssistant($('assistant'), () => state.place ?? state.position, routeForAgent, openRouteTo, showReplanning,
+  () => state.position)
 
 // ---------------- F08: voice ("Hey guide, route to …" or a spoken question) ----------------
 // the route always starts at the current position (tracker); voice only chooses the destination
 initVoice($('btn-voice'), $('voice-status'), {
   currentPoint: () => state.position,
-  route: (_origin, destination) => {
-    state.routeActive = true // same as "Plan route"
-    return setDestination({ lat: destination.lat, lon: destination.lon })
-  },
+  route: (_origin, destination) => openRouteTo(destination),
   ask: (text) => {
     if ($('assistant').hidden) assistant.open(true)
     return assistant.send(text, true)

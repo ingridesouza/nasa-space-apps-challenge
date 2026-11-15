@@ -15,14 +15,15 @@ from geo import bearing, compass, haversine_m
 from route_forecast import CHANCE_BANDS
 
 OLLAMA_URL = os.environ.get("H2G2_OLLAMA_URL", "http://127.0.0.1:11434")
-# gemma4:e4b has native tool calling, but needs a recent Ollama (Fedora's 0.12.11 does not even load it):
-# H2G2_MODEL=gemma4:e4b. gemma3:4b has no tools: ask() falls back to context-only mode on its own.
-MODEL = os.environ.get("H2G2_MODEL", "gemma3:4b")
+# gemma4:e2b: the only one with 6/6 in measure_agent.py on 11/14 (tool calling + never "safe"; that run had pt/en cases).
+# Needs a recent Ollama (Fedora's 0.12.11 does not even load gemma4). A model without tools (gemma3:4b)
+# also works: ask() falls back to context-only mode on its own.
+MODEL = os.environ.get("H2G2_MODEL", "gemma4:e2b")
 TIMEOUT_S = 120  # CPU (i5-8600) can take tens of seconds on the first call
 
 INSTRUCTIONS = """You are H2G2, the assistant of an astronaut in Gale crater, on Mars.
 Answer in English, in at most 3 short sentences, to be read aloud.
-Use ONLY the data in the CONTEXT below. Cite the source and the sol when available.
+Use ONLY the data in the CONTEXT below. Cite the source (instrument or file, never a tool name) and the sol when available.
 If the context does not have the requested data, answer exactly: "I don't know: I don't have that data here."
 Never invent a number, name or position. Never say a place is safe just because there is no alert.
 Do not repeat the DANGER alerts: the system already says them before your answer. Never contradict, create or cancel an alert.
@@ -36,8 +37,11 @@ POINT is where the astronaut is now; the ROUTE FORECAST applies to the whole pat
 # spelled out: the answer is spoken aloud
 SPOKEN_HEADING = {"N": "north", "NE": "northeast", "E": "east", "SE": "southeast",
                   "S": "south", "SW": "southwest", "W": "west", "NW": "northwest"}
-# bare "fall" stays out ("does the temperature fall at night?"); "help" too ("can you help me find...").
-DISTRESS = re.compile(r"\b(fell|fallen|falling|mayday|sos|hole|stuck|trapped|hurt|injur\w*|emergency|accident|slipp\w*)\b", re.I)
+# bare "fall"/"falling" stay out ("the temperature is falling"); "help" too ("can you help me find...").
+# Toxic gas on Mars is only a risk if it gets into the suit (a leak): an emergency, not a route forecast.
+# Bare "gas" stays out ("what gas is in the atmosphere?").
+DISTRESS = re.compile(r"\b(fell|fallen|mayday|sos|hole|stuck|trapped|hurt|injur\w*|emergency|accident|slipp\w*|leak\w*"
+                      r"|toxic(\s+\w+)?\s+gas)\b", re.I)
 
 
 def distress_answer(point: dict, base: tuple[float, float]) -> str:
@@ -59,6 +63,7 @@ def distress_answer(point: dict, base: tuple[float, float]) -> str:
 
 def strip_repeated_danger(answer: str, dangers: list[dict]) -> str:
     """The system already says the danger before the answer; the 4B model sometimes copies it even though forbidden."""
+    answer = re.sub(r"^\s*(H2G2|English)\s*[:,]\s*", "", answer)  # e2b sometimes labels its speech
     for a in dangers:
         answer = re.sub(rf"(danger:\s*)?{re.escape(a['message'])}(\s*\(source: {re.escape(a['source'])}\))?\s*",
                         "", answer, flags=re.I)
@@ -90,6 +95,11 @@ TOOLS = [
 ]
 MAX_ROUNDS = 3  # with no limit, a small model may call tools in a loop
 _ollama_without_tools = False  # old Ollama rejects `tools` (e.g. 0.12.11 with gemma4): falls back to context-only mode
+
+
+def without_urls(text: str) -> str:
+    """A PDS URL becomes "PDS": the model does not read a link aloud if it never gets one."""
+    return re.sub(r"https?://[^\s,)]+", "PDS", text)
 
 
 class AgentUnavailable(Exception):
@@ -126,7 +136,7 @@ def context_as_text(ctx: dict) -> str:
     lines += [f"- {a['level'].upper()}: {a['message']} (source: {a['source']})" for a in ctx["alerts"]] or ["- none (this does NOT mean safe)"]
     t = ctx["terrain"]
     lines.append(f"POINT: lat {ctx['point']['lat']}, lon {ctx['point']['lon']}")
-    lines.append(f"MAP SLOPE: {t.get('slope_deg')}° ({t.get('slope_status')}) · elevation {t.get('elevation_m')} m (source: HiRISE DTM)"
+    lines.append(f"MAP SLOPE: {t.get('slope_deg')}° ({t.get('slope_status')}) · elevation {round(t['elevation_m']) if t.get('elevation_m') is not None else 'no data'} m (source: HiRISE DTM)"
                  if t.get("slope_deg") is not None else "MAP SLOPE: no data")
     sf = ctx.get("slope_forecast")
     if sf:
@@ -152,6 +162,8 @@ def context_as_text(ctx: dict) -> str:
                          + (f", radiation {fc['dose_ugy_day']['value']} µGy per day" if fc.get("dose_ugy_day") else ""))
     else:
         lines.append("ENVIRONMENTAL CONDITIONS: no data")
+    if ctx.get("searches"):  # the system already searched by rule (named target, requested route): the small model picks the wrong tool
+        lines += ["FETCHED BY THE SYSTEM FOR THIS QUESTION (use this first):", *ctx["searches"]]
     lines += route_as_text(ctx.get("route_forecast"))
     return "\n".join(lines)
 
@@ -171,6 +183,18 @@ def group_alerts(alerts: list[dict]) -> list[dict]:
 BAND_TEXT = {"high": "high chance (≥50%)", "medium": "medium chance (20–49%)", "low": "low chance (<20%)", "no_data": "no data"}
 
 
+LABEL_TEXT = {"ok": "no risk on the map", "caution": "caution", "danger": "danger"}
+
+
+def suggestion_as_text(sg: dict) -> list[str]:
+    """Suggestion from route_suggestions.py. "variant X, label Y": with "route X: caution" the model called the route "caution"."""
+    out = [f"SYSTEM SUGGESTION (fixed rule, not yours; the astronaut decides): {sg['reason']}"]
+    out += [f"- variant {r['type']}, label {LABEL_TEXT.get(r['label'], r['label'])}: {r['why']}" for r in sg["summary"]]
+    if sg["dust_warning"]:
+        out.append(f"- {sg['dust_warning']} (source: Mars24 + MCS/MRO, NASA)")
+    return out
+
+
 def route_as_text(rf: dict | None) -> list[str]:
     """Section of the "forecast route" tool (route_forecast.py). Nothing when there is no open route."""
     if rf is None:
@@ -178,12 +202,8 @@ def route_as_text(rf: dict | None) -> list[str]:
     if "error" in rf:
         return [f"ROUTE FORECAST: no forecast ({rf['error']})"]
     out = []
-    sg = rf.get("suggestion")
-    if sg:  # the other variants too: without them the model cannot compare
-        out.append(f"SYSTEM SUGGESTION (fixed rule, not yours; the astronaut decides): {sg['reason']}")
-        out += [f"- route {r['type']}: {r['label']} ({r['why']})" for r in sg["summary"]]
-        if sg["dust_warning"]:
-            out.append(f"- {sg['dust_warning']} (source: Mars24 + MCS/MRO, NASA)")
+    if rf.get("suggestion"):  # the other variants too: without them the model cannot compare
+        out += suggestion_as_text(rf["suggestion"])
     t = rf["terrain"]
     m = t["meters_by_chance"]
     out += [f"FORECAST OF THE OPEN ROUTE {rf['type']} FOR SOL {rf['eva_sol']} (ESTIMATED from NASA history, not measured):",
@@ -216,7 +236,9 @@ def route_as_text(rf: dict | None) -> list[str]:
 def _chat(messages: list[dict], with_tools: bool) -> dict:
     body = {"model": MODEL, "stream": False,
             "keep_alive": -1,  # the default (5 min) unloaded gemma; reloading it next to Whisper ran out of RAM
-            "options": {"temperature": 0}, "messages": messages}
+            "think": False,  # gemma4 thinks by default: a short spoken answer does not need it, and it costs seconds
+            "options": {"temperature": 0, "num_ctx": 8192},  # gemma4's default (131k) wastes RAM
+            "messages": messages}
     if with_tools:
         body["tools"] = TOOLS
     req = urllib.request.Request(f"{OLLAMA_URL}/api/chat", data=json.dumps(body).encode(),
@@ -230,7 +252,7 @@ def ask(question: str, ctx: dict, run_tool=None) -> str:
     global _ollama_without_tools
     with_tools = run_tool is not None and not _ollama_without_tools
     messages = [{"role": "system", "content": INSTRUCTIONS + (TOOL_INSTRUCTIONS if with_tools else "")},
-                {"role": "user", "content": f"CONTEXT:\n{context_as_text(ctx)}\n\nQUESTION: {question}"}]
+                {"role": "user", "content": f"CONTEXT:\n{without_urls(context_as_text(ctx))}\n\nQUESTION: {question}"}]
     try:
         for _ in range(MAX_ROUNDS):
             try:
@@ -242,11 +264,15 @@ def ask(question: str, ctx: dict, run_tool=None) -> str:
                 messages[0]["content"] = INSTRUCTIONS
                 msg = _chat(messages, False)
             if not msg.get("tool_calls"):
-                return msg["content"].strip()
+                if msg["content"].strip():
+                    return msg["content"].strip()
+                break  # empty after using a tool (seen in e2b and granite4): ask for the text without tools
             messages.append(msg)
             for c in msg["tool_calls"]:
                 f = c["function"]
-                messages.append({"role": "tool", "tool_name": f["name"], "content": run_tool(f["name"], f.get("arguments") or {})})
-        return _chat(messages, False)["content"].strip()  # rounds exhausted: answer with what was already fetched
+                messages.append({"role": "tool", "tool_name": f["name"],
+                                 "content": without_urls(run_tool(f["name"], f.get("arguments") or {}))})
+        final = _chat(messages, False)["content"].strip()  # rounds exhausted or empty: answer with what was already fetched
+        return final or "I don't know: I don't have that data here."
     except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError) as e:
         raise AgentUnavailable(f"local agent unavailable ({MODEL} at {OLLAMA_URL}): {e}") from e

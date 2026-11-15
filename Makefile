@@ -1,13 +1,15 @@
 PY := $(CURDIR)/.venv/bin/python
 # Local agent (feature 08): the model lives in the offline package, not in git (3.3 GB > GitHub limit).
 # Copying the whole data/local/ carries the model along; the ollama binary is installed once.
-# Gemma 3 4B (Google)
-# beat Llama 3.2 3B on the same questions (found the target and the forecast; Llama got both wrong).
-MODEL := gemma3:4b
+# Gemma 4 E2B (Google): 6/6 in make agent-measure (11/14 run), with tool calling; e4b, granite4 and phi4-mini scored 2/6
+# (no tool call, or saying "safe"). Needs a recent Ollama (Fedora's 0.12.11 does not load gemma4).
+MODEL := gemma4:e2b
+# Ollama installed for the user (~/.local/ollama, official release) comes before the system one, if present.
+export PATH := $(HOME)/.local/ollama/bin:$(PATH)
 export OLLAMA_MODELS := $(CURDIR)/data/local/ollama
 OLLAMA_UP = command -v ollama >/dev/null && (curl -s localhost:11434 >/dev/null || (ollama serve >/dev/null 2>&1 &))
 
-.PHONY: build run front test voice-record voice-measure
+.PHONY: build run front test voice-record voice-measure agent-measure
 
 build:
 	test -x $(PY) || python3 -m venv .venv
@@ -48,3 +50,6 @@ voice-record:
 
 voice-measure:
 	cd api && $(PY) measure_voice.py large-v3 turbo
+
+agent-measure:
+	cd api && $(PY) measure_agent.py gemma4:e2b granite4 phi4-mini

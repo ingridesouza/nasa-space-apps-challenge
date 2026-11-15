@@ -57,11 +57,12 @@ export async function sendVoice(audio, { activated, confirming, lat, lon }) {
 }
 
 /** F08: question to the local agent. 503 (model down) carries detail={message, alerts}. */
-export async function ask(question, lat, lon, route = null) { // without lat/lon: the API uses the base
+export async function ask(question, lat, lon, route = null, pos = null) { // without lat/lon: the API uses the base
   const resp = await fetch('/api/ask', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question, ...(lat !== undefined && { lat, lon }), ...(route && { route }) }),
+    body: JSON.stringify({ question, ...(lat !== undefined && { lat, lon }), ...(route && { route }),
+      ...(pos && { pos_lat: pos.lat, pos_lon: pos.lon }) }),
   })
   const body = await resp.json().catch(() => null)
   if (!resp.ok) throw new Error(body?.detail?.message ?? `/api/ask failed: ${resp.status}`)

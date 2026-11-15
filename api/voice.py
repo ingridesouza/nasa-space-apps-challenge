@@ -89,6 +89,7 @@ RETURN = {"return", "back"}
 # "yeah"/"yep": how Whisper small writes a short "yes"; only valid in the "Confirm?" window
 YES = {"yes", "yeah", "yep", "confirm", "confirmed", "affirmative", "ok", "okay", "correct"}
 NO = {"no", "nope", "cancel", "negative", "stop"}
+PATH_WORDS = ROUTE | {"get", "way", "paths", "options", "routes"}
 _LOOSE_WORDS = {"the", "of", "by", "vs", "hole", "ridge", "ridges", "depression", "drill", "cementation", "sulfate"}
 
 
@@ -106,6 +107,29 @@ def _similar(word: str, vocabulary) -> bool:
 def destination_keys(name: str) -> set[str]:
     """'Boxwork ridges — sulfate cementation' -> {boxwork}: the name before the dash."""
     return {w for w in words(name.split("—")[0]) if len(w) >= 4 and w not in _LOOSE_WORDS}
+
+
+def mentioned_destination(text: str, destinations: list[dict]) -> dict | None:
+    """Destination named in a phrase of any length (question to the agent): the one with most name words.
+    With 2+ words in the name, requires 2 ("grande" alone is not Monte Grande)."""
+    w = words(text)
+    best, n = None, 0
+    for d in destinations:
+        keys = d.get("keys") or destination_keys(d["name"])
+        hits = sum(any(_similar(x, {k}) for x in w) for k in keys)
+        if hits >= min(2, len(keys)) and hits > n:
+            best, n = d, hits
+    return best
+
+
+def asks_nearest_target(text: str) -> bool:
+    """"closest science target?": the nearest comes from the rule, not the model."""
+    w = set(words(text))
+    return bool(w & {"closest", "nearest", "near"}) and bool(w & {"target", "targets", "science"})
+
+
+def asks_path(text: str) -> bool:
+    return any(_similar(x, PATH_WORDS) for x in words(text))
 
 
 def interpret(text: str, destinations: list[dict], require_activation: bool = True) -> dict:

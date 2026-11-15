@@ -59,7 +59,7 @@ def suggest(routes: list[dict], at: datetime | None = None) -> dict:
         r["suggestion"] = _evaluate(r, routes)
     order = sorted(routes, key=lambda r: r["suggestion"].pop("_key"))
     best = order[0]
-    s, name = best["suggestion"], NAME.get(best["type"], best["type"])
+    s, name = best["suggestion"], best.get("title") or NAME.get(best["type"], best["type"])  # title: replan.py
     if s["label"] == "ok":
         reason = f"I suggest the {name} route: " + (s["pros"][0]["text"] if s["pros"] else "no risk segment") + "."
     else:

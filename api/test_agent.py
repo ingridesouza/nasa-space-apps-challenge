@@ -1,7 +1,7 @@
 """Tests for the local agent (feature 08, phase 2).
 
 Run: make test   (or: cd api && python test_agent.py)
-The model tests only run if Ollama is up with gemma3:4b."""
+The model tests only run if Ollama is up with the agent.MODEL model (gemma4:e2b)."""
 
 import json
 import sys
@@ -48,6 +48,83 @@ def test_distress_answered_by_rule_without_model():
         agent.OLLAMA_URL = url
     assert r["distress"] and r["answer"].startswith("Stop") and "The base is" in r["answer"], r
     assert not agent.DISTRESS.search("does the temperature fall at night?")
+
+
+def test_distress_toxic_gas_and_leak():
+    assert agent.DISTRESS.search("I have a toxic gas warning") and agent.DISTRESS.search("my suit is leaking")
+    assert agent.DISTRESS.search("a very toxic gas showed up") and agent.DISTRESS.search("mayday")
+    assert not agent.DISTRESS.search("what gas is in the atmosphere?")
+    assert not agent.DISTRESS.search("the temperature is falling") and not agent.DISTRESS.search("can you help me plan a route?")
+
+
+def test_target_named_and_path_request():
+    from db import get_connection
+    from vector_queries import all_science_targets
+    from voice import asks_nearest_target, asks_path, mentioned_destination
+    targets = all_science_targets(get_connection())
+    name = lambda t: (mentioned_destination(t, targets) or {}).get("name")  # noqa: E731
+    assert name("I want to study Nevado Sarjama, show me the path options") == "Nevado Sajama"
+    assert name("what was measured at the Altadena target?") == "Altadena"
+    assert name("where is monte grande and which route is safest?") == "Monte Grande"
+    assert name("is the slope here too grande?") is None  # "grande" alone is not Monte Grande
+    assert asks_path("how do I get there?")
+    assert not asks_path("what was measured at the Altadena target?")
+    assert asks_nearest_target("Which science target is closest to me?")
+    assert not asks_nearest_target("am I near the base?")
+    assert agent.without_urls("SiO2 41% (https://pds-geosciences.wustl.edu/a/b_p1.csv, sol 4634)") == "SiO2 41% (PDS, sol 4634)"
+
+
+def test_route_to_named_target_comes_by_rule():
+    srv, requests = _fake_ollama([{"role": "assistant", "content": "I suggest the safest."}])
+    url, agent.OLLAMA_URL = agent.OLLAMA_URL, f"http://127.0.0.1:{srv.server_port}"
+    try:
+        r = ask(Question(question="I want to study Nevado Sarjama, how do I get there?"), Req())
+    finally:
+        agent.OLLAMA_URL = url
+        srv.shutdown()
+    assert r["actions"] and abs(r["actions"][0]["lat"] - -4.80801) < 1e-4, r["actions"]  # Nevado Sajama
+    assert "NAMED TARGET: Nevado Sajama" in requests[0]["messages"][1]["content"]
+
+
+def test_replan_classifies_and_avoids_the_obstacle():
+    from geo import haversine_m
+    from main import get_replan
+    from replan import classify
+    assert classify("There is a big rock ahead") == "obstacle"
+    assert classify("it is very steep") == "steep" and classify("I am tired") == "tired"
+    assert classify("my oxygen is low") == "oxygen"
+    assert classify("dust is coming") == "dust" and classify("I have a problem") == "other"
+    assert classify("what is your name?") is None
+    assert classify("a huge crater showed up in front of me") == "obstacle"
+    assert classify("what is in Gale crater?") is None
+    middle, monte_grande = (-4.80460, 137.38397), (-4.80784, 137.38104)
+    r = get_replan(*middle, "There is a big rock ahead", *monte_grande)
+    ob = r["obstacle"]
+    for x in r["routes"]:  # no option goes through the obstacle
+        assert min(haversine_m(ob["lat"], ob["lon"], *p) for p in x["points"]) > ob["radius_m"], x["type"]
+    assert r["suggestion"]["suggested"] in [x["type"] for x in r["routes"]]
+    back = get_replan(*middle, "my oxygen is low")  # no destination: only going back to the base
+    assert back["routes"] and all(x["type"].endswith("return") for x in back["routes"])
+    tired = get_replan(*middle, "I am tired", *monte_grande)  # tiredness does not send the astronaut back
+    assert tired["routes"] and all(x["type"].startswith("continue") for x in tired["routes"])
+
+
+def test_problem_reported_with_open_route_becomes_replan_action():
+    from main import QuestionRoute
+    srv, _ = _fake_ollama([{"role": "assistant", "content": "I suggest the safe detour."}])
+    url, agent.OLLAMA_URL = agent.OLLAMA_URL, f"http://127.0.0.1:{srv.server_port}"
+    route = QuestionRoute(origin_lat=-4.80460, origin_lon=137.38397, dest_lat=-4.80784, dest_lon=137.38104)
+    try:
+        r = ask(Question(question="There is a big rock ahead", lat=-4.80784, lon=137.38104,  # lat/lon = open destination
+                         pos_lat=-4.80460, pos_lon=137.38397, route=route), Req())
+    finally:
+        agent.OLLAMA_URL = url
+        srv.shutdown()
+    action = next(a for a in r["actions"] if a["type"] == "replan")
+    assert r["replanning"] and r["answer"].startswith("Obstacle ahead") and "you decide" in r["answer"]
+    assert not any(a["type"] == "open_route" for a in r["actions"])  # nothing reopens the normal route over the options
+    assert action["result"]["problem"] == "obstacle" and action["origin"] == {"lat": -4.80460, "lon": 137.38397}
+    assert agent.strip_repeated_danger("English: The closest target is Mojo.", []) == "The closest target is Mojo."
 
 
 def test_strips_danger_the_model_repeated():

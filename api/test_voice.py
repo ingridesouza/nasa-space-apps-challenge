@@ -50,4 +50,5 @@ assert ok("Guide, can I climb here safely?", "question")["question"] == "can I c
 assert ok("Guide how much radiation will I get today", "question")["question"] == "how much radiation will I get today"
 assert ok("Hey guide, route to the base", "route", "the base")["activated"]
 assert ok("A guide, can I climb here?", "question")["question"] == "can I climb here?"
+ok("Hey guide, I fell in a hole near the ridge", "question")                   # "hole" does not become a return to base
 print("test_voice: ok")
