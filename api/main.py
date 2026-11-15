@@ -163,7 +163,9 @@ def get_conditions(sol: int = REFERENCE_SOL):
             status_code=404,
             detail=f"Sol {sol} not cached yet -- run data-pipeline/scripts/cache_conditions.py {sol}",
         )
-    time_info, alerts = sol_time_and_alerts(sol)
+    peak_dose_ugy_per_hour = (data.get("rad") or {}).get("peak_dose_ugy_per_hour")
+    peak_dose_ugy_per_day = peak_dose_ugy_per_hour * 24 if peak_dose_ugy_per_hour is not None else None
+    time_info, alerts = sol_time_and_alerts(sol, peak_dose_ugy_per_day=peak_dose_ugy_per_day)
     return {**data, "time": time_info, "alerts": alerts}
 
 
@@ -475,7 +477,9 @@ def ask(q: Question, request: Request):
                 "sources": ["HiRISE DTM (slope)", "base position (H2G2)"], "alerts": point["alerts"], "actions": []}
     conditions = get_cached_conditions(q.sol)
     if conditions:
-        conditions["time"], conditions["alerts"] = sol_time_and_alerts(q.sol)
+        peak_dose_ugy_per_hour = (conditions.get("rad") or {}).get("peak_dose_ugy_per_hour")
+        peak_dose_ugy_per_day = peak_dose_ugy_per_hour * 24 if peak_dose_ugy_per_hour is not None else None
+        conditions["time"], conditions["alerts"] = sol_time_and_alerts(q.sol, peak_dose_ugy_per_day=peak_dose_ugy_per_day)
         conditions["today_forecast"] = sol_forecast(conditions["time"]["sol_now"])
     ctx = build_context(point, conditions)
     if q.route:

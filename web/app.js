@@ -2,7 +2,7 @@
 // that expands; route (F02 + F06) in a card; assistant (F08) at the top.
 // The current position comes from the tracker (simulated at /api/position) and is the route origin.
 import {
-  getAtmosphereTrack, getScienceCard, getInsolation, getClock, getPhotosNear, getLayers, getPanorama,
+  getAtmosphereTrack, getConditions, getScienceCard, getInsolation, getClock, getPhotosNear, getLayers, getPanorama,
   getPoint, getPosition,
 } from './api.js'
 import { TOGGLEABLE_LAYERS } from './layers.js'
@@ -77,6 +77,20 @@ function loading() {
 }
 
 function card(id, html) { $(id).innerHTML = html; $(id).hidden = false }
+
+// ---------------- Conditions / planet-level alerts (feature 05 + 08) ----------------
+// Fixed-rule alerts from api/alerts.py (dust season, stale data, solar
+// particle event -- see docs/feature-05-solar-particle-event.md); the
+// model never creates or cancels one of these, same as every other alert
+// in the system. Reuses the same .suggestion-reason.v-* styling the route
+// card already uses for its own alerts (visual language stays consistent).
+function renderConditions(data) {
+  if (!data?.alerts?.length) { $('c-status').hidden = true; return }
+  const rows = data.alerts
+    .map((a) => `<p class="suggestion-reason v-${a.level === 'danger' ? 'danger' : a.level === 'caution' ? 'caution' : 'safe'}" title="source: ${esc(a.source)}">${esc(a.message)}</p>`)
+    .join('')
+  card('c-status', rows)
+}
 
 // ---------------- Panorama ----------------
 let viewer = null // preview (always in the panel)
@@ -750,6 +764,8 @@ getPosition()
     map.center(state.position)
   })
   .catch((e) => card('c-status', `<p class="empty error">No position: ${esc(e.message)}</p>`))
+
+getConditions().then(renderConditions).catch(() => {}) // no cached sol yet: stay quiet, not an error worth a banner
 
 try {
   const metas = await getLayers()

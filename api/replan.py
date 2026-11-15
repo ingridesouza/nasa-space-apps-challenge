@@ -8,8 +8,9 @@ never by the model; the suggestion is only the order, the astronaut chooses."""
 from geo import haversine_m
 from voice import words
 
-# order = priority: going back (dust, oxygen) comes before detouring; tiredness keeps the destination, lighter
+# order = priority: going back (radiation, dust, oxygen) comes before detouring; tiredness keeps the destination, lighter
 PROBLEMS = {
+    "radiation": {"radiation", "solar", "flare", "particle"},
     "dust": {"dust", "storm", "wind"},
     "oxygen": {"oxygen", "o2"},
     "tired": {"tired", "exhausted", "breath"},
@@ -18,6 +19,7 @@ PROBLEMS = {
 }
 GENERIC = {"problem", "problems", "trouble"}
 TEXT = {
+    "radiation": "Solar particle event: options to go back to the base now.",
     "dust": "Dust coming: options to go back to the base.",
     "oxygen": "Low oxygen: options to go back to the base.",
     "tired": "Tiredness: less tiring options to the destination.",
@@ -27,6 +29,10 @@ TEXT = {
 }
 # (id, title, goes to "destination" or "base", A* kind, detours around the obstacle?)
 OPTIONS = {
+    # same priority/logic as dust: a solar particle event means shelter now,
+    # not a detour -- see docs/feature-05-solar-particle-event.md.
+    "radiation": [("short_return", "short return to the base", "base", "fastest", False),
+                  ("safe_return", "safe return to the base", "base", "safest", False)],
     "dust": [("short_return", "short return to the base", "base", "fastest", False),
              ("safe_return", "safe return to the base", "base", "safest", False)],
     "oxygen": [("short_return", "short return to the base", "base", "fastest", False),

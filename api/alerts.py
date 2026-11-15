@@ -161,9 +161,42 @@ def point_alerts(lat: float, lon: float, raster_values: dict, waypoints_path: st
 DUST_LS = (180.0, 360.0)
 
 
-def sol_time_and_alerts(data_sol: int, now: datetime | None = None) -> tuple[dict, list[dict]]:
+def _solar_event_rule(data_sol: int, peak_dose_ugy_per_day: float | None) -> list[dict]:
+    """New hazard category (see docs/feature-05-solar-particle-event.md):
+    replays a REAL solar particle event measured on the ground by MSL RAD,
+    instead of simulating a live feed (the system is offline, CLAUDE.md).
+    Thresholds and sources documented in solar_events.py.
+
+    Uses the sol's PEAK hourly reading (x24), not the day's mean: a solar
+    particle event is a short-duration rate spike that a 24h mean dilutes
+    away (confirmed while sourcing the sol-242 event -- see
+    solar_events.py)."""
+    import solar_events
+
+    level = solar_events.alert_level(peak_dose_ugy_per_day)
+    if level is None:
+        return []
+    ratio = peak_dose_ugy_per_day / solar_events.BACKGROUND_DOSE_UGY_PER_DAY
+    event = solar_events.known_event(data_sol)
+    if event is not None:
+        msg = (f"Solar particle event on record for sol {data_sol} ({event['date']}): "
+               f"peak dose {peak_dose_ugy_per_day:.0f} uGy/day, {ratio:.1f}x the reference background.")
+        source = event["source"]
+    else:
+        msg = (f"Peak radiation dose {peak_dose_ugy_per_day:.0f} uGy/day is {ratio:.1f}x the reference "
+               "background -- possible solar event.")
+        source = "H2G2: peak dose ratio vs. the reference sol (see docs/feature-05-solar-particle-event.md)"
+    return [_alert(level, "solar_event", msg, source)]
+
+
+def sol_time_and_alerts(
+    data_sol: int, now: datetime | None = None, peak_dose_ugy_per_day: float | None = None
+) -> tuple[dict, list[dict]]:
     """No-Earth mode (phase 3): current season and age of the REMS/RAD data.
-    Valid for the planet, not the point: goes into /api/conditions."""
+    Valid for the planet, not the point: goes into /api/conditions.
+    peak_dose_ugy_per_day (optional): this sol's PEAK measured RAD dose
+    (not the day's mean), to check for a solar particle event (see
+    _solar_event_rule)."""
     now = now or datetime.now(timezone.utc)
     sol_now, ls_now = sol_msl(now), ls(now)
     age = sol_now - data_sol
@@ -179,6 +212,7 @@ def sol_time_and_alerts(data_sol: int, now: datetime | None = None) -> tuple[dic
         alerts.append(_alert("caution", "dust_season",
                              f"Dust storm season (Ls {_num(ls_now)}°, higher risk between 180° and 360°).",
                              "Mars24 (Ls, NASA GISS) + seasonal dust pattern from MCS/MRO (NASA/JPL)"))
+    alerts += _solar_event_rule(data_sol, peak_dose_ugy_per_day)
     return time_info, alerts
 
 

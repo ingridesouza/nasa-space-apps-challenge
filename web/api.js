@@ -13,7 +13,7 @@ async function get(path) {
 /** Current astronaut position: simulated tracker at the provisional base. */
 export const getPosition = () => get('/api/position')
 export const getPoint = (lat, lon) => get(`/api/point?lat=${lat}&lon=${lon}`)
-export const getConditions = () => get('/api/conditions')
+export const getConditions = (sol) => get(`/api/conditions${sol ? `?sol=${sol}` : ''}`)
 /** F06: habitat/suit sensor measurement. 422 carries detail (text or pydantic list). */
 export async function postMeasurement(m) {
   const resp = await fetch('/api/measurement', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(m) })
