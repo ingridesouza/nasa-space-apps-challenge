@@ -94,6 +94,7 @@ def test_replan_classifies_and_avoids_the_obstacle():
     assert classify("it is very steep") == "steep" and classify("I am tired") == "tired"
     assert classify("my oxygen is low") == "oxygen"
     assert classify("dust is coming") == "dust" and classify("I have a problem") == "other"
+    assert classify("there is a solar flare") == "radiation"
     assert classify("what is your name?") is None
     assert classify("a huge crater showed up in front of me") == "obstacle"
     assert classify("what is in Gale crater?") is None
@@ -105,6 +106,8 @@ def test_replan_classifies_and_avoids_the_obstacle():
     assert r["suggestion"]["suggested"] in [x["type"] for x in r["routes"]]
     back = get_replan(*middle, "my oxygen is low")  # no destination: only going back to the base
     assert back["routes"] and all(x["type"].endswith("return") for x in back["routes"])
+    radiation = get_replan(*middle, "solar flare warning")  # same "go back now" priority as dust/oxygen
+    assert radiation["routes"] and all(x["type"].endswith("return") for x in radiation["routes"])
     tired = get_replan(*middle, "I am tired", *monte_grande)  # tiredness does not send the astronaut back
     assert tired["routes"] and all(x["type"].startswith("continue") for x in tired["routes"])
 

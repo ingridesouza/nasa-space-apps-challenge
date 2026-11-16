@@ -29,6 +29,7 @@ import sqlite3
 import numpy as np
 import rasterio
 
+from alerts import BASE_LAT_LON
 from geo import MARS_METERS_PER_DEGREE, haversine_m
 from vector_queries import all_science_targets
 
@@ -288,7 +289,112 @@ def _astar(elevation, slope_deg, transform, pixel_size_m, origin_rc, dest_rc, ki
     raise NoPathError("No possible path without crossing a slope >= 20°")
 
 
-def _build_route(kind: str, path_rc, elevation, slope_deg, transform, pixel_size_m, rad_dose_ugy_per_hour) -> dict:
+def cost_to_base(conn: sqlite3.Connection) -> dict[tuple[int, int], dict]:
+    """Return-cost map (Phase 2, F02+F08): Dijkstra from BASE_LAT_LON
+    (api/alerts.py), on the same grid and with the same passability rule
+    as A* (`_astar` above) -- slope >= 20° stays impassable. The cost used
+    to pick the path (and to order the Dijkstra queue) is the same "risk
+    cost" as the "safest" variant (distance penalized on caution segments,
+    see CAUTION_WEIGHT) -- our decision: an emergency return should be
+    computed along the most cautious path, not the fastest one.
+
+    Returns a dict {(r, c): {"return_time_s", "return_o2_l"}} only for the
+    pixels that HAVE a path to base -- a pixel with no entry in the dict
+    means "no computable return from here" (never a disguised infinity).
+    return_time_s and return_o2_l are accumulated segment by segment along
+    the same path Dijkstra found, with the PESSIMISTIC speed and O2 rate
+    (same formulas as Phase 1 -- see PESSIMISTIC_SPEED_FACTOR and
+    _pandolf_metabolic_w) -- it is always the worst case that feeds a
+    safety decision.
+
+    Computed once and cached (see _cost_to_base_cached) because the DTM
+    and the base do not change during the process lifetime."""
+    return _cost_to_base_cached(_dtm_path(conn))
+
+
+@functools.lru_cache(maxsize=1)
+def _cost_to_base_cached(local_tile_path: str) -> dict[tuple[int, int], dict]:
+    elevation, transform, bounds, nodata = _load_dtm(local_tile_path)
+    pixel_size_deg = abs(transform.a)
+    pixel_size_m = pixel_size_deg * MARS_METERS_PER_DEGREE
+    slope_deg = _slope_grid_deg(elevation, pixel_size_m)
+    n_rows, n_cols = elevation.shape
+    caution_weight = CAUTION_WEIGHT["safest"]
+
+    def passable(r, c):
+        return 0 <= r < n_rows and 0 <= c < n_cols and slope_deg[r, c] < SLOPE_DANGER_LIMIT_DEG
+
+    def risk_edge_cost(dist_real_m, s):
+        if s >= SLOPE_CAUTION_LIMIT_DEG:
+            return dist_real_m * caution_weight
+        return dist_real_m
+
+    base_rc = _latlon_to_rc(transform, *BASE_LAT_LON)
+    if not passable(*base_rc):
+        base_rc = _snap_to_passable(*base_rc, n_rows, n_cols, passable)
+    if base_rc is None:
+        return {}
+
+    risk_cost: dict = {base_rc: 0.0}
+    return_time_s: dict = {base_rc: 0.0}
+    return_o2_l: dict = {base_rc: 0.0}
+    visited = set()
+    queue = [(0.0, base_rc)]
+
+    while queue:
+        current_cost, current = heapq.heappop(queue)
+        if current in visited:
+            continue
+        visited.add(current)
+
+        for dr, dc in _NEIGHBORS_8:
+            nb = (current[0] + dr, current[1] + dc)
+            if nb in visited or not passable(*nb):
+                continue
+
+            r1, c1 = current
+            r2, c2 = nb
+            dist_real_m = pixel_size_m * math.hypot(r2 - r1, c2 - c1)
+            s = max(slope_deg[r1, c1], slope_deg[r2, c2])
+            new_cost = current_cost + risk_edge_cost(dist_real_m, s)
+
+            if new_cost < risk_cost.get(nb, math.inf):
+                # Same pessimistic formula as Phase 1 (_build_route),
+                # applied to this segment -- only accumulated when Dijkstra
+                # confirms this is the best path to nb, so time/O2 always
+                # follow the same path as the cost.
+                speed_pessimistic = BASE_SPEED_M_S * max(
+                    1 - (s / SLOPE_DANGER_LIMIT_DEG) * PESSIMISTIC_SPEED_FACTOR, 0.25
+                )
+                segment_time_s = dist_real_m / speed_pessimistic
+                grade_pct = 100.0 * math.tan(math.radians(s))
+                o2_rate_pessimistic = O2_RATE_L_PER_MIN * (
+                    _pandolf_metabolic_w(speed_pessimistic, grade_pct) / _BASE_METABOLIC_W
+                )
+                segment_o2_l = o2_rate_pessimistic * (segment_time_s / 60.0)
+
+                risk_cost[nb] = new_cost
+                return_time_s[nb] = return_time_s[current] + segment_time_s
+                return_o2_l[nb] = return_o2_l[current] + segment_o2_l
+                heapq.heappush(queue, (new_cost, nb))
+
+    return {
+        rc: {"return_time_s": round(return_time_s[rc], 1), "return_o2_l": round(return_o2_l[rc], 2)}
+        for rc in risk_cost
+    }
+
+
+def _build_route(
+    kind: str,
+    path_rc,
+    elevation,
+    slope_deg,
+    transform,
+    pixel_size_m,
+    rad_dose_ugy_per_hour,
+    cost_to_base_map: dict | None = None,
+    available_o2_l: float | None = None,
+) -> dict:
     points = [_rc_to_latlon(transform, r, c) for r, c in path_rc]
 
     distance_m = 0.0
@@ -297,6 +403,14 @@ def _build_route(kind: str, path_rc, elevation, slope_deg, transform, pixel_size
     time_s = 0.0
     o2_optimistic_l = 0.0
     o2_pessimistic_l = 0.0
+
+    # Phase 3: PESSIMISTIC cumulative per node of the path (not just the
+    # route total) -- this is what _return_margin_profile uses to know
+    # "how much have I already spent by here" at each point. The origin
+    # node starts at zero.
+    cumulative_time_pessimistic_s = [0.0]
+    cumulative_o2_pessimistic_l = [0.0]
+
     for i in range(1, len(path_rc)):
         r1, c1 = path_rc[i - 1]
         r2, c2 = path_rc[i]
@@ -334,6 +448,9 @@ def _build_route(kind: str, path_rc, elevation, slope_deg, transform, pixel_size
         o2_optimistic_l += o2_rate_optimistic * segment_min_optimistic
         o2_pessimistic_l += o2_rate_pessimistic * segment_min_pessimistic
 
+        cumulative_time_pessimistic_s.append(cumulative_time_pessimistic_s[-1] + segment_min_pessimistic * 60.0)
+        cumulative_o2_pessimistic_l.append(cumulative_o2_pessimistic_l[-1] + o2_rate_pessimistic * segment_min_pessimistic)
+
         profile.append({
             "cumulative_distance_m": round(distance_m, 1),
             "elevation_m": float(elevation[r2, c2]),
@@ -356,6 +473,11 @@ def _build_route(kind: str, path_rc, elevation, slope_deg, transform, pixel_size
     # api/main.py REFERENCE_SOL -- so as not to fake "zero radiation".
     rad_dose_ugy = round(rad_dose_ugy_per_hour * (time_min / 60.0), 2) if rad_dose_ugy_per_hour is not None else None
 
+    min_margin, no_return_point, worst_emergency_segment, max_return_minutes = _return_margin_profile(
+        path_rc, points, profile, cumulative_time_pessimistic_s, cumulative_o2_pessimistic_l,
+        cost_to_base_map, available_o2_l,
+    )
+
     return {
         "type": kind,
         "points": [[lat, lon] for lat, lon in points],
@@ -369,7 +491,104 @@ def _build_route(kind: str, path_rc, elevation, slope_deg, transform, pixel_size
         "estimated_rad_dose_ugy": rad_dose_ugy,
         "elevation_profile": profile,
         "risk_segments": risk_segments,
+        "min_margin": min_margin,
+        "no_return_point": no_return_point,
+        "worst_emergency_segment": worst_emergency_segment,
+        "max_return_minutes": max_return_minutes,
     }
+
+
+def _return_margin_profile(
+    path_rc, points, profile, cumulative_time_pessimistic_s, cumulative_o2_pessimistic_l,
+    cost_to_base_map: dict | None, available_o2_l: float | None,
+):
+    """Phase 3 (F02+F08) -- O2 margin and no-return point, point by point
+    along the route, using the Phase 2 return-cost map (`cost_to_base`)
+    and the PESSIMISTIC cumulatives from Phase 1. Worst case throughout,
+    like the rest of this file (CLAUDE.md: no data, no number -- never
+    makes up an optimistic value here).
+
+    Fields and criteria defined to unblock the rest of the team -- confirm/
+    adjust later once route_suggestions.py/agent.py actually consume them;
+    not a closed contract:
+
+    - `no_return_point` uses only TIME, never O2: it is the first point of
+      the route (scanning from the origin) where the time left to reach
+      the destination is already less than the time to return to base from
+      there. Works with or without `available_o2_l`.
+    - `worst_emergency_segment` is the point of the route with the WORST
+      return. A point with no computable return (outside the Phase 2 map
+      -- see `cost_to_base`) is treated as WORSE than any finite return,
+      never ignored in silence -- it is literally the most dangerous case
+      there is (there is no way back from that point at all).
+    - `max_return_minutes` and `min_margin` only consider points WITH a
+      computable return -- a point with no return already showed up in
+      `worst_emergency_segment`, no need to duplicate the warning here.
+
+    `cost_to_base_map is None` (Phase 2 not computed/not passed) is
+    different from "map computed and this point is not in it": in the
+    first case we simply have no data at all about the return, and all
+    four fields come out `None` -- "no map" is never treated as "every
+    point is unreachable" (that would make up data that does not exist)."""
+    if cost_to_base_map is None:
+        return None, None, None, None
+
+    total_time_pessimistic_s = cumulative_time_pessimistic_s[-1]
+    returns = [cost_to_base_map.get(rc) for rc in path_rc]  # entry (dict) or None, per point of the path
+
+    no_return_point = None
+    for i, entry in enumerate(returns):
+        if entry is None:
+            continue
+        time_left_s = total_time_pessimistic_s - cumulative_time_pessimistic_s[i]
+        if time_left_s < entry["return_time_s"]:
+            no_return_point = {
+                "lat": points[i][0],
+                "lon": points[i][1],
+                "distance_m": profile[i]["cumulative_distance_m"],
+            }
+            break
+
+    worst_i, worst_is_unreachable, worst_return_time_s = None, False, -1.0
+    for i, entry in enumerate(returns):
+        if entry is None:
+            if not worst_is_unreachable:
+                worst_i, worst_is_unreachable = i, True
+            continue
+        if not worst_is_unreachable and entry["return_time_s"] > worst_return_time_s:
+            worst_i, worst_return_time_s = i, entry["return_time_s"]
+
+    worst_emergency_segment = None
+    if worst_i is not None:
+        entry = returns[worst_i]
+        worst_emergency_segment = {
+            "lat": points[worst_i][0],
+            "lon": points[worst_i][1],
+            "distance_m": profile[worst_i]["cumulative_distance_m"],
+            "return_minutes": round(entry["return_time_s"] / 60.0, 1) if entry else None,
+            "return_o2_l": entry["return_o2_l"] if entry else None,
+        }
+
+    valid_return_times = [e["return_time_s"] for e in returns if e is not None]
+    max_return_minutes = round(max(valid_return_times) / 60.0, 1) if valid_return_times else None
+
+    min_margin = None
+    if available_o2_l is not None:
+        worst_margin_l, worst_distance_m = None, None
+        for i, entry in enumerate(returns):
+            if entry is None:
+                continue
+            margin_l = available_o2_l - (cumulative_o2_pessimistic_l[i] + entry["return_o2_l"])
+            if worst_margin_l is None or margin_l < worst_margin_l:
+                worst_margin_l, worst_distance_m = margin_l, profile[i]["cumulative_distance_m"]
+        if worst_margin_l is not None:
+            min_margin = {
+                "liters": round(worst_margin_l, 2),
+                "pct": round(worst_margin_l / available_o2_l * 100.0, 1) if available_o2_l else None,
+                "distance_m": worst_distance_m,
+            }
+
+    return min_margin, no_return_point, worst_emergency_segment, max_return_minutes
 
 
 def _best_science_target(origin_lat, origin_lon, dest_lat, dest_lon, targets: list[dict]) -> dict | None:
@@ -403,7 +622,7 @@ def _chained_astar(elevation, slope_deg, transform, pixel_size_m, points_rc: lis
 
 def plan_route(
     conn: sqlite3.Connection, origin_lat, origin_lon, dest_lat, dest_lon, rad_dose_ugy_per_hour=None, stops=None,
-    kinds=("safest", "fastest"), avoid=None,
+    kinds=("safest", "fastest"), avoid=None, available_o2_l: float | None = None,
 ) -> dict:
     """stops: optional list of (lat, lon) -- points the route must
     visit in order, between the origin and the destination ("intermediate
@@ -437,10 +656,18 @@ def plan_route(
     points_rc = [_latlon_to_rc(transform, lat, lon) for lat, lon in all_points]
     origin_rc, dest_rc = points_rc[0], points_rc[-1]
 
+    # Phase 2: return-cost map, computed once (cached) and reused by every
+    # route variant below -- this is what feeds min_margin/no_return_point/
+    # worst_emergency_segment (Phase 3) on each of them.
+    cost_map = cost_to_base(conn)
+
     routes = []
     for kind in kinds:
         route_path = _chained_astar(elevation, slope_deg, transform, pixel_size_m, points_rc, kind)
-        routes.append(_build_route(kind, route_path, elevation, slope_deg, transform, pixel_size_m, rad_dose_ugy_per_hour))
+        routes.append(_build_route(
+            kind, route_path, elevation, slope_deg, transform, pixel_size_m, rad_dose_ugy_per_hour,
+            cost_map, available_o2_l,
+        ))
 
     # "most_science": passes by the real science target nearest to the
     # path, only if the detour is reasonable (see MOST_SCIENCE_MAX_DETOUR_M)
@@ -456,7 +683,8 @@ def plan_route(
                     elevation, slope_deg, transform, pixel_size_m, [origin_rc, target_rc, dest_rc], "safest"
                 )
                 science_route = _build_route(
-                    "most_science", full_path, elevation, slope_deg, transform, pixel_size_m, rad_dose_ugy_per_hour
+                    "most_science", full_path, elevation, slope_deg, transform, pixel_size_m, rad_dose_ugy_per_hour,
+                    cost_map, available_o2_l,
                 )
                 science_route["science_target"] = {
                     "name": target["name"],

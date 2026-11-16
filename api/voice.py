@@ -5,6 +5,7 @@ It does not decode files: the PyAV of this environment (19) is incompatible with
 faster-whisper 1.2.1, and the MediaRecorder WebM was the path that failed.
 Plan: docs/feature-08-voz-plano-execucao.md."""
 
+import ctypes
 import math
 import os
 import re
@@ -45,11 +46,22 @@ def choose_language(probs: dict[str, float]) -> str:
     return "pt" if probs.get("pt", 0) > 0.5 and probs["pt"] > 2 * probs.get("en", 0) else "en"
 
 
+# Converting large-v3 (float16 on disk) to int8 and every transcription leave freed heap that glibc
+# keeps: measured 3.13 GB after loading, 1.65 GB after malloc_trim; 2.47 -> 1.70 GB after a phrase.
+# Without it the API grew to ~6 GB and the kernel OOM killer stopped it.
+try:
+    _release_memory = ctypes.CDLL("libc.so.6").malloc_trim
+except (OSError, AttributeError):  # not glibc (macOS, Windows): nothing to give back
+    _release_memory = lambda _pad: None  # noqa: E731
+
+
 @lru_cache(maxsize=2)
 def _load(name: str):
     from faster_whisper import WhisperModel  # late import: the API starts without the model
-    return WhisperModel(name, device="cpu", compute_type="int8",
-                        download_root=str(MODELS_DIR), local_files_only=True)
+    model = WhisperModel(name, device="cpu", compute_type="int8",
+                         download_root=str(MODELS_DIR), local_files_only=True)
+    _release_memory(0)
+    return model
 
 
 _load_lock = threading.Lock()
@@ -77,6 +89,7 @@ def transcribe(audio: np.ndarray, model: str = MODEL, language: str | None = Non
         condition_on_previous_text=False, vad_filter=True,
         vad_parameters={"min_silence_duration_ms": 600, "speech_pad_ms": 400})
     good = [s for s in segments if s.no_speech_prob < MAX_NO_SPEECH and s.avg_logprob > min_logprob]
+    _release_memory(0)
     text = " ".join(s.text.strip() for s in good).strip()
     if not text:
         return {"text": None, "language": language, "confidence": None}
@@ -161,9 +174,11 @@ def interpret(text: str, destinations: list[dict], require_activation: bool = Tr
         return {**base, "intent": "none"}
     if not rest:
         return {**base, "intent": "none"}
-    if len(rest) <= 3 and any(_similar(x, YES) for x in rest):
+    # exact, not fuzzy: "open" is 0.75 from "nope" and "Marvin, Atlas, open" became a "no"; the
+    # spellings Whisper really writes ("yeah", "yep", "nope") are already in the sets
+    if len(rest) <= 3 and any(x in YES for x in rest):
         return {**base, "intent": "yes"}
-    if len(rest) <= 3 and any(_similar(x, NO) for x in rest):
+    if len(rest) <= 3 and any(x in NO for x in rest):
         return {**base, "intent": "no"}
     going_back = any(_similar(x, RETURN) for x in rest)
     if len(rest) > MAX_COMMAND_WORDS or not (going_back or any(_similar(x, ROUTE) for x in rest)):

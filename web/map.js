@@ -76,7 +76,7 @@ function buildStyle(metas) {
 let map = null
 let loaded = false
 let mode = 'viewer' // 'viewer' (circle) | 'explore' | 'route'
-let clickMarker, originMarker, destinationMarker, panoMarker
+let clickMarker, originMarker, destinationMarker, panoMarker, noReturnMarker
 
 function marker(className, child, options = {}) {
   const el = document.createElement('div')
@@ -91,6 +91,15 @@ const FLAG = `<svg viewBox="0 0 24 28" width="24" height="28" aria-hidden="true"
   <path d="M3 27V2" stroke="#0a0a0b" stroke-width="3.5" stroke-linecap="round"/>
   <path d="M3 27V2" stroke="#e2e2e6" stroke-width="1.6" stroke-linecap="round"/>
   <path d="M4 2.5h16l-4 5 4 5H4z" fill="#E8643F" stroke="#0a0a0b" stroke-width="1.2" stroke-linejoin="round"/>
+</svg>`
+
+// F02 + F08 (Phase 3, route_planning.py): no_return_point -- past here,
+// continuing already costs less (in time) than turning back to base.
+// Same color as "danger" (SLOPE_COLOR_HEX.danger) as the rest of the map.
+const NO_RETURN_WARNING = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+  <path d="M12 2.5 1.5 21.5h21z" fill="#E8643F" stroke="#0a0a0b" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M12 9v6" stroke="#0a0a0b" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="12" cy="18" r="1.3" fill="#0a0a0b"/>
 </svg>`
 
 const empty = () => ({ type: 'FeatureCollection', features: [] })
@@ -145,6 +154,8 @@ export function createMap(container, metas, { onClick, onLoad, onClose }) {
   originMarker.getElement().title = 'Current position (start of the traverse)'
   destinationMarker = marker('h2g2-flag', FLAG, { anchor: 'bottom-left', offset: [-3, 1] })
   destinationMarker.getElement().title = 'Destination'
+  noReturnMarker = marker('h2g2-no-return-marker', NO_RETURN_WARNING, { anchor: 'bottom' })
+  noReturnMarker.getElement().title = 'No-return point: past here, continuing is faster (in time) than turning back to base'
 
   map.on('click', (e) => {
     // a photo pin consumes the click (does not open briefing nor mark a route underneath)
@@ -286,6 +297,7 @@ export function setRoute(route, others = []) {
       geometry: { type: 'LineString', coordinates: [[t.from[1], t.from[0]], [t.to[1], t.to[0]]] },
     })),
   })
+  place(noReturnMarker, route?.no_return_point)
 }
 
 // ---------------- Atmospheric layer (REMS points along the traverse) ----------------

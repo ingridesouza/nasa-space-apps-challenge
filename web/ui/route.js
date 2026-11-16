@@ -1,6 +1,6 @@
 // F02 + F06: route card (real A* over the DTM, per-type weights in api/route_planning.py)
 // with the EVA window from the local forecast. The origin is always the current position.
-import { deleteMeasurement, getForecast, getRoute, postMeasurement } from '../api.js'
+import { deleteMeasurement, getConditions, getForecast, getRoute, postMeasurement } from '../api.js'
 import { SLOPE_COLOR_HEX } from '../layers.js'
 import { paginate } from './pages.js'
 import { coord, esc, num } from './util.js'
@@ -36,10 +36,12 @@ const st = {
   data: null, error: null, loading: false, type: 'safest',
   capacity: 400,
   solEva: null, fc: undefined, fcKey: null, measureMsg: null,
+  cond: undefined, condKey: null,
 }
 let el, cb
 let request = 0
 let fcRequest = 0
+let condRequest = 0
 
 const kv = (k, v, extra = '') => `<div class="kv"${extra}><span>${k}</span><span>${v}</span></div>`
 
@@ -94,15 +96,29 @@ function o2Html(r) {
       <div class="o2-out" style="width:${pct(out)}%;background:${color(out)}"></div>
       <div class="o2-reserve" style="left:${100 - MIN_RESERVE_PCT * 100}%" title="20% minimum reserve"></div>
     </div>
+    <p class="caption mono" aria-hidden="true">${num(out, 1)} L outbound · ${num(back, 1)} L round trip · of ${cap} L (20% reserve)</p>
   </div>`
+}
+
+/** Phase 3 (route_planning.py): from this point of the route on, going on
+ * to the destination already costs less time than turning back to base --
+ * marked on the map (map.js) and explained here, so it does not depend
+ * only on the icon. */
+function noReturnHtml(r) {
+  const p = r.no_return_point
+  if (!p) return ''
+  return `<div class="route-sec"><p class="caption mono warning" role="alert">
+    ⚠ No-return point at ${num(p.distance_m)} m: past here, continuing to the destination is faster than turning back to base.</p></div>`
 }
 
 function routeDetail(r, top = '') {
   const target = r.science_target
   return `${o2Html(r)}
     ${top}
+    ${noReturnHtml(r)}
     ${target ? `<div class="route-sec"><span class="sci-sec">Passes near</span>
-      <button type="button" class="target-btn" data-action="target">◇ ${esc(target.name)} <span class="mono">open science card ›</span></button></div>` : ''}`
+      <button type="button" class="target-btn" data-action="target">◇ ${esc(target.name)} <span class="mono">open science card ›</span></button></div>` : ''}
+    ${evaSection(r)}`
 }
 
 /** F06: "couple the forecast to the route, suggesting the best window for the EVA". */
@@ -115,6 +131,23 @@ function loadForecast(key, minutes) {
     .then((p) => {
       if (mine !== fcRequest) return
       st.fc = p
+      render()
+    })
+}
+
+/** Feature 05 + 08: real alerts (fixed rule, api/alerts.py -- dust season,
+ * stale data, solar particle event, see docs/feature-05-solar-particle-event.md)
+ * for the EVA sol. Reuses the sol stepper that already exists for the
+ * weather forecast -- no new UI control, as scoped in the planning doc. */
+function loadConditions(sol) {
+  const mine = ++condRequest
+  st.condKey = sol
+  st.cond = undefined
+  getConditions(sol)
+    .catch(() => null)
+    .then((c) => {
+      if (mine !== condRequest) return
+      st.cond = c
       render()
     })
 }
@@ -142,12 +175,23 @@ function evaSection(r) {
   if (st.fcKey !== key) loadForecast(key, minutes)
   const p = st.fc
   const sol = st.solEva ?? p?.sol ?? ''
+  if (sol && st.condKey !== sol) loadConditions(sol)
+  // solar_event/dust_storm_event are the alerts worth a banner here --
+  // dust_season/stale_data already show in the #c-status panel (app.js);
+  // these two are sol-specific, confirmed real events, tied to the EVA
+  // being planned, so they belong on the route card too.
+  const HAZARD_LABEL = { solar_event: 'Solar particle event', dust_storm_event: 'Dust storm' }
+  const hazardAlert = st.cond?.alerts?.find((a) => a.type in HAZARD_LABEL)
+  const solarAlert = st.cond?.alerts?.find((a) => a.type === 'solar_event')
   const top = `<div class="sci-top"><span class="sci-sec">EVA window · ${esc(Math.ceil(minutes / 60))}h</span>
     <span class="sol-step mono">
       <button type="button" data-sol-step="-1" aria-label="Previous sol">‹</button>
       <label>sol <input type="number" data-sol-eva min="1" step="1" value="${esc(sol)}" aria-label="EVA sol"></label>
       <button type="button" data-sol-step="1" aria-label="Next sol">›</button>
     </span></div>`
+  const hazardBanner = hazardAlert
+    ? `<p class="suggestion-reason v-${hazardAlert.level}" title="source: ${esc(hazardAlert.source)}"><span class="fl-sec">${esc(HAZARD_LABEL[hazardAlert.type])}</span>${esc(hazardAlert.message)}</p>`
+    : ''
   let body
   if (p === undefined) body = '<p class="empty">computing from the local forecast…</p>'
   else if (p === null) body = '<p class="empty error">Failed to fetch the forecast.</p>'
@@ -164,12 +208,12 @@ function evaSection(r) {
       ${kv('Air', `${num(p.temp_min_c.value, 0)}° to ${num(p.temp_max_c.value, 0)} °C`)}
       ${p.ground_noon_c ? kv('Ground 12h', `~${num(p.ground_noon_c.value, 0)} °C`) : ''}
       ${p.pressure_pa ? kv('Pressure', `${num(p.pressure_pa.value, 0)} Pa`) : ''}
-      ${p.dose_ugy_day ? kv('Radiation', `${num(p.dose_ugy_day.value, 0)} µGy/day`) : ''}
+      ${p.dose_ugy_day ? kv('Radiation', `<b class="${solarAlert ? `v-text-${solarAlert.level}` : ''}">${num(p.dose_ugy_day.value, 0)} µGy/day</b>${solarAlert ? ' ⚠' : ''}`) : ''}
       ${evaDose !== null ? kv('Dose this EVA', `~${num(evaDose, 1)} µGy`) : ''}
       ${div}
       <p class="caption mono" title="${esc(p.method)} · ${esc(p.source)}">${p.earth_date ? `${esc(DATE.format(new Date(`${p.earth_date}T12:00:00Z`)))} on Earth · Ls ${num(p.ls, 0)}° · ` : ''}estimated, not measured · typical error ±${num(error?.temp_min_c?.mean_error, 1)} °C (min)${error?.dose_ugy_day ? ` · ±${num(error.dose_ugy_day.mean_error, 0)} µGy/day` : ''} · base: ${p.base_origin === 'local' ? `habitat measurement, sol ${esc(p.base_sol)}` : `PDS, sol ${esc(p.base_sol)}`}</p>`
   }
-  return `<div class="route-sec">${top}${body}${p ? measureForm(p) : ''}</div>`
+  return `<div class="route-sec">${top}${hazardBanner}${body}${p ? measureForm(p) : ''}</div>`
 }
 
 const activeRoute = () => st.data?.routes.find((r) => r.type === st.type) ?? null

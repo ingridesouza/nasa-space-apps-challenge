@@ -16,6 +16,60 @@ ORDER = ["ok", "caution", "danger"]
 NAME = {"safest": "safest", "fastest": "fastest", "most_science": "most science"}
 TERRAIN_SOURCE = "HiRISE DTM (Mars Trek) × Curiosity history (MMGIS)"
 ROUTE_SOURCE = "A* over the HiRISE DTM (route_planning.py)"
+MARGIN_SOURCE = "pessimistic O2 margin, worst point of the route (route_planning.py -- Phases 1-3)"
+
+# O2 margin limit to downgrade the label -- no official source (see
+# docs/feature-02-sugestao-rotas-plano-execucao.md, Phase 0: "open,
+# needs a source or to be declared an H2G2 proposal"). Same example
+# numbers from the plan itself: below 30% becomes caution, below 15%
+# becomes danger.
+MARGIN_CAUTION_LIMIT_PCT = 30.0
+MARGIN_DANGER_LIMIT_PCT = 15.0
+
+
+def _margin_cons(route: dict) -> list[dict]:
+    """Phase 3 fields (min_margin/worst_emergency_segment, route_planning.py)
+    used to not enter this evaluation -- label/cons only considered
+    terrain and alerts, never "do you have oxygen to get back?". A point
+    with no computable return is treated as danger even if the rest of
+    the route looks safe (same criterion as route_planning.cost_to_base:
+    never ignored in silence)."""
+    worst = route.get("worst_emergency_segment")
+    if worst is not None and worst["return_minutes"] is None:
+        return [{
+            "text": "there is a point on this route from which the return to base is not computable",
+            "source": MARGIN_SOURCE,
+        }]
+
+    margin = route.get("min_margin")
+    if margin is None:
+        return []
+    pct = margin["pct"]
+    if pct < MARGIN_DANGER_LIMIT_PCT:
+        return [{
+            "text": f"O2 margin at the worst point would be {pct:.0f}% (below the safety limit)",
+            "source": MARGIN_SOURCE,
+        }]
+    if pct < MARGIN_CAUTION_LIMIT_PCT:
+        return [{"text": f"O2 margin at the worst point is {pct:.0f}%", "source": MARGIN_SOURCE}]
+    return []
+
+
+def _margin_label(route: dict) -> str | None:
+    """None when margin/worst segment say nothing (no O2 given and no
+    return-cost map) -- does not enter the computation, does not pull the
+    label down for lack of data."""
+    worst = route.get("worst_emergency_segment")
+    if worst is not None and worst["return_minutes"] is None:
+        return "danger"
+    margin = route.get("min_margin")
+    if margin is None:
+        return None
+    if margin["pct"] < MARGIN_DANGER_LIMIT_PCT:
+        return "danger"
+    if margin["pct"] < MARGIN_CAUTION_LIMIT_PCT:
+        return "caution"
+    return None
 
 
 def _meters_by_status(route: dict) -> dict:
@@ -30,7 +84,13 @@ def _meters_by_status(route: dict) -> dict:
 def _evaluate(route: dict, routes: list[dict]) -> dict:
     m = _meters_by_status(route)
     alerts = group_alerts(route.get("alerts", []))
-    cons = []  # danger before caution: the 1st con becomes the spoken reason
+    margin_label = _margin_label(route)
+
+    # O2 margin goes BEFORE terrain: running out of oxygen to get back is
+    # at least as urgent as a steep segment, and whoever reads only the
+    # 1st con (the spoken reason) needs to see it first when that is the
+    # case -- see _margin_cons.
+    cons = list(_margin_cons(route))
     for level, text in (("danger", "in danger (20° or more, or high chance from history)"),
                         ("caution", "in caution (15 to 20°, or medium chance from history)")):
         if m[level]:
@@ -46,11 +106,23 @@ def _evaluate(route: dict, routes: list[dict]) -> dict:
         pros.append({"text": "no segment above 15° on the map nor with high chance in the history", "source": TERRAIN_SOURCE})
     if route.get("science_target"):
         pros.append({"text": f"passes by the target {route['science_target']['name']}", "source": "science targets (F04)"})
+    margin = route.get("min_margin")
+    if margin is not None and margin_label is None:
+        pros.append({"text": f"O2 margin of {margin['pct']:.0f}% at the worst point of the route", "source": MARGIN_SOURCE})
 
     levels = {a["level"] for a in alerts}
-    label = "danger" if m["danger"] or "danger" in levels else "caution" if m["caution"] or "caution" in levels else "ok"
-    return {"label": label, "pros": pros, "cons": cons,
-            "_key": (ORDER.index(label), m["danger"], m["caution"], route["estimated_time_min"])}
+    terrain_label = "danger" if m["danger"] or "danger" in levels else "caution" if m["caution"] or "caution" in levels else "ok"
+    label = max((terrain_label, margin_label or "ok"), key=ORDER.index)
+    # margin_pct enters the tie-break right after the label (higher margin
+    # first); None (no O2 given) stays neutral, does not sink or favor the
+    # route just for lack of data.
+    margin_pct_order = -(margin["pct"]) if margin is not None else 0.0
+    return {
+        "label": label,
+        "pros": pros,
+        "cons": cons,
+        "_key": (ORDER.index(label), margin_pct_order, m["danger"], m["caution"], route["estimated_time_min"]),
+    }
 
 
 def suggest(routes: list[dict], at: datetime | None = None) -> dict:

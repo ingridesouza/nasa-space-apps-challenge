@@ -57,7 +57,12 @@ class PDSRadAdapter:
         url = f"{BASE_URL}/{bucket}/"
         r = requests.get(url, timeout=20)
         r.raise_for_status()
-        m = re.search(rf'href="(RAD_RDR_[^"]*_{sol}_V\d+\.TXT)"', r.text)
+        # The sol in the real filename is zero-padded to 4 digits (e.g.
+        # "..._0242_V00.TXT" for sol 242) -- found and fixed while fetching
+        # an early-mission sol (sol 242 < 1000) for the first time; sol
+        # 4650 (the only one fetched before) happened to already have 4
+        # digits, which hid this bug.
+        m = re.search(rf'href="(RAD_RDR_[^"]*_{sol:04d}_V\d+\.TXT)"', r.text)
         if not m:
             raise ValueError(f"RAD_RDR file for sol {sol} not found at {url}")
         return m.group(1)

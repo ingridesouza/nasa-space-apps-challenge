@@ -44,9 +44,18 @@ def summarize_rems(readings: list[dict]) -> dict:
 def summarize_rad(readings: list[dict]) -> dict:
     doses = [l["dose_e_ugy_per_hour"] for l in readings if l.get("dose_e_ugy_per_hour") is not None]
     mean = sum(doses) / len(doses) if doses else None
+    peak = max(doses) if doses else None
     return {
         "mean_dose_ugy_per_hour": round(mean, 2) if mean is not None else None,
         "estimated_dose_ugy_per_day": round(mean * 24, 1) if mean is not None else None,
+        # peak_dose_ugy_per_hour (new field, api/solar_events.py): the
+        # highest single-observation reading of the sol, not the mean --
+        # a solar particle event is a short-duration rate spike that the
+        # 24h mean dilutes away. Found while fetching sol 242 (2013-04-12,
+        # a real recorded SEP): mean -> 233 uGy/day, but the peak reading
+        # (10.87 uGy/hour) matches the ~260 uGy/day the literature cites
+        # for that event almost exactly.
+        "peak_dose_ugy_per_hour": round(peak, 2) if peak is not None else None,
         "n_readings": len(doses),
     }
 
@@ -65,8 +74,16 @@ def main() -> None:
     print("     ", rems_summary)
 
     print(f"[2/2] Downloading RAD for sol {sol}...")
-    rad = PDSRadAdapter().fetch_sol(sol)
-    rad_summary = summarize_rad(rad["readings"])
+    try:
+        rad = PDSRadAdapter().fetch_sol(sol)
+        rad_summary = summarize_rad(rad["readings"])
+    except ValueError as e:
+        # Real gap in the archive for this sol (e.g. instrument downtime), not a
+        # bug -- a REMS-only sol is still worth caching (CLAUDE.md: no data,
+        # no number, never block the rest for one missing source).
+        print(f"      RAD not available for sol {sol}: {e}")
+        rad_summary = {"mean_dose_ugy_per_hour": None, "estimated_dose_ugy_per_day": None,
+                       "peak_dose_ugy_per_hour": None, "n_readings": 0}
     print("     ", rad_summary)
 
     os.makedirs(OUT_DIR, exist_ok=True)

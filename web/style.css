@@ -178,6 +178,8 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .h2g2-flag svg{display:block}
 .h2g2-pano-marker{width:9px;height:9px;border-radius:50%;background:var(--b400);border:1px solid rgba(10,10,11,.5);opacity:.75}
 .h2g2-route-marker--stop{width:12px;height:12px;background:var(--b200)}
+.h2g2-no-return-marker{width:20px;height:20px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
+.h2g2-no-return-marker svg{display:block}
 
 /* destination by coordinates: same form as the old viewer, in place of the minimap */
 .coords{position:absolute;left:20px;bottom:20px;z-index:12;width:240px;padding:14px;display:flex;flex-direction:column;gap:10px}
@@ -296,6 +298,8 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .suggestion-reason .fl-sec{display:block;margin-bottom:2px}
 .suggestion-reason.v-safe{border-left-color:var(--verdict-safe)}
 .suggestion-reason.v-danger{border-left-color:var(--verdict-danger)}
+.v-text-caution{color:var(--verdict-caution)}
+.v-text-danger{color:var(--verdict-danger)}
 .suggestion-list{margin:6px 0;padding:0;list-style:none;font-size:12px;line-height:1.5;color:var(--tx)}
 .suggestion-list li{display:flex;gap:8px;padding:2px 0}
 .suggestion-list b{flex:none;width:12px;text-align:center}

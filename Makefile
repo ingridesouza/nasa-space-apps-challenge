@@ -9,7 +9,7 @@ export PATH := $(HOME)/.local/ollama/bin:$(PATH)
 export OLLAMA_MODELS := $(CURDIR)/data/local/ollama
 OLLAMA_UP = command -v ollama >/dev/null && (curl -s localhost:11434 >/dev/null || (ollama serve >/dev/null 2>&1 &))
 
-.PHONY: build run front test voice-record voice-measure agent-measure
+.PHONY: build run front test voice-record voice-measure agent-measure sync-reset
 
 build:
 	test -x $(PY) || python3 -m venv .venv
@@ -26,6 +26,7 @@ build:
 	$(PY) scripts/cache_conditions.py && \
 	$(PY) scripts/cache_climatology.py && \
 	$(PY) scripts/cache_atmosphere_track.py && \
+	$(PY) scripts/fetch_earth_sync_package.py && \
 	$(PY) db/populate_raster_registry.py && \
 	cd f03 && $(PY) etl/build.py
 	# Voice (F08): Whisper in the offline package, like the agent model (choice measured in make voice-measure)
@@ -53,3 +54,11 @@ voice-measure:
 
 agent-measure:
 	cd api && $(PY) measure_agent.py gemma4:e2b granite4 phi4-mini
+
+# Feature 09 (simulated Earth-Mars sync, docs/feature-09-earth-mars-sync.md): the
+# "Sync with Earth" button is one-shot -- clicking it (demo, rehearsal, a
+# teammate testing) consumes the pending packet. Run this right before any
+# real presentation so the button is there to click again.
+sync-reset:
+	rm -f data/local/earth_sync/pending.json
+	cd data-pipeline && $(PY) scripts/fetch_earth_sync_package.py
