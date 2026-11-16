@@ -62,9 +62,37 @@
     </div>
 
     <!-- F08: voice only. The pill shows the microphone state; click turns "Hey Marvin" on/off -->
+    <div class="topbar">
     <button id="btn-voice" class="pill frame mono" type="button" aria-pressed="true" title="Microphone always listening for &quot;Hey Marvin&quot;; click to turn it off. Or hold space to talk.">
       <span class="voice-icon" aria-hidden="true"></span><span id="voice-status" aria-live="polite">turning on the microphone…</span>
     </button>
+    <!-- Quick guide for the hackathon judges: how the voice system works -->
+    <button id="btn-judges" class="pill mono judges-btn" type="button" aria-haspopup="dialog" title="How to test the voice system">Guide for judges</button>
+    </div>
+    <dialog id="judges-guide" class="panel judges-guide" aria-labelledby="judges-title">
+      <div class="judges-inner">
+      <div class="h2g2-top-row">
+        <h2 id="judges-title" class="h2g2-panel-title">Guide for judges</h2>
+        <button class="ibtn ibtn-sm" type="button" data-close title="Close (Esc)">✕</button>
+      </div>
+      <ol class="judges-steps">
+        <li><b>Allow the microphone</b> and click anywhere on the page. The pill at the top shows what Marvin hears.</li>
+        <li><b>Say "Hey Marvin"</b>, then the panel name and an action: <q>Hey Marvin, Atlas, expand</q>. No microphone? Hold <kbd>space</kbd>, speak and release.</li>
+        <li><b>Each panel has a star name</b>, also shown as a small id (m-A, m-B…) on top of it:
+          <ul class="judges-names mono">
+            <li><b>Atlas</b> · map — <q>Atlas, zoom in</q></li>
+            <li><b>Vega</b> · layers — <q>Vega, show relief</q></li>
+            <li><b>Polaris</b> · route — <q>Polaris, plan</q></li>
+            <li><b>Orion</b> · panorama — <q>Orion, rotate left</q></li>
+            <li><b>Rigel</b> · photos — <q>Rigel, next</q></li>
+            <li><b>System</b> — <q>System, help</q> lists what can be asked</li>
+          </ul>
+        </li>
+        <li><b>Free questions</b> go to the local agent: <q>Hey Marvin, is it safe to walk here now?</q> Everything runs offline.</li>
+      </ol>
+      <p class="judges-video mono">Video: <a href="https://drive.google.com/file/d/1dPjm6vVC8_noqjcrEaOg-P_T2I612XDP/view?usp=drive_link" target="_blank" rel="noopener">watch the demo</a></p>
+      </div>
+    </dialog>
     <section id="assistant" class="card panel assistant" hidden aria-label="H2G2 assistant"></section>
 
     <!-- MAP (F01): the same element becomes a circle (minimized) or full screen -->
@@ -131,5 +159,6 @@
   <script src="lib/pannellum/pannellum.js"></script>
   <script src="science-card.js"></script>
   <script type="module" src="app.js"></script>
+  <script type="module" src="ui/judges-guide.js"></script>
 </body>
 </html>
