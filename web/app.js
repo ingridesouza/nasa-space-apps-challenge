@@ -854,5 +854,7 @@ try {
     },
   })
 } catch (e) {
-  $('map-status').textContent = `no map: ${e.message}`
+  console.error('map init failed:', e)
+  const status = $('map-status')
+  if (status) status.textContent = `no map: ${e.message}`
 }
