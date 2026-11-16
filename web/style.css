@@ -323,7 +323,7 @@ a{color:var(--b300)}a:hover{color:var(--b200)}
 .measure input{width:5.5em;min-height:26px;padding:0 4px;background:rgba(10,10,11,.8);border:1px solid var(--line);color:var(--tx);font:inherit}
 .warnings summary{cursor:pointer;list-style:none}
 
-@media (max-width:900px){
+@media (max-width:900px) and (hover:hover){
   :root{--mini:120px}
   .floating{display:flex;flex-direction:column;gap:12px;overflow:hidden;pointer-events:none;z-index:7;
     position:absolute;top:auto;bottom:0;left:0;right:0;width:auto;max-height:55vh;padding:12px;background:linear-gradient(transparent,rgba(0,0,0,.7) 20%)}
@@ -362,3 +362,30 @@ html,body,.app{overflow:hidden}
 /* triggered by a command: the badge lights up for an instant */
 .modal-triggered[data-modal]:not(.frame)::before,.modal-triggered .modal-id{animation:modal-blink .7s ease}
 @keyframes modal-blink{0%,60%{color:var(--b200);opacity:1;text-shadow:0 0 8px var(--hud-cyan)}}
+
+/* Rotate hint: phones held upright, dismissed on rotate, tap or after 4s */
+#rotate-hint{display:none}
+#rotate-hint.is-on{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;cursor:pointer;background:radial-gradient(ellipse at 50% 45%,#1c1c20 0%,#0a0a0b 70%);color:#ececf0;transition:opacity .5s ease}
+#rotate-hint.is-on::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;background-image:linear-gradient(rgba(58,58,66,.35) 1px,transparent 1px),linear-gradient(90deg,rgba(58,58,66,.35) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(ellipse at center,#000 15%,transparent 70%);mask-image:radial-gradient(ellipse at center,#000 15%,transparent 70%)}
+#rotate-hint.is-done{opacity:0;pointer-events:none}
+.rh-phone{width:112px;height:112px;margin-bottom:8px}
+.rh-body{transform-origin:40px 40px;animation:rh-turn 2.6s cubic-bezier(.6,0,.3,1) infinite}
+.rh-arc{animation:rh-fade 2.6s ease-in-out infinite}
+.rh-title{position:relative;margin:0;font:600 22px/1.2 'Chakra Petch',system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase}
+.rh-sub{position:relative;margin:0;font:400 13px/1.4 'IBM Plex Sans',system-ui,sans-serif;color:#a8a8b0}
+.rh-skip{position:absolute;bottom:32px;font:500 10.5px/1 'JetBrains Mono',ui-monospace,monospace;letter-spacing:.18em;text-transform:uppercase;color:#5a5a63}
+@keyframes rh-turn{0%,20%{transform:rotate(0)}50%,80%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
+@keyframes rh-fade{0%,20%,100%{opacity:.15}45%,70%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.rh-body,.rh-arc{animation:none}}
+
+/* Touch devices held upright: rotate the whole UI to landscape (top of the UI = left edge of the device) */
+@media (orientation:portrait) and (pointer:coarse) and (hover:none){
+  body{position:fixed;top:0;left:0;width:100vh;width:100dvh;height:100vw;transform-origin:0 0;transform:rotate(-90deg) translateX(-100%)}
+  .app{height:100%}
+  :root{--panel-w:clamp(340px,32vh,520px)}
+  #btn-voice{max-width:min(calc(100vh - 32px),640px)}
+  .assistant{width:min(620px,calc(100vh - 32px));max-height:62vw}
+  .answer-body{max-height:42vw}
+  /* Rotate hint stays upright (undoes the body rotation) */
+  #rotate-hint.is-on{inset:auto;top:0;left:0;width:100vw;height:100vh;height:100dvh;transform-origin:0 0;transform:translateX(100vh) rotate(90deg);transform:translateX(100dvh) rotate(90deg)}
+}

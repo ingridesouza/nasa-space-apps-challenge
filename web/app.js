@@ -17,7 +17,7 @@ import { changePage, paginate } from './ui/pages.js'
 import { esc } from './ui/util.js'
 
 const $ = (id) => document.getElementById(id)
-const mobile = () => matchMedia('(max-width:900px)').matches
+const mobile = () => matchMedia('(max-width:900px) and (hover:hover)').matches
 const TRANSITION_MS = 260 // same as the .map-box transition in style.css
 
 const state = {
