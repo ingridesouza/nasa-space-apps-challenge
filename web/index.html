@@ -5,6 +5,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    // Phones/tablets: always lay out as a 1280px-wide landscape screen. In portrait the CSS
+    // rotates the whole UI (like a video player), so turning the device shows it upright.
+    (function () {
+      if (!matchMedia('(pointer: coarse) and (hover: none)').matches) return;
+      var meta = document.querySelector('meta[name=viewport]');
+      function fit() {
+        var s = Math.min(screen.width, screen.height), l = Math.max(screen.width, screen.height);
+        var portrait = matchMedia('(orientation: portrait)').matches;
+        meta.content = 'width=' + (portrait ? Math.round(1280 * s / l) : 1280) + ', user-scalable=no';
+      }
+      fit();
+      matchMedia('(orientation: portrait)').addEventListener('change', fit);
+    })();
+  </script>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <title>H2G2 · Viewer</title>
   <link rel="stylesheet" href="lib/maplibre/maplibre-gl.css">
@@ -12,6 +27,27 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div id="rotate-hint" role="status" aria-live="polite">
+    <svg class="rh-phone" viewBox="0 0 80 80" fill="none" aria-hidden="true">
+      <path class="rh-arc" d="M14 40a26 26 0 0 1 26-26" stroke="#E8643F" stroke-width="1.5" stroke-dasharray="3 5" stroke-linecap="round"/>
+      <g class="rh-body"><rect x="28" y="12" width="24" height="56" rx="5" stroke="#ececf0" stroke-width="2"/><line x1="36" y1="62" x2="44" y2="62" stroke="#E8643F" stroke-width="2" stroke-linecap="round"/></g>
+    </svg>
+    <p class="rh-title">Turn your device sideways</p>
+    <p class="rh-sub">Landscape view · like the visor</p>
+    <span class="rh-skip">Tap to continue</span>
+  </div>
+  <script>
+  (function () {
+    var el = document.getElementById('rotate-hint');
+    var portrait = matchMedia('(orientation: portrait) and (pointer: coarse) and (hover: none)');
+    function hide() { el.classList.add('is-done'); setTimeout(function () { el.remove(); }, 600); }
+    if (!portrait.matches) { el.remove(); return; }
+    el.classList.add('is-on');
+    el.addEventListener('click', hide);
+    portrait.addEventListener('change', function (e) { if (!e.matches) hide(); });
+    setTimeout(hide, 4000);
+  })();
+  </script>
   <div class="app">
     <!-- VIEWER: the astronaut's view (panorama or photo) -->
     <main id="viewer" class="viewer grid-bg">
