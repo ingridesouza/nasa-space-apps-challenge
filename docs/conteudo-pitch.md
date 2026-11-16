@@ -23,6 +23,14 @@ Critérios: os 5 oficiais do Space Apps (Impacto, Criatividade, Validade, Relev�
 
 **H2G2 (Human-to-Ground Guide):** guia de campo hiperlocal para uma caminhada segura em Marte, no boxwork do Monte Sharp, cratera Gale.
 
+**Por que o nome (branding)**
+- **Origem:** H2G2 é a abreviação clássica de *O Guia do Mochileiro das Galáxias* (*The Hitchhiker's Guide to the Galaxy*), de Douglas Adams. HHGG tem dois H e dois G, por isso H2G2.
+- **A mesma ideia do livro:** um guia de bolso que diz ao viajante o que ele precisa para sobreviver num lugar estranho.
+- **Retroacrônimo:** *Human-to-Ground Guide*, o guia do humano direto ao chão sob a bota.
+- **Lema herdado:** a landing fecha com **"NÃO ENTRE EM PÂNICO"** (*DON'T PANIC*), a frase da capa do Guia.
+- **Personagem herdado:** o assistente de voz se chama **Marvin**, o androide do livro.
+- **Uso no pitch:** o nome abre conversa com a banca e amarra a marca (guia, calma, Marvin) sem custo de explicação.
+
 **Valor em uma frase:** mapa, rota, ciência e condições na escala da caminhada (~3×3 km), rodando sem a Terra, e cada número dizendo de onde veio.
 
 **Por que Gale e não Jezero**
@@ -102,7 +110,7 @@ Critérios: os 5 oficiais do Space Apps (Impacto, Criatividade, Validade, Relev�
 
 ### 07 · Condições e previsão offline · Protótipo
 - **Condições medidas pelo Curiosity:**
-  - REMS: temperatura do ar e do solo, pressão, UV, umidade;
+  - REMS: temperatura do ar, pressão, UV, umidade (a temperatura do solo usa o canal B do GTS, com valores implausíveis ao meio-dia; não citar até migrar para o canal A);
   - RAD: dose;
   - hora solar pelo Mars24.
 - **Previsão:** climatologia por estação (Ls ±15°), montada com 231 sóis REMS de toda a missão (sóis 100–4840), corrigida pela anomalia do último sol medido. Método mínimo inspirado em de Cabo-García et al. (2019).
